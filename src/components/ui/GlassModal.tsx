@@ -5,7 +5,7 @@ import {
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  TouchableWithoutFeedback, 
+  Pressable, 
   KeyboardAvoidingView, 
   Platform, 
   ScrollView,
@@ -39,41 +39,46 @@ export default function GlassModal({
       visible={visible}
       onRequestClose={onClose}
     >
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
-          <TouchableWithoutFeedback>
-            <KeyboardAvoidingView 
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              style={[styles.modalWrapper, { width: isTablet ? 500 : '90%', maxWidth: 540 }]}
-            >
-              <BlurView intensity={60} tint="dark" style={styles.modalContent}>
-                {/* Header */}
-                <View style={styles.header}>
-                  <View style={styles.headerTitles}>
-                    <Text style={styles.title}>{title}</Text>
-                    {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-                  </View>
-                  <TouchableOpacity 
-                    style={styles.closeButton} 
-                    onPress={onClose}
-                    activeOpacity={0.7}
-                  >
-                    <Feather name="x" size={20} color="rgba(255, 255, 255, 0.7)" />
-                  </TouchableOpacity>
-                </View>
+      <View style={styles.overlay}>
+        {/* Fondo oscuro clickeable para cerrar */}
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
 
-                {/* Body */}
-                <ScrollView 
-                  showsVerticalScrollIndicator={false} 
-                  contentContainerStyle={styles.scrollBody}
-                >
-                  {children}
-                </ScrollView>
-              </BlurView>
-            </KeyboardAvoidingView>
-          </TouchableWithoutFeedback>
-        </View>
-      </TouchableWithoutFeedback>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={[
+            styles.modalWrapper, 
+            { width: isTablet ? 520 : '92%', maxWidth: 540 }
+          ]}
+        >
+          <BlurView intensity={70} tint="dark" style={styles.modalContent}>
+            {/* Header fijo */}
+            <View style={styles.header}>
+              <View style={styles.headerTitles}>
+                <Text style={styles.title}>{title}</Text>
+                {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+              </View>
+              <TouchableOpacity 
+                style={styles.closeButton} 
+                onPress={onClose}
+                activeOpacity={0.7}
+              >
+                <Feather name="x" size={20} color="rgba(255, 255, 255, 0.7)" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Scrollable Body */}
+            <ScrollView 
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollBody}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}
+            >
+              {children}
+            </ScrollView>
+          </BlurView>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -92,16 +97,27 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
     maxHeight: '85%',
+    backgroundColor: 'rgba(15, 15, 15, 0.9)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.6,
+    shadowRadius: 30,
+    elevation: 20,
   },
   modalContent: {
-    padding: 24,
-    backgroundColor: 'rgba(15, 15, 15, 0.85)',
+    maxHeight: '100%',
+    display: 'flex',
+    flexDirection: 'column',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   headerTitles: {
     flex: 1,
@@ -126,7 +142,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  scrollView: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    flexGrow: 0,
+    flexShrink: 1,
+  },
   scrollBody: {
-    paddingBottom: 8,
+    paddingBottom: 28,
   },
 });
