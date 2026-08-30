@@ -174,6 +174,7 @@ export default function ConfigScreen() {
 
   // Guardar configuración nueva en Base de Datos
   const handleSaveNewConfig = async () => {
+    if (isSaving) return;
     if (!configName.trim()) {
       showFeedback('Ingresa un nombre para la configuración', 'error');
       return;
@@ -219,6 +220,7 @@ export default function ConfigScreen() {
 
   // Actualizar configuración existente en Base de Datos
   const handleUpdateExistingConfig = async () => {
+    if (isSaving) return;
     if (!selectedConfig) return;
     if (!configContent || !configContent.trim()) {
       showFeedback('El contenido de la configuración no puede estar vacío', 'error');

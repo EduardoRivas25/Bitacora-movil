@@ -53,6 +53,10 @@ export default function DeviceListScreen() {
   const [newBldDept, setNewBldDept] = useState('');
   const [newBldError, setNewBldError] = useState('');
 
+  // Control de bloqueo contra múltiples clics
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingBld, setIsSubmittingBld] = useState(false);
+
   const loadData = useCallback(async (isSilent = false) => {
     try {
       if (!isSilent && devices.length === 0) setLoading(true);
@@ -83,6 +87,7 @@ export default function DeviceListScreen() {
   };
 
   const handleSaveNewBuilding = async () => {
+    if (isSubmittingBld) return;
     setNewBldError('');
     if (!newBldName.trim() || newBldName.trim().length < 2) {
       setNewBldError('Ingresa el nombre del edificio o ubicación.');
@@ -99,6 +104,7 @@ export default function DeviceListScreen() {
     }
 
     try {
+      setIsSubmittingBld(true);
       const created = await api.createBuilding({
         name: newBldName.trim(),
         code: newBldCode.toUpperCase().trim(),
@@ -117,6 +123,8 @@ export default function DeviceListScreen() {
     } catch (err: any) {
       console.error(err);
       setNewBldError(err?.message || 'Error al guardar el edificio');
+    } finally {
+      setIsSubmittingBld(false);
     }
   };
 
@@ -163,6 +171,7 @@ export default function DeviceListScreen() {
   });
 
   const handleSaveDevice = async () => {
+    if (isSubmitting) return;
     setModalError('');
     const errors: { [key: string]: string } = {};
 
@@ -191,6 +200,7 @@ export default function DeviceListScreen() {
     const bld = buildings.find(b => b.id === devBuilding);
     const dept = bld?.departments.find(d => d.id === devDept);
     try {
+      setIsSubmitting(true);
       const created = await api.createDevice({
         name: devName.trim(), 
         mac_address: macVal.formatted || devMac.toUpperCase().trim(), 
@@ -217,6 +227,8 @@ export default function DeviceListScreen() {
     } catch (err: any) { 
       setModalError(err?.message || 'Error al guardar el dispositivo');
       console.error(err); 
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -392,8 +404,17 @@ export default function DeviceListScreen() {
           <Text style={styles.inputLabel}>Descripción u Observaciones</Text>
           <TextInput placeholder="Rol del equipo en la red..." placeholderTextColor="rgba(255, 255, 255, 0.25)" multiline numberOfLines={2} style={[styles.input, styles.textArea]} value={devDesc} onChangeText={setDevDesc} />
 
-          <TouchableOpacity style={styles.modalSubmitButton} activeOpacity={0.8} onPress={handleSaveDevice}>
-            <Text style={styles.modalSubmitButtonText}>Guardar en Inventario</Text>
+          <TouchableOpacity 
+            style={[styles.modalSubmitButton, isSubmitting && { opacity: 0.6 }]} 
+            disabled={isSubmitting} 
+            activeOpacity={0.8} 
+            onPress={handleSaveDevice}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#000000" />
+            ) : (
+              <Text style={styles.modalSubmitButtonText}>Guardar en Inventario</Text>
+            )}
           </TouchableOpacity>
         </GlassModal>
 
@@ -430,8 +451,17 @@ export default function DeviceListScreen() {
           <Text style={styles.inputLabel}>Departamento / Área Inicial</Text>
           <TextInput placeholder="ej. Sala de Racks" placeholderTextColor="rgba(255, 255, 255, 0.25)" style={styles.input} value={newBldDept} onChangeText={setNewBldDept} />
 
-          <TouchableOpacity style={styles.modalSubmitButton} activeOpacity={0.8} onPress={handleSaveNewBuilding}>
-            <Text style={styles.modalSubmitButtonText}>Guardar Ubicación</Text>
+          <TouchableOpacity 
+            style={[styles.modalSubmitButton, isSubmittingBld && { opacity: 0.6 }]} 
+            disabled={isSubmittingBld} 
+            activeOpacity={0.8} 
+            onPress={handleSaveNewBuilding}
+          >
+            {isSubmittingBld ? (
+              <ActivityIndicator size="small" color="#000000" />
+            ) : (
+              <Text style={styles.modalSubmitButtonText}>Guardar Ubicación</Text>
+            )}
           </TouchableOpacity>
         </GlassModal>
       </ScrollView>

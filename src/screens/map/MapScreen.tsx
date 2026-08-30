@@ -43,6 +43,7 @@ export default function MapScreen() {
   const [bldDesc, setBldDesc] = useState('');
   const [bldError, setBldError] = useState('');
   const [bldFieldErrors, setBldFieldErrors] = useState<{ [key: string]: string }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadData = useCallback(async (isSilent = false) => {
     try {
@@ -77,6 +78,7 @@ export default function MapScreen() {
   };
 
   const handleSaveBuilding = async () => {
+    if (isSubmitting) return;
     setBldError('');
     const errors: { [key: string]: string } = {};
 
@@ -96,6 +98,7 @@ export default function MapScreen() {
     }
 
     try {
+      setIsSubmitting(true);
       await api.createBuilding({
         name: bldName.trim(),
         code: bldCode.toUpperCase().trim(),
@@ -118,6 +121,8 @@ export default function MapScreen() {
     } catch (err: any) {
       console.error(err);
       setBldError(err?.message || 'Error al registrar el edificio');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -419,8 +424,17 @@ export default function MapScreen() {
           onChangeText={setBldDesc} 
         />
 
-        <TouchableOpacity style={styles.modalSubmitButton} activeOpacity={0.8} onPress={handleSaveBuilding}>
-          <Text style={styles.modalSubmitButtonText}>Guardar Edificio en Mapa</Text>
+        <TouchableOpacity 
+          style={[styles.modalSubmitButton, isSubmitting && { opacity: 0.6 }]} 
+          disabled={isSubmitting} 
+          activeOpacity={0.8} 
+          onPress={handleSaveBuilding}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color="#000000" />
+          ) : (
+            <Text style={styles.modalSubmitButtonText}>Guardar Edificio en Mapa</Text>
+          )}
         </TouchableOpacity>
       </GlassModal>
     </LinearGradient>

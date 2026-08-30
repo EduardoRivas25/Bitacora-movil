@@ -42,6 +42,7 @@ export default function NetworkListScreen() {
   const [subDesc, setSubDesc] = useState('');
   const [subError, setSubError] = useState('');
   const [subFieldErrors, setSubFieldErrors] = useState<{ [key: string]: string }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const loadNetworks = useCallback(async (isSilent = false) => {
     try {
@@ -70,6 +71,7 @@ export default function NetworkListScreen() {
   };
 
   const handleSaveNetwork = async () => {
+    if (isSubmitting) return;
     setNetError('');
     const errors: { [key: string]: string } = {};
 
@@ -96,6 +98,7 @@ export default function NetworkListScreen() {
     }
 
     try {
+      setIsSubmitting(true);
       await api.createNetwork({ 
         name: netName.trim(), 
         address: netIp.trim(), 
@@ -113,10 +116,13 @@ export default function NetworkListScreen() {
     } catch (err: any) { 
       setNetError(err?.message || 'Error al guardar la red'); 
       console.error('Error creando red:', err); 
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleSaveSubnet = async () => {
+    if (isSubmitting) return;
     setSubError('');
     const errors: { [key: string]: string } = {};
 
@@ -149,6 +155,7 @@ export default function NetworkListScreen() {
     }
 
     try {
+      setIsSubmitting(true);
       await api.createSubnet({ 
         name: subName.trim(), 
         address: subIp.trim(), 
@@ -167,6 +174,8 @@ export default function NetworkListScreen() {
     } catch (err: any) { 
       setSubError(err?.message || 'Error al guardar la subred'); 
       console.error('Error creando subred:', err); 
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -348,8 +357,17 @@ export default function NetworkListScreen() {
           </View>
           <Text style={styles.inputLabel}>Descripción u Observaciones</Text>
           <TextInput placeholder="Detalles sobre el uso o alcance de esta red..." placeholderTextColor="rgba(255, 255, 255, 0.25)" multiline numberOfLines={3} style={[styles.input, styles.textArea]} value={netDesc} onChangeText={setNetDesc} />
-          <TouchableOpacity style={styles.modalSubmitButton} activeOpacity={0.8} onPress={handleSaveNetwork}>
-            <Text style={styles.modalSubmitButtonText}>Guardar Red Principal</Text>
+          <TouchableOpacity 
+            style={[styles.modalSubmitButton, isSubmitting && { opacity: 0.6 }]} 
+            disabled={isSubmitting} 
+            activeOpacity={0.8} 
+            onPress={handleSaveNetwork}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#000000" />
+            ) : (
+              <Text style={styles.modalSubmitButtonText}>Guardar Red Principal</Text>
+            )}
           </TouchableOpacity>
         </GlassModal>
 
@@ -411,8 +429,17 @@ export default function NetworkListScreen() {
           </View>
           <Text style={styles.inputLabel}>Descripción u Observaciones</Text>
           <TextInput placeholder="Propósito de la VLAN..." placeholderTextColor="rgba(255, 255, 255, 0.25)" multiline numberOfLines={3} style={[styles.input, styles.textArea]} value={subDesc} onChangeText={setSubDesc} />
-          <TouchableOpacity style={styles.modalSubmitButton} activeOpacity={0.8} onPress={handleSaveSubnet}>
-            <Text style={styles.modalSubmitButtonText}>Guardar Subred</Text>
+          <TouchableOpacity 
+            style={[styles.modalSubmitButton, isSubmitting && { opacity: 0.6 }]} 
+            disabled={isSubmitting} 
+            activeOpacity={0.8} 
+            onPress={handleSaveSubnet}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#000000" />
+            ) : (
+              <Text style={styles.modalSubmitButtonText}>Guardar Subred</Text>
+            )}
           </TouchableOpacity>
         </GlassModal>
       </ScrollView>

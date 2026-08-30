@@ -44,6 +44,8 @@ export default function IncidentScreen() {
   const [mntNotes, setMntNotes] = useState('');
   const [mntError, setMntError] = useState('');
   const [mntFieldErrors, setMntFieldErrors] = useState<{ [key: string]: string }>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittingMaint, setIsSubmittingMaint] = useState(false);
 
   const loadData = useCallback(async (isSilent = false) => {
     try {
@@ -118,6 +120,7 @@ export default function IncidentScreen() {
   };
 
   const handleSaveIncident = async () => {
+    if (isSubmitting) return;
     setIncError('');
     const errors: { [key: string]: string } = {};
 
@@ -138,6 +141,7 @@ export default function IncidentScreen() {
     }
 
     try {
+      setIsSubmitting(true);
       const selectedDevs = devices.filter(d => selectedDeviceIds.includes(d.id));
       const deviceNames = selectedDevs.map(d => d.name).join(', ');
       const deviceIps = selectedDevs.map(d => d.ipv4_address).join(', ');
@@ -161,6 +165,8 @@ export default function IncidentScreen() {
     } catch (err: any) { 
       setIncError(err?.message || 'Error al guardar el incidente');
       console.error(err); 
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -189,6 +195,7 @@ export default function IncidentScreen() {
   };
 
   const handleSaveMaintenance = async () => {
+    if (isSubmittingMaint) return;
     setMntError('');
     const errors: { [key: string]: string } = {};
 
@@ -220,6 +227,7 @@ export default function IncidentScreen() {
     };
 
     try {
+      setIsSubmittingMaint(true);
       await api.createMaintenance({ 
         title: mntTitle.trim(), 
         type: mntType, 
@@ -244,6 +252,8 @@ export default function IncidentScreen() {
     } catch (err: any) { 
       setMntError(err?.message || 'Error al agendar mantenimiento');
       console.error(err); 
+    } finally {
+      setIsSubmittingMaint(false);
     }
   };
 
@@ -385,8 +395,17 @@ export default function IncidentScreen() {
           />
           {incFieldErrors.desc && <Text style={styles.fieldErrorText}>{incFieldErrors.desc}</Text>}
 
-          <TouchableOpacity style={styles.submitIncident} activeOpacity={0.8} onPress={handleSaveIncident}>
-            <Text style={styles.submitIncidentText}>Enviar Reporte de Incidente</Text>
+          <TouchableOpacity 
+            style={[styles.submitIncident, isSubmitting && { opacity: 0.6 }]} 
+            disabled={isSubmitting} 
+            activeOpacity={0.8} 
+            onPress={handleSaveIncident}
+          >
+            {isSubmitting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitIncidentText}>Enviar Reporte de Incidente</Text>
+            )}
           </TouchableOpacity>
         </GlassModal>
 
@@ -463,8 +482,17 @@ export default function IncidentScreen() {
           <TextInput placeholder="Nombre del técnico o equipo" placeholderTextColor="rgba(255,255,255,0.25)" style={styles.input} value={mntTech} onChangeText={setMntTech} />
           <Text style={styles.inputLabel}>Notas Adicionales</Text>
           <TextInput placeholder="Observaciones..." placeholderTextColor="rgba(255,255,255,0.25)" multiline numberOfLines={2} style={[styles.input, styles.textArea]} value={mntNotes} onChangeText={setMntNotes} />
-          <TouchableOpacity style={styles.submitMaint} activeOpacity={0.8} onPress={handleSaveMaintenance}>
-            <Text style={styles.submitMaintText}>Programar Mantenimiento</Text>
+          <TouchableOpacity 
+            style={[styles.submitMaint, isSubmittingMaint && { opacity: 0.6 }]} 
+            disabled={isSubmittingMaint} 
+            activeOpacity={0.8} 
+            onPress={handleSaveMaintenance}
+          >
+            {isSubmittingMaint ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.submitMaintText}>Programar Mantenimiento</Text>
+            )}
           </TouchableOpacity>
         </GlassModal>
       </ScrollView>

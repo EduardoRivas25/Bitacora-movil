@@ -205,6 +205,7 @@ export function Map({
           display: flex;
           align-items: center;
           gap: 6px;
+          cursor: pointer;
         }
         .building-label:hover {
           border-color: #30D158;
@@ -280,7 +281,6 @@ export function Map({
         });
 
         // 2. Capas de alta definición
-        // Capa Oscura CartoDB Retina
         const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
           maxZoom: 21,
           maxNativeZoom: 20,
@@ -288,7 +288,6 @@ export function Map({
           attribution: '&copy; OpenStreetMap &copy; CARTO'
         }).addTo(map);
 
-        // Capa Satélite Google de Máxima Resolución
         const googleSatLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
           maxZoom: 21,
           maxNativeZoom: 20,
@@ -296,19 +295,11 @@ export function Map({
           attribution: '&copy; Google Maps'
         });
 
-        // Capa Satélite Híbrido (Foto aérea + Nombres de calles y lugares)
         const googleHybridLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
           maxZoom: 21,
           maxNativeZoom: 20,
           subdomains: ['0', '1', '2', '3'],
           attribution: '&copy; Google Maps Satellite'
-        });
-
-        // Capa Satélite ESRI World Imagery (Alternativa nítida)
-        const esriSatLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-          maxZoom: 21,
-          maxNativeZoom: 19,
-          attribution: '&copy; Esri World Imagery'
         });
 
         function clearLayers() {
@@ -354,9 +345,15 @@ export function Map({
           return { class: 'theme-pc', svg: SVG_ICONS.pc };
         }
 
+        // Grupos de capas para visibilidad dinámica por nivel de zoom
+        // Al alejarse, SIEMPRE se ven los edificios primero. Los equipos aparecen al hacer zoom.
+        const buildingLayer = L.layerGroup().addTo(map);
+        const deviceLayer = L.layerGroup();
+        const DEVICE_MIN_ZOOM = 16; // Zoom a partir del cual aparecen los equipos
+
         const allCoords = [];
 
-        // 4. Marcadores de Edificios
+        // 4. Marcadores de Edificios (Siempre visibles en buildingLayer)
         buildings.forEach(bld => {
           if (bld.latitude && bld.longitude) {
             allCoords.push([bld.latitude, bld.longitude]);
@@ -366,12 +363,14 @@ export function Map({
               iconSize: [130, 32],
               iconAnchor: [65, 16]
             });
-            L.marker([bld.latitude, bld.longitude], { icon }).addTo(map)
+            const marker = L.marker([bld.latitude, bld.longitude], { icon })
               .bindPopup('<div><div class="popup-dev-name">' + bld.name + '</div><div class="popup-data-row">' + (bld.description || '') + '</div><div class="popup-data-row" style="margin-top:6px;"><b>Departamentos:</b> <span class="popup-val-bold">' + (bld.departments ? bld.departments.map(d => d.name).join(', ') : 'Ninguno') + '</span></div></div>');
+            
+            marker.addTo(buildingLayer);
           }
         });
 
-        // 5. Marcadores de Dispositivos con Identificación
+        // 5. Marcadores de Dispositivos (Se agregan a deviceLayer)
         devices.forEach(dev => {
           if (dev.latitude && dev.longitude) {
             allCoords.push([dev.latitude, dev.longitude]);
@@ -406,23 +405,44 @@ export function Map({
                 '<div class="popup-data-row">Subred: <span class="popup-val-bold">' + (dev.subnet_name || 'VLAN') + '</span></div>' +
               '</div>';
 
-            L.marker([dev.latitude, dev.longitude], { icon })
-              .addTo(map)
+            const devMarker = L.marker([dev.latitude, dev.longitude], { icon })
               .bindPopup(popupContent);
+            
+            devMarker.addTo(deviceLayer);
           }
         });
 
-        // 6. Centrado automático en los edificios
+        // Función para alternar equipos según nivel de zoom
+        function updateDeviceVisibility() {
+          const currentZoom = map.getZoom();
+          if (currentZoom >= DEVICE_MIN_ZOOM) {
+            if (!map.hasLayer(deviceLayer)) {
+              map.addLayer(deviceLayer);
+            }
+          } else {
+            if (map.hasLayer(deviceLayer)) {
+              map.removeLayer(deviceLayer);
+            }
+          }
+        }
+
+        map.on('zoomend', updateDeviceVisibility);
+
+        // 6. Centrado inicial en los edificios
         const hasExplicit = ${hasExplicitCenter};
         if (hasExplicit) {
           map.setView(initialCenter, ${zoom});
+          updateDeviceVisibility();
         } else if (allCoords.length === 1) {
           map.setView(allCoords[0], 17);
+          updateDeviceVisibility();
         } else if (allCoords.length > 1) {
           const bounds = L.latLngBounds(allCoords);
           map.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+          updateDeviceVisibility();
         } else {
           map.setView(initialCenter, ${zoom});
+          updateDeviceVisibility();
         }
       </script>
     </body>
