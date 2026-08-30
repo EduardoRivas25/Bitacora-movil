@@ -1,8 +1,8 @@
 // src/services/api.ts
 // ============================================================
 // ARCHIVO CENTRALIZADO DE TODAS LAS LLAMADAS AL BACKEND
-// Todas las screens importan métodos de aquí para mantener
-// el código limpio y la lógica de BD en un solo lugar.
+// Con soporte para caché en memoria ultra-rápida,
+// consultas paralelas e invalidación inteligente.
 // ============================================================
 import { supabase } from '../lib/supabaseClient';
 import { Platform } from 'react-native';
@@ -19,19 +19,74 @@ import {
 } from '../types';
 
 // ============================================================
-// HELPERS DE SANITIZACIÓN (Prevención de inyección)
+// SISTEMA DE CACHÉ EN MEMORIA
+// ============================================================
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+
+const CACHE_TTL_MS = 30000; // 30 segundos de vigencia
+const memoryCache = new Map<string, CacheEntry<any>>();
+
+export function getCached<T>(key: string): T | null {
+  const entry = memoryCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    memoryCache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+export function setCache<T>(key: string, data: T): void {
+  memoryCache.set(key, { data, timestamp: Date.now() });
+}
+
+export function invalidateCache(...keys: string[]): void {
+  if (keys.length === 0) {
+    memoryCache.clear();
+  } else {
+    keys.forEach(k => {
+      for (const cacheKey of memoryCache.keys()) {
+        if (cacheKey === k || cacheKey.startsWith(k)) {
+          memoryCache.delete(cacheKey);
+        }
+      }
+    });
+  }
+}
+
+// ============================================================
+// HELPERS DE SANITIZACIÓN Y MANEJO DE ERRORES
 // ============================================================
 function sanitize(input: string): string {
   if (!input) return '';
   return input.trim().replace(/[<>]/g, '');
 }
 
+export function translateAuthError(errorMsg: string): string {
+  const msg = (errorMsg || '').toLowerCase();
+  if (msg.includes('invalid login credentials') || msg.includes('invalid_grant')) {
+    return 'Correo o contraseña incorrectos. Verifica tus credenciales.';
+  }
+  if (msg.includes('user already registered') || msg.includes('already exists')) {
+    return 'Este correo electrónico ya se encuentra registrado.';
+  }
+  if (msg.includes('password should be at least')) {
+    return 'La contraseña debe tener al menos 6 caracteres.';
+  }
+  if (msg.includes('email not confirmed')) {
+    return 'El correo no ha sido confirmado en Supabase.';
+  }
+  if (msg.includes('rate limit')) {
+    return 'Demasiados intentos. Por favor espera unos momentos.';
+  }
+  return errorMsg || 'Ocurrió un error inesperado al autenticar.';
+}
+
 function formatEmail(input: string): string {
   const clean = sanitize(input).toLowerCase();
-  if (!clean) return '';
-  if (!clean.includes('@')) {
-    return `${clean}@bitacora.com`;
-  }
   return clean;
 }
 
@@ -47,24 +102,7 @@ export async function signInWithEmail(emailOrUser: string, password: string) {
   });
 
   if (error) {
-    // Si el usuario ingresó 'prueba1' y aún no existe en Supabase, auto-crearlo
-    if (
-      (error.message.includes('Invalid login credentials') || error.message.includes('Email not confirmed')) &&
-      emailOrUser.toLowerCase().trim() === 'prueba1'
-    ) {
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: formattedEmail,
-        password,
-        options: {
-          data: { full_name: 'Usuario de Prueba (prueba1)' },
-        },
-      });
-
-      if (!signUpError && signUpData.session) {
-        return signUpData;
-      }
-    }
-    throw error;
+    throw new Error(translateAuthError(error.message));
   }
   return data;
 }
@@ -78,7 +116,9 @@ export async function signUpWithEmail(emailOrUser: string, password: string, nam
       data: { full_name: name ? sanitize(name) : '' },
     },
   });
-  if (error) throw error;
+  if (error) {
+    throw new Error(translateAuthError(error.message));
+  }
   return data;
 }
 
@@ -105,6 +145,7 @@ export async function signInWithGitHub() {
 }
 
 export async function signOut() {
+  invalidateCache();
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
@@ -123,30 +164,28 @@ export async function getCurrentSession() {
 // NETWORKS — Redes Principales
 // ============================================================
 
-export async function fetchNetworks(): Promise<(Network & { subnets: Subnet[] })[]> {
-  const { data: networks, error } = await supabase
-    .from('networks')
-    .select('*')
-    .order('created_at', { ascending: false });
+export async function fetchNetworks(forceRefresh = false): Promise<(Network & { subnets: Subnet[] })[]> {
+  if (!forceRefresh) {
+    const cached = getCached<(Network & { subnets: Subnet[] })[]>('networks');
+    if (cached) return cached;
+  }
 
-  if (error) throw error;
+  // Ejecutar consultas en paralelo para máxima velocidad
+  const [
+    { data: networks, error: netError },
+    { data: subnets, error: subError },
+    { data: devices, error: devError },
+  ] = await Promise.all([
+    supabase.from('networks').select('*').order('created_at', { ascending: false }),
+    supabase.from('subnets').select('*').order('created_at', { ascending: true }),
+    supabase.from('devices').select('id, subnet_id'),
+  ]);
 
-  // Obtener subredes para cada red
-  const { data: subnets, error: subError } = await supabase
-    .from('subnets')
-    .select('*')
-    .order('created_at', { ascending: true });
-
+  if (netError) throw netError;
   if (subError) throw subError;
-
-  // Obtener conteo de dispositivos por subred
-  const { data: devices, error: devError } = await supabase
-    .from('devices')
-    .select('id, subnet_id');
-
   if (devError) throw devError;
 
-  return (networks || []).map((net: any) => {
+  const result = (networks || []).map((net: any) => {
     const netSubnets = (subnets || []).filter((s: any) => s.network_id === net.id);
     const subnetIds = netSubnets.map((s: any) => s.id);
     const deviceCount = (devices || []).filter((d: any) => subnetIds.includes(d.subnet_id)).length;
@@ -161,6 +200,9 @@ export async function fetchNetworks(): Promise<(Network & { subnets: Subnet[] })
       })),
     };
   });
+
+  setCache('networks', result);
+  return result;
 }
 
 export async function createNetwork(data: { name: string; address: string; cidr: number; description?: string }) {
@@ -176,6 +218,7 @@ export async function createNetwork(data: { name: string; address: string; cidr:
     .single();
 
   if (error) throw error;
+  invalidateCache('networks', 'dashboard_stats');
   return result;
 }
 
@@ -193,12 +236,14 @@ export async function updateNetwork(id: string, data: Partial<Network>) {
     .single();
 
   if (error) throw error;
+  invalidateCache('networks', 'dashboard_stats');
   return result;
 }
 
 export async function deleteNetwork(id: string) {
   const { error } = await supabase.from('networks').delete().eq('id', id);
   if (error) throw error;
+  invalidateCache('networks', 'subnets', 'devices', 'dashboard_stats');
 }
 
 // ============================================================
@@ -230,33 +275,44 @@ export async function createSubnet(data: { name: string; address: string; cidr: 
     .single();
 
   if (error) throw error;
+  invalidateCache('networks', 'subnets_flat', 'dashboard_stats');
   return result;
 }
 
 export async function deleteSubnet(id: string) {
   const { error } = await supabase.from('subnets').delete().eq('id', id);
   if (error) throw error;
+  invalidateCache('networks', 'subnets_flat', 'devices', 'dashboard_stats');
 }
 
 // ============================================================
 // DEVICES — Dispositivos
 // ============================================================
 
-export async function fetchDevices(): Promise<Device[]> {
-  const { data: devices, error } = await supabase
-    .from('devices')
-    .select('*')
-    .order('created_at', { ascending: false });
+export async function fetchDevices(forceRefresh = false): Promise<Device[]> {
+  if (!forceRefresh) {
+    const cached = getCached<Device[]>('devices');
+    if (cached) return cached;
+  }
+
+  // Cargar tablas maestras en paralelo
+  const [
+    { data: devices, error },
+    { data: subnets },
+    { data: networks },
+    { data: buildings },
+    { data: departments },
+  ] = await Promise.all([
+    supabase.from('devices').select('*').order('created_at', { ascending: false }),
+    supabase.from('subnets').select('id, name, network_id'),
+    supabase.from('networks').select('id, name'),
+    supabase.from('buildings').select('id, name'),
+    supabase.from('departments').select('id, name'),
+  ]);
 
   if (error) throw error;
 
-  // Obtener subredes y redes para joins manuales
-  const { data: subnets } = await supabase.from('subnets').select('id, name, network_id');
-  const { data: networks } = await supabase.from('networks').select('id, name');
-  const { data: buildings } = await supabase.from('buildings').select('id, name');
-  const { data: departments } = await supabase.from('departments').select('id, name');
-
-  return (devices || []).map((dev: any) => {
+  const result = (devices || []).map((dev: any) => {
     const subnet = (subnets || []).find((s: any) => s.id === dev.subnet_id);
     const network = subnet ? (networks || []).find((n: any) => n.id === subnet.network_id) : null;
     const building = (buildings || []).find((b: any) => b.id === dev.building_id);
@@ -270,6 +326,9 @@ export async function fetchDevices(): Promise<Device[]> {
       department_name: department?.name || '',
     };
   });
+
+  setCache('devices', result);
+  return result;
 }
 
 export async function fetchDeviceById(id: string): Promise<Device | null> {
@@ -315,19 +374,20 @@ export async function createDevice(data: {
     .single();
 
   if (error) throw error;
+  invalidateCache('devices', 'networks', 'dashboard_stats');
   return result;
 }
 
 export async function deleteDevice(id: string) {
   const { error } = await supabase.from('devices').delete().eq('id', id);
   if (error) throw error;
+  invalidateCache('devices', 'networks', 'dashboard_stats');
 }
 
 export async function searchDevices(query: string): Promise<Device[]> {
   const q = sanitize(query).toLowerCase();
   if (!q) return [];
 
-  // Fetch all then filter client-side for flexible multi-field search
   const allDevices = await fetchDevices();
   return allDevices.filter(dev =>
     dev.name.toLowerCase().includes(q) ||
@@ -343,24 +403,30 @@ export async function searchDevices(query: string): Promise<Device[]> {
 // BUILDINGS & DEPARTMENTS — Edificios y Departamentos
 // ============================================================
 
-export async function fetchBuildings(): Promise<Building[]> {
-  const { data: buildings, error } = await supabase
-    .from('buildings')
-    .select('*')
-    .order('name', { ascending: true });
+export async function fetchBuildings(forceRefresh = false): Promise<Building[]> {
+  if (!forceRefresh) {
+    const cached = getCached<Building[]>('buildings');
+    if (cached) return cached;
+  }
+
+  const [
+    { data: buildings, error },
+    { data: departments, error: deptError },
+  ] = await Promise.all([
+    supabase.from('buildings').select('*').order('name', { ascending: true }),
+    supabase.from('departments').select('*'),
+  ]);
 
   if (error) throw error;
-
-  const { data: departments, error: deptError } = await supabase
-    .from('departments')
-    .select('*');
-
   if (deptError) throw deptError;
 
-  return (buildings || []).map((bld: any) => ({
+  const result = (buildings || []).map((bld: any) => ({
     ...bld,
     departments: (departments || []).filter((d: any) => d.building_id === bld.id),
   }));
+
+  setCache('buildings', result);
+  return result;
 }
 
 export async function createBuilding(data: {
@@ -386,8 +452,7 @@ export async function createBuilding(data: {
 
   if (error) throw error;
 
-  // Si hay departamento, crearlo también
-  if (data.department_name) {
+  if (data.department_name && data.department_name.trim()) {
     await supabase.from('departments').insert({
       building_id: building.id,
       name: sanitize(data.department_name),
@@ -395,21 +460,64 @@ export async function createBuilding(data: {
     });
   }
 
+  invalidateCache('buildings', 'devices');
   return building;
+}
+
+export async function deleteBuilding(id: string) {
+  await supabase.from('departments').delete().eq('building_id', id);
+  const { error } = await supabase.from('buildings').delete().eq('id', id);
+  if (error) throw error;
+  invalidateCache('buildings', 'devices');
+  return true;
+}
+
+export async function createDepartment(data: {
+  building_id: string;
+  name: string;
+  floor?: string;
+}) {
+  const { data: dept, error } = await supabase
+    .from('departments')
+    .insert({
+      building_id: data.building_id,
+      name: sanitize(data.name),
+      floor: sanitize(data.floor || 'Planta Baja'),
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  invalidateCache('buildings', 'devices');
+  return dept;
+}
+
+export async function deleteDepartment(id: string) {
+  const { error } = await supabase.from('departments').delete().eq('id', id);
+  if (error) throw error;
+  invalidateCache('buildings', 'devices');
+  return true;
 }
 
 // ============================================================
 // INCIDENTS — Incidentes / Reportes de Fallas
 // ============================================================
 
-export async function fetchIncidents(): Promise<Incident[]> {
+export async function fetchIncidents(forceRefresh = false): Promise<Incident[]> {
+  if (!forceRefresh) {
+    const cached = getCached<Incident[]>('incidents');
+    if (cached) return cached;
+  }
+
   const { data, error } = await supabase
     .from('incidents')
     .select('*')
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data || [];
+  const result = data || [];
+  setCache('incidents', result);
+  return result;
 }
 
 export async function createIncident(data: {
@@ -437,6 +545,7 @@ export async function createIncident(data: {
     .single();
 
   if (error) throw error;
+  invalidateCache('incidents', 'dashboard_stats');
   return result;
 }
 
@@ -449,26 +558,35 @@ export async function resolveIncident(id: string) {
     .single();
 
   if (error) throw error;
+  invalidateCache('incidents', 'dashboard_stats');
   return data;
 }
 
 export async function deleteIncident(id: string) {
   const { error } = await supabase.from('incidents').delete().eq('id', id);
   if (error) throw error;
+  invalidateCache('incidents', 'dashboard_stats');
 }
 
 // ============================================================
 // MAINTENANCES — Mantenimientos Programados
 // ============================================================
 
-export async function fetchMaintenances(): Promise<Maintenance[]> {
+export async function fetchMaintenances(forceRefresh = false): Promise<Maintenance[]> {
+  if (!forceRefresh) {
+    const cached = getCached<Maintenance[]>('maintenances');
+    if (cached) return cached;
+  }
+
   const { data, error } = await supabase
     .from('maintenances')
     .select('*')
     .order('scheduled_date', { ascending: true });
 
   if (error) throw error;
-  return data || [];
+  const result = data || [];
+  setCache('maintenances', result);
+  return result;
 }
 
 export async function createMaintenance(data: {
@@ -502,21 +620,35 @@ export async function createMaintenance(data: {
     .single();
 
   if (error) throw error;
+  invalidateCache('maintenances');
   return result;
+}
+
+export async function deleteMaintenance(id: string) {
+  const { error } = await supabase.from('maintenances').delete().eq('id', id);
+  if (error) throw error;
+  invalidateCache('maintenances');
 }
 
 // ============================================================
 // DEVICE CONFIGS — Configuraciones de Dispositivos
 // ============================================================
 
-export async function fetchConfigs(): Promise<DeviceConfig[]> {
+export async function fetchConfigs(forceRefresh = false): Promise<DeviceConfig[]> {
+  if (!forceRefresh) {
+    const cached = getCached<DeviceConfig[]>('configs');
+    if (cached) return cached;
+  }
+
   const { data, error } = await supabase
     .from('device_configs')
     .select('*')
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  return data || [];
+  const result = data || [];
+  setCache('configs', result);
+  return result;
 }
 
 export async function createConfig(data: {
@@ -540,13 +672,14 @@ export async function createConfig(data: {
       device_type: sanitize(data.device_type || ''),
       file_name: sanitize(data.file_name),
       file_size: sanitize(data.file_size),
-      content: data.content, // No sanitizar contenido de config (puede tener caracteres especiales válidos)
+      content: data.content,
       author: sanitize(data.author || ''),
     })
     .select()
     .single();
 
   if (error) throw error;
+  invalidateCache('configs');
   return result;
 }
 
@@ -565,12 +698,14 @@ export async function updateConfig(id: string, data: Partial<DeviceConfig>) {
     .single();
 
   if (error) throw error;
+  invalidateCache('configs');
   return result;
 }
 
 export async function deleteConfig(id: string) {
   const { error } = await supabase.from('device_configs').delete().eq('id', id);
   if (error) throw error;
+  invalidateCache('configs');
 }
 
 // ============================================================
@@ -593,22 +728,27 @@ export interface DashboardStats {
   }[];
 }
 
-export async function fetchDashboardStats(): Promise<DashboardStats> {
+export async function fetchDashboardStats(forceRefresh = false): Promise<DashboardStats> {
+  if (!forceRefresh) {
+    const cached = getCached<DashboardStats>('dashboard_stats');
+    if (cached) return cached;
+  }
+
   const [
     { count: totalNetworks },
     { count: totalSubnets },
     { count: totalDevices },
     { count: activeIncidents },
+    { data: subnets },
+    { data: devices },
   ] = await Promise.all([
     supabase.from('networks').select('*', { count: 'exact', head: true }),
     supabase.from('subnets').select('*', { count: 'exact', head: true }),
     supabase.from('devices').select('*', { count: 'exact', head: true }),
     supabase.from('incidents').select('*', { count: 'exact', head: true }).neq('status', 'resolved'),
+    supabase.from('subnets').select('id, name, address, cidr'),
+    supabase.from('devices').select('id, subnet_id'),
   ]);
-
-  // Obtener subredes con uso para barras de capacidad
-  const { data: subnets } = await supabase.from('subnets').select('id, name, address, cidr');
-  const { data: devices } = await supabase.from('devices').select('id, subnet_id');
 
   const colors = ['#0A84FF', '#30D158', '#FF9F0A', '#BF5AF2', '#FF453A'];
   const subnetsWithUsage = (subnets || []).map((s: any, idx: number) => {
@@ -625,16 +765,24 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     };
   }).filter((s: any) => s.deviceCount > 0);
 
-  return {
+  const result: DashboardStats = {
     totalNetworks: totalNetworks || 0,
     totalSubnets: totalSubnets || 0,
     totalDevices: totalDevices || 0,
     activeIncidents: activeIncidents || 0,
     subnetsWithUsage,
   };
+
+  setCache('dashboard_stats', result);
+  return result;
 }
 
-export async function fetchRecentActivities(): Promise<RecentActivity[]> {
+export async function fetchRecentActivities(forceRefresh = false): Promise<RecentActivity[]> {
+  if (!forceRefresh) {
+    const cached = getCached<RecentActivity[]>('recent_activities');
+    if (cached) return cached;
+  }
+
   const { data, error } = await supabase
     .from('recent_activities')
     .select('*')
@@ -642,7 +790,7 @@ export async function fetchRecentActivities(): Promise<RecentActivity[]> {
     .limit(10);
 
   if (error) throw error;
-  return (data || []).map((a: any) => ({
+  const result = (data || []).map((a: any) => ({
     id: a.id,
     name: a.name,
     status: a.status,
@@ -651,18 +799,34 @@ export async function fetchRecentActivities(): Promise<RecentActivity[]> {
     icon: a.icon,
     color: a.color,
   }));
+
+  setCache('recent_activities', result);
+  return result;
 }
 
 // ============================================================
 // SUBNETS PARA SELECTORES (lista plana con nombre de red)
 // ============================================================
 
-export async function fetchAllSubnetsFlat(): Promise<(Subnet & { network_name: string })[]> {
-  const { data: subnets } = await supabase.from('subnets').select('*').order('name');
-  const { data: networks } = await supabase.from('networks').select('id, name');
+export async function fetchAllSubnetsFlat(forceRefresh = false): Promise<(Subnet & { network_name: string })[]> {
+  if (!forceRefresh) {
+    const cached = getCached<(Subnet & { network_name: string })[]>('subnets_flat');
+    if (cached) return cached;
+  }
 
-  return (subnets || []).map((s: any) => ({
+  const [
+    { data: subnets },
+    { data: networks },
+  ] = await Promise.all([
+    supabase.from('subnets').select('*').order('name'),
+    supabase.from('networks').select('id, name'),
+  ]);
+
+  const result = (subnets || []).map((s: any) => ({
     ...s,
     network_name: (networks || []).find((n: any) => n.id === s.network_id)?.name || '',
   }));
+
+  setCache('subnets_flat', result);
+  return result;
 }

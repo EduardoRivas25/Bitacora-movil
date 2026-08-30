@@ -45,10 +45,10 @@ export default function ConfigScreen() {
   // Ref para input de archivo en Web
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
-      const [cfgs, devs] = await Promise.all([api.fetchConfigs(), api.fetchDevices()]);
+      if (!isSilent && configs.length === 0 && devices.length === 0) setLoading(true);
+      const [cfgs, devs] = await Promise.all([api.fetchConfigs(isSilent), api.fetchDevices(isSilent)]);
       setConfigs(cfgs);
       setDevices(devs);
       if (devs.length > 0 && !selectedDeviceId) {
@@ -59,11 +59,11 @@ export default function ConfigScreen() {
     } finally {
       setLoading(false);
     }
-  }, [selectedDeviceId]);
+  }, [selectedDeviceId, configs.length, devices.length]);
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
+      loadData(true);
     }, [loadData])
   );
 
@@ -182,6 +182,10 @@ export default function ConfigScreen() {
       showFeedback('Selecciona un dispositivo de la base de datos', 'error');
       return;
     }
+    if (!configContent || !configContent.trim()) {
+      showFeedback('El contenido del archivo de configuración no puede estar vacío', 'error');
+      return;
+    }
 
     try {
       setIsSaving(true);
@@ -204,7 +208,7 @@ export default function ConfigScreen() {
 
       showFeedback('Configuración guardada en la base de datos');
       setSelectedConfig(created);
-      await loadData();
+      loadData(true);
     } catch (err: any) {
       console.error(err);
       showFeedback(err?.message || 'Error al guardar configuración', 'error');
@@ -216,6 +220,10 @@ export default function ConfigScreen() {
   // Actualizar configuración existente en Base de Datos
   const handleUpdateExistingConfig = async () => {
     if (!selectedConfig) return;
+    if (!configContent || !configContent.trim()) {
+      showFeedback('El contenido de la configuración no puede estar vacío', 'error');
+      return;
+    }
     try {
       setIsSaving(true);
       const sizeStr = `${((configContent.length) / 1024).toFixed(1)} KB`;
@@ -228,7 +236,7 @@ export default function ConfigScreen() {
 
       showFeedback('Cambios guardados en la base de datos');
       setSelectedConfig(updated);
-      await loadData();
+      loadData(true);
     } catch (err: any) {
       console.error(err);
       showFeedback(err?.message || 'Error al actualizar configuración', 'error');
@@ -262,15 +270,18 @@ export default function ConfigScreen() {
 
   // Eliminar configuración de Base de Datos
   const handleDeleteConfig = async (id: string) => {
+    // Actualización optimista instantánea (0ms)
+    const prevConfigs = [...configs];
+    setConfigs(prev => prev.filter(c => c.id !== id));
+    if (selectedConfig?.id === id) {
+      handleClearEditor();
+    }
+    showFeedback('Configuración eliminada de la base de datos');
     try {
       await api.deleteConfig(id);
-      showFeedback('Configuración eliminada de la base de datos');
-      if (selectedConfig?.id === id) {
-        handleClearEditor();
-      }
-      await loadData();
     } catch (err: any) {
       console.error(err);
+      setConfigs(prevConfigs);
       showFeedback(err?.message || 'Error al eliminar', 'error');
     }
   };
@@ -286,7 +297,7 @@ export default function ConfigScreen() {
     }
   };
 
-  if (loading) {
+  if (loading && configs.length === 0 && devices.length === 0) {
     return (
       <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

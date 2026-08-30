@@ -30,6 +30,8 @@ export default function IncidentScreen() {
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
   const [expandedBuildingId, setExpandedBuildingId] = useState<string | null>(null);
   const [incDesc, setIncDesc] = useState('');
+  const [incError, setIncError] = useState('');
+  const [incFieldErrors, setIncFieldErrors] = useState<{ [key: string]: string }>({});
 
   // Formulario Mantenimiento
   const [mntTitle, setMntTitle] = useState('');
@@ -40,21 +42,35 @@ export default function IncidentScreen() {
   const [mntWindow, setMntWindow] = useState('02:00 - 05:00 hrs');
   const [mntTech, setMntTech] = useState('');
   const [mntNotes, setMntNotes] = useState('');
+  const [mntError, setMntError] = useState('');
+  const [mntFieldErrors, setMntFieldErrors] = useState<{ [key: string]: string }>({});
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent && incidents.length === 0 && maintenances.length === 0) setLoading(true);
       const [incs, mnts, devs, blds] = await Promise.all([
-        api.fetchIncidents(), api.fetchMaintenances(), api.fetchDevices(), api.fetchBuildings(),
+        api.fetchIncidents(isSilent), api.fetchMaintenances(isSilent), api.fetchDevices(isSilent), api.fetchBuildings(isSilent),
       ]);
       setIncidents(incs); setMaintenances(mnts); setDevices(devs); setBuildings(blds);
       if (blds.length > 0) setExpandedBuildingId(blds[0].id);
       if (devs.length > 0 && selectedDeviceIds.length === 0) setSelectedDeviceIds([devs[0].id]);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  }, []);
+  }, [selectedDeviceIds.length, incidents.length, maintenances.length]);
 
-  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
+  useFocusEffect(useCallback(() => { loadData(true); }, [loadData]));
+
+  const handleOpenIncidentModal = () => {
+    setIncError('');
+    setIncFieldErrors({});
+    setShowIncidentModal(true);
+  };
+
+  const handleOpenMaintenanceModal = () => {
+    setMntError('');
+    setMntFieldErrors({});
+    setShowMaintenanceModal(true);
+  };
 
   const getDeviceCategory = (name: string) => {
     const l = (name || '').toLowerCase();
@@ -75,7 +91,11 @@ export default function IncidentScreen() {
     });
   }, [buildings, devices]);
 
-  const toggleDevice = (id: string) => setSelectedDeviceIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const toggleDevice = (id: string) => {
+    setSelectedDeviceIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    if (incFieldErrors.devices) setIncFieldErrors(prev => ({ ...prev, devices: '' }));
+  };
+
   const filteredIncidents = incidents.filter(inc => {
     if (activeSeverityFilter === 'Todos') return true; if (activeSeverityFilter === 'Crítico') return inc.severity === 'critical';
     if (activeSeverityFilter === 'Alto') return inc.severity === 'high'; if (activeSeverityFilter === 'Medio') return inc.severity === 'medium';
@@ -98,37 +118,136 @@ export default function IncidentScreen() {
   };
 
   const handleSaveIncident = async () => {
-    if (!incTitle || !incDesc || selectedDeviceIds.length === 0) return;
+    setIncError('');
+    const errors: { [key: string]: string } = {};
+
+    if (!incTitle || incTitle.trim().length < 3) {
+      errors.title = 'El título del incidente debe tener al menos 3 caracteres.';
+    }
+    if (selectedDeviceIds.length === 0) {
+      errors.devices = 'Debes seleccionar al menos un equipo afectado.';
+    }
+    if (!incDesc || incDesc.trim().length < 5) {
+      errors.desc = 'La descripción debe tener al menos 5 caracteres.';
+    }
+
+    setIncFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setIncError(Object.values(errors)[0]);
+      return;
+    }
+
     try {
       const selectedDevs = devices.filter(d => selectedDeviceIds.includes(d.id));
       const deviceNames = selectedDevs.map(d => d.name).join(', ');
       const deviceIps = selectedDevs.map(d => d.ipv4_address).join(', ');
       const location = selectedDevs[0]?.location || '';
-      await api.createIncident({ title: incTitle, description: incDesc, severity: incSeverity, device_id: selectedDeviceIds[0], device_name: deviceNames, device_ip: deviceIps, location });
-      setShowIncidentModal(false); setIncTitle(''); setIncDesc(''); setIncSeverity('high');
-      await loadData();
-    } catch (err) { console.error(err); }
+      await api.createIncident({ 
+        title: incTitle.trim(), 
+        description: incDesc.trim(), 
+        severity: incSeverity, 
+        device_id: selectedDeviceIds[0], 
+        device_name: deviceNames, 
+        device_ip: deviceIps, 
+        location 
+      });
+      setShowIncidentModal(false); 
+      setIncTitle(''); 
+      setIncDesc(''); 
+      setIncSeverity('high');
+      setIncError('');
+      setIncFieldErrors({});
+      loadData(true);
+    } catch (err: any) { 
+      setIncError(err?.message || 'Error al guardar el incidente');
+      console.error(err); 
+    }
   };
 
   const handleResolve = async (id: string) => {
-    try { await api.resolveIncident(id); await loadData(); } catch (err) { console.error(err); }
+    // Actualización optimista instantánea (0ms)
+    const prevIncidents = [...incidents];
+    setIncidents(prev => prev.map(inc => inc.id === id ? { ...inc, status: 'resolved', resolved_at: new Date().toISOString() } : inc));
+    try { 
+      await api.resolveIncident(id); 
+    } catch (err) { 
+      console.error(err); 
+      setIncidents(prevIncidents);
+    }
   };
 
   const handleDeleteIncident = async (id: string) => {
-    try { await api.deleteIncident(id); await loadData(); } catch (err) { console.error(err); }
+    // Actualización optimista instantánea (0ms)
+    const prevIncidents = [...incidents];
+    setIncidents(prev => prev.filter(inc => inc.id !== id));
+    try { 
+      await api.deleteIncident(id); 
+    } catch (err) { 
+      console.error(err); 
+      setIncidents(prevIncidents);
+    }
   };
 
   const handleSaveMaintenance = async () => {
-    if (!mntTitle || !mntDate || !mntDevice) return;
-    const typeLabels: Record<string, string> = { preventive: 'Preventivo', firmware: 'Actualización de Firmware', cleaning: 'Limpieza y Desempolvado', ups_battery: 'Revisión de Energía / UPS', audit: 'Auditoría de Seguridad' };
+    setMntError('');
+    const errors: { [key: string]: string } = {};
+
+    if (!mntTitle || mntTitle.trim().length < 3) {
+      errors.title = 'El título del mantenimiento debe tener al menos 3 caracteres.';
+    }
+    if (!mntDevice || mntDevice.trim().length < 2) {
+      errors.device = 'Ingresa el nombre o identificador del equipo.';
+    }
+    
+    // Validación estricta de fecha YYYY-MM-DD
+    const dateRegex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
+    if (!mntDate || !dateRegex.test(mntDate.trim())) {
+      errors.date = 'La fecha debe tener formato YYYY-MM-DD (ej. 2026-09-15).';
+    }
+
+    setMntFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setMntError(Object.values(errors)[0]);
+      return;
+    }
+
+    const typeLabels: Record<string, string> = { 
+      preventive: 'Preventivo', 
+      firmware: 'Actualización de Firmware', 
+      cleaning: 'Limpieza y Desempolvado', 
+      ups_battery: 'Revisión de Energía / UPS', 
+      audit: 'Auditoría de Seguridad' 
+    };
+
     try {
-      await api.createMaintenance({ title: mntTitle, type: mntType, type_label: typeLabels[mntType] || 'Preventivo', device_name: mntDevice, location: mntLocation, scheduled_date: mntDate, time_window: mntWindow, impact: 'none', technician: mntTech, notes: mntNotes });
-      setShowMaintenanceModal(false); setMntTitle(''); setMntDevice(''); setMntLocation(''); setMntNotes(''); setMntTech('');
-      await loadData();
-    } catch (err) { console.error(err); }
+      await api.createMaintenance({ 
+        title: mntTitle.trim(), 
+        type: mntType, 
+        type_label: typeLabels[mntType] || 'Preventivo', 
+        device_name: mntDevice.trim(), 
+        location: mntLocation.trim() || 'No especificada', 
+        scheduled_date: mntDate.trim(), 
+        time_window: mntWindow.trim() || '02:00 - 05:00 hrs', 
+        impact: 'none', 
+        technician: mntTech.trim() || 'Personal de Guardia', 
+        notes: mntNotes.trim() 
+      });
+      setShowMaintenanceModal(false); 
+      setMntTitle(''); 
+      setMntDevice(''); 
+      setMntLocation(''); 
+      setMntNotes(''); 
+      setMntTech('');
+      setMntError('');
+      setMntFieldErrors({});
+      loadData(true);
+    } catch (err: any) { 
+      setMntError(err?.message || 'Error al agendar mantenimiento');
+      console.error(err); 
+    }
   };
 
-  if (loading) {
+  if (loading && incidents.length === 0 && maintenances.length === 0) {
     return (<LinearGradient colors={['#050505', '#121212']} style={styles.container}><View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#FF453A" /></View></LinearGradient>);
   }
 
@@ -138,8 +257,8 @@ export default function IncidentScreen() {
         <View style={styles.header}>
           <View><Text style={styles.headerBadge}>CENTRO DE CONTROL</Text><Text style={styles.headerTitle}>Incidentes y Mantenimientos</Text><Text style={styles.headerSubtitle}>{incidents.filter(i => i.status !== 'resolved').length} incidentes activos • {maintenances.length} tareas programadas</Text></View>
           <View style={styles.headerButtons}>
-            <TouchableOpacity style={styles.reportButton} activeOpacity={0.8} onPress={() => setShowIncidentModal(true)}><Feather name="alert-triangle" size={14} color="#FF453A" /><Text style={styles.reportButtonText}>Reportar Falla</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.scheduleButton} activeOpacity={0.8} onPress={() => setShowMaintenanceModal(true)}><Feather name="calendar" size={14} color="#0A84FF" /><Text style={styles.scheduleButtonText}>Agendar</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.reportButton} activeOpacity={0.8} onPress={handleOpenIncidentModal}><Feather name="alert-triangle" size={14} color="#FF453A" /><Text style={styles.reportButtonText}>Reportar Falla</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.scheduleButton} activeOpacity={0.8} onPress={handleOpenMaintenanceModal}><Feather name="calendar" size={14} color="#0A84FF" /><Text style={styles.scheduleButtonText}>Agendar</Text></TouchableOpacity>
           </View>
         </View>
 
@@ -201,13 +320,33 @@ export default function IncidentScreen() {
 
         {/* Modal Reportar Incidente */}
         <GlassModal visible={showIncidentModal} onClose={() => setShowIncidentModal(false)} title="Reportar Incidente" subtitle="Registra una falla o evento crítico en la infraestructura">
+          {incError !== '' && (
+            <View style={styles.modalErrorContainer}>
+              <Feather name="alert-circle" size={15} color="#FF453A" />
+              <Text style={styles.modalErrorText}>{incError}</Text>
+            </View>
+          )}
+
           <Text style={styles.inputLabel}>Título del Incidente *</Text>
-          <TextInput placeholder="ej. Pérdida de conectividad en Enlace Fibra" placeholderTextColor="rgba(255,255,255,0.25)" style={styles.input} value={incTitle} onChangeText={setIncTitle} />
+          <TextInput 
+            placeholder="ej. Pérdida de conectividad en Enlace Fibra" 
+            placeholderTextColor="rgba(255,255,255,0.25)" 
+            style={[styles.input, incFieldErrors.title && styles.inputError]} 
+            value={incTitle} 
+            onChangeText={(val) => {
+              setIncTitle(val);
+              if (incFieldErrors.title) setIncFieldErrors(prev => ({ ...prev, title: '' }));
+            }} 
+          />
+          {incFieldErrors.title && <Text style={styles.fieldErrorText}>{incFieldErrors.title}</Text>}
+
           <Text style={styles.inputLabel}>Severidad *</Text>
           <View style={styles.severityRow}>
             {(['critical', 'high', 'medium', 'low'] as const).map(s => { const cfg = severityConfig[s]; return (<TouchableOpacity key={s} style={[styles.severityOption, incSeverity === s && { backgroundColor: cfg.bg, borderColor: cfg.color }]} activeOpacity={0.7} onPress={() => setIncSeverity(s)}><Feather name={cfg.icon} size={14} color={incSeverity === s ? cfg.color : 'rgba(255,255,255,0.4)'} /><Text style={[styles.severityOptionText, incSeverity === s && { color: cfg.color }]}>{cfg.label}</Text></TouchableOpacity>); })}
           </View>
+
           <Text style={styles.inputLabel}>Equipos Afectados *</Text>
+          {incFieldErrors.devices && <Text style={styles.fieldErrorText}>{incFieldErrors.devices}</Text>}
           <ScrollView style={{ maxHeight: 220, marginBottom: 14 }}>
             {groupedHierarchy.map(({ building: bld, categories, totalDevices }) => (
               <View key={bld.id}>
@@ -230,26 +369,103 @@ export default function IncidentScreen() {
               </View>
             ))}
           </ScrollView>
+
           <Text style={styles.inputLabel}>Descripción del Incidente *</Text>
-          <TextInput placeholder="Describe el incidente en detalle..." placeholderTextColor="rgba(255,255,255,0.25)" multiline numberOfLines={3} style={[styles.input, styles.textArea]} value={incDesc} onChangeText={setIncDesc} />
-          <TouchableOpacity style={styles.submitIncident} activeOpacity={0.8} onPress={handleSaveIncident}><Text style={styles.submitIncidentText}>Enviar Reporte de Incidente</Text></TouchableOpacity>
+          <TextInput 
+            placeholder="Describe el incidente en detalle..." 
+            placeholderTextColor="rgba(255,255,255,0.25)" 
+            multiline 
+            numberOfLines={3} 
+            style={[styles.input, styles.textArea, incFieldErrors.desc && styles.inputError]} 
+            value={incDesc} 
+            onChangeText={(val) => {
+              setIncDesc(val);
+              if (incFieldErrors.desc) setIncFieldErrors(prev => ({ ...prev, desc: '' }));
+            }} 
+          />
+          {incFieldErrors.desc && <Text style={styles.fieldErrorText}>{incFieldErrors.desc}</Text>}
+
+          <TouchableOpacity style={styles.submitIncident} activeOpacity={0.8} onPress={handleSaveIncident}>
+            <Text style={styles.submitIncidentText}>Enviar Reporte de Incidente</Text>
+          </TouchableOpacity>
         </GlassModal>
 
         {/* Modal Agendar Mantenimiento */}
         <GlassModal visible={showMaintenanceModal} onClose={() => setShowMaintenanceModal(false)} title="Agendar Mantenimiento" subtitle="Programa una tarea de mantenimiento preventivo o correctivo">
+          {mntError !== '' && (
+            <View style={styles.modalErrorContainer}>
+              <Feather name="alert-circle" size={15} color="#FF453A" />
+              <Text style={styles.modalErrorText}>{mntError}</Text>
+            </View>
+          )}
+
           <Text style={styles.inputLabel}>Título *</Text>
-          <TextInput placeholder="ej. Actualización de firmware IOS-XE" placeholderTextColor="rgba(255,255,255,0.25)" style={styles.input} value={mntTitle} onChangeText={setMntTitle} />
+          <TextInput 
+            placeholder="ej. Actualización de firmware IOS-XE" 
+            placeholderTextColor="rgba(255,255,255,0.25)" 
+            style={[styles.input, mntFieldErrors.title && styles.inputError]} 
+            value={mntTitle} 
+            onChangeText={(val) => {
+              setMntTitle(val);
+              if (mntFieldErrors.title) setMntFieldErrors(prev => ({ ...prev, title: '' }));
+            }} 
+          />
+          {mntFieldErrors.title && <Text style={styles.fieldErrorText}>{mntFieldErrors.title}</Text>}
+
           <Text style={styles.inputLabel}>Tipo de Mantenimiento *</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
             {Object.entries(maintTypeConfig).map(([key, cfg]) => (<TouchableOpacity key={key} style={[styles.typeOption, mntType === key && { backgroundColor: `${cfg.color}20`, borderColor: cfg.color }]} activeOpacity={0.7} onPress={() => setMntType(key as any)}><Feather name={cfg.icon} size={12} color={mntType === key ? cfg.color : 'rgba(255,255,255,0.4)'} /><Text style={[styles.typeOptionText, mntType === key && { color: cfg.color }]}>{cfg.label}</Text></TouchableOpacity>))}
           </ScrollView>
-          <View style={styles.formRow}><View style={{ flex: 1 }}><Text style={styles.inputLabel}>Equipo(s) Afectados *</Text><TextInput placeholder="ej. Switch Core" placeholderTextColor="rgba(255,255,255,0.25)" style={styles.input} value={mntDevice} onChangeText={setMntDevice} /></View><View style={{ flex: 1 }}><Text style={styles.inputLabel}>Ubicación</Text><TextInput placeholder="ej. Edificio A" placeholderTextColor="rgba(255,255,255,0.25)" style={styles.input} value={mntLocation} onChangeText={setMntLocation} /></View></View>
-          <View style={styles.formRow}><View style={{ flex: 1 }}><Text style={styles.inputLabel}>Fecha Programada *</Text><TextInput placeholder="YYYY-MM-DD" placeholderTextColor="rgba(255,255,255,0.25)" style={styles.input} value={mntDate} onChangeText={setMntDate} /></View><View style={{ flex: 1 }}><Text style={styles.inputLabel}>Ventana Horaria</Text><TextInput placeholder="02:00 - 05:00 hrs" placeholderTextColor="rgba(255,255,255,0.25)" style={styles.input} value={mntWindow} onChangeText={setMntWindow} /></View></View>
+
+          <View style={styles.formRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Equipo(s) Afectados *</Text>
+              <TextInput 
+                placeholder="ej. Switch Core" 
+                placeholderTextColor="rgba(255,255,255,0.25)" 
+                style={[styles.input, mntFieldErrors.device && styles.inputError]} 
+                value={mntDevice} 
+                onChangeText={(val) => {
+                  setMntDevice(val);
+                  if (mntFieldErrors.device) setMntFieldErrors(prev => ({ ...prev, device: '' }));
+                }} 
+              />
+              {mntFieldErrors.device && <Text style={styles.fieldErrorText}>{mntFieldErrors.device}</Text>}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Ubicación</Text>
+              <TextInput placeholder="ej. Edificio A" placeholderTextColor="rgba(255,255,255,0.25)" style={styles.input} value={mntLocation} onChangeText={setMntLocation} />
+            </View>
+          </View>
+
+          <View style={styles.formRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Fecha Programada (YYYY-MM-DD) *</Text>
+              <TextInput 
+                placeholder="YYYY-MM-DD" 
+                placeholderTextColor="rgba(255,255,255,0.25)" 
+                style={[styles.input, mntFieldErrors.date && styles.inputError]} 
+                value={mntDate} 
+                onChangeText={(val) => {
+                  setMntDate(val);
+                  if (mntFieldErrors.date) setMntFieldErrors(prev => ({ ...prev, date: '' }));
+                }} 
+              />
+              {mntFieldErrors.date && <Text style={styles.fieldErrorText}>{mntFieldErrors.date}</Text>}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Ventana Horaria</Text>
+              <TextInput placeholder="02:00 - 05:00 hrs" placeholderTextColor="rgba(255,255,255,0.25)" style={styles.input} value={mntWindow} onChangeText={setMntWindow} />
+            </View>
+          </View>
+
           <Text style={styles.inputLabel}>Técnico Responsable</Text>
           <TextInput placeholder="Nombre del técnico o equipo" placeholderTextColor="rgba(255,255,255,0.25)" style={styles.input} value={mntTech} onChangeText={setMntTech} />
           <Text style={styles.inputLabel}>Notas Adicionales</Text>
           <TextInput placeholder="Observaciones..." placeholderTextColor="rgba(255,255,255,0.25)" multiline numberOfLines={2} style={[styles.input, styles.textArea]} value={mntNotes} onChangeText={setMntNotes} />
-          <TouchableOpacity style={styles.submitMaint} activeOpacity={0.8} onPress={handleSaveMaintenance}><Text style={styles.submitMaintText}>Programar Mantenimiento</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.submitMaint} activeOpacity={0.8} onPress={handleSaveMaintenance}>
+            <Text style={styles.submitMaintText}>Programar Mantenimiento</Text>
+          </TouchableOpacity>
         </GlassModal>
       </ScrollView>
     </LinearGradient>
@@ -303,6 +519,10 @@ const styles = StyleSheet.create({
   maintNotes: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: 'rgba(255, 255, 255, 0.5)', fontStyle: 'italic', marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' },
   inputLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: 'rgba(255, 255, 255, 0.7)', marginBottom: 6 },
   input: { fontFamily: 'Poppins_400Regular', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderRadius: 14, padding: 14, color: '#FFFFFF', fontSize: 14, marginBottom: 14, ...Platform.select({ web: { outlineStyle: 'none' } }) as any },
+  inputError: { borderColor: '#FF453A', backgroundColor: 'rgba(255, 69, 58, 0.06)' },
+  fieldErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 11, color: '#FF453A', marginTop: -10, marginBottom: 12, marginLeft: 4 },
+  modalErrorContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 69, 58, 0.12)', borderWidth: 1, borderColor: 'rgba(255, 69, 58, 0.3)', borderRadius: 12, padding: 12, marginBottom: 16, gap: 8 },
+  modalErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: '#FF453A', flex: 1 },
   formRow: { flexDirection: 'row', gap: 12 },
   textArea: { height: 60, textAlignVertical: 'top' },
   severityRow: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },

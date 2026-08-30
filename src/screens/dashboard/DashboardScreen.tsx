@@ -31,9 +31,9 @@ export default function DashboardScreen() {
   const [activities, setActivities] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent && !stats) setLoading(true);
       const [dashStats, recentActs] = await Promise.all([
         fetchDashboardStats(),
         fetchRecentActivities(),
@@ -45,7 +45,7 @@ export default function DashboardScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [stats]);
 
   const handleLogout = async () => {
     try {
@@ -57,11 +57,11 @@ export default function DashboardScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      loadData();
+      loadData(true);
     }, [loadData])
   );
 
-  if (loading || !stats) {
+  if (!stats) {
     return (
       <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

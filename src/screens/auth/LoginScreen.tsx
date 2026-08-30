@@ -7,14 +7,15 @@ import {
   useWindowDimensions, 
   Platform, 
   View, 
-  ScrollView,
-  Image,
-  Alert
+  ScrollView, 
+  Image, 
+  Alert 
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
+import { validateEmail, validatePassword, validateRequired } from '../../utils/validators';
 
 const APP_LOGO = require('../../../assets/logobitacoraredes.png');
 
@@ -31,26 +32,57 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
+
+  const validateForm = (): boolean => {
+    const errors: { [key: string]: string } = {};
+
+    if (isRegister) {
+      const nameVal = validateRequired(name, 2, 'El nombre completo');
+      if (!nameVal.valid) {
+        errors.name = nameVal.error!;
+      }
+    }
+
+    const emailVal = validateEmail(email);
+    if (!emailVal.valid) {
+      errors.email = emailVal.error!;
+    }
+
+    const passVal = validatePassword(password, 6);
+    if (!passVal.valid) {
+      errors.password = passVal.error!;
+    }
+
+    if (isRegister) {
+      if (!confirmPassword) {
+        errors.confirmPassword = 'Debes confirmar tu contraseña.';
+      } else if (password !== confirmPassword) {
+        errors.confirmPassword = 'Las contraseñas no coinciden.';
+      }
+    }
+
+    setFieldErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
+      const firstError = Object.values(errors)[0];
+      setErrorMsg(firstError);
+      return false;
+    }
+
+    setErrorMsg('');
+    return true;
+  };
 
   const handleSubmit = async () => {
     setErrorMsg('');
+    if (!validateForm()) return;
+
     try {
       if (isRegister) {
-        if (!name.trim() || !email.trim() || !password) {
-          setErrorMsg('Todos los campos son obligatorios');
-          return;
-        }
-        if (password !== confirmPassword) {
-          setErrorMsg('Las contraseñas no coinciden');
-          return;
-        }
-        await signUp(email, password, name);
+        await signUp(email.trim(), password, name.trim());
       } else {
-        if (!email.trim() || !password) {
-          setErrorMsg('Ingresa correo y contraseña');
-          return;
-        }
-        await signIn(email, password);
+        await signIn(email.trim(), password);
       }
     } catch (err: any) {
       const msg = err?.message || 'Error de autenticación';
@@ -60,6 +92,7 @@ export default function LoginScreen() {
 
   const handleSocialAuth = async (provider: string) => {
     setErrorMsg('');
+    setFieldErrors({});
     try {
       if (provider === 'Google') {
         await signInGoogle();
@@ -78,6 +111,7 @@ export default function LoginScreen() {
     setPassword('');
     setConfirmPassword('');
     setErrorMsg('');
+    setFieldErrors({});
   };
 
   return (
@@ -85,6 +119,7 @@ export default function LoginScreen() {
       <ScrollView 
         contentContainerStyle={styles.scrollContent} 
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <BlurView 
           intensity={30} 
@@ -101,82 +136,114 @@ export default function LoginScreen() {
             </View>
           </View>
 
-          {/* Mensaje de error */}
+          {/* Mensaje de error general */}
           {errorMsg !== '' && (
             <View style={styles.errorContainer}>
-              <Feather name="alert-circle" size={14} color="#FF453A" />
+              <Feather name="alert-circle" size={16} color="#FF453A" />
               <Text style={styles.errorText}>{errorMsg}</Text>
             </View>
           )}
 
           {/* Campo Nombre (solo en registro) */}
           {isRegister && (
-            <TextInput
-              placeholder="Nombre completo"
-              placeholderTextColor="rgba(255, 255, 255, 0.25)"
-              style={styles.input}
-              autoCapitalize="words"
-              value={name}
-              onChangeText={setName}
-            />
+            <View style={styles.inputWrapper}>
+              <TextInput
+                placeholder="Nombre completo"
+                placeholderTextColor="rgba(255, 255, 255, 0.25)"
+                style={[styles.input, fieldErrors.name && styles.inputError]}
+                autoCapitalize="words"
+                value={name}
+                onChangeText={(val) => {
+                  setName(val);
+                  if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: '' }));
+                }}
+              />
+              {fieldErrors.name && (
+                <Text style={styles.fieldErrorText}>{fieldErrors.name}</Text>
+              )}
+            </View>
           )}
 
           {/* Campo Correo / Usuario */}
-          <TextInput
-            placeholder="Usuario o correo electrónico"
-            placeholderTextColor="rgba(255, 255, 255, 0.25)"
-            style={styles.input}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            value={email}
-            onChangeText={setEmail}
-          />
-
-          {/* Campo Contraseña */}
-          <View style={styles.passwordContainer}>
+          <View style={styles.inputWrapper}>
             <TextInput
-              placeholder="Contraseña"
+              placeholder="correo@dominio.com"
               placeholderTextColor="rgba(255, 255, 255, 0.25)"
-              secureTextEntry={!showPassword}
-              style={[styles.input, styles.passwordInput]}
-              value={password}
-              onChangeText={setPassword}
+              style={[styles.input, fieldErrors.email && styles.inputError]}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={(val) => {
+                setEmail(val);
+                if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: '' }));
+              }}
             />
-            <TouchableOpacity 
-              style={styles.eyeButton} 
-              activeOpacity={0.7}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              <Feather 
-                name={showPassword ? "eye" : "eye-off"} 
-                size={20} 
-                color="rgba(255, 255, 255, 0.5)" 
-              />
-            </TouchableOpacity>
+            {fieldErrors.email && (
+              <Text style={styles.fieldErrorText}>{fieldErrors.email}</Text>
+            )}
           </View>
 
-          {/* Campo Confirmar Contraseña (solo en registro) */}
-          {isRegister && (
+          {/* Campo Contraseña */}
+          <View style={styles.inputWrapper}>
             <View style={styles.passwordContainer}>
               <TextInput
-                placeholder="Confirmar contraseña"
+                placeholder="Contraseña (mínimo 6 caracteres)"
                 placeholderTextColor="rgba(255, 255, 255, 0.25)"
-                secureTextEntry={!showConfirmPassword}
-                style={[styles.input, styles.passwordInput]}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
+                secureTextEntry={!showPassword}
+                style={[styles.input, styles.passwordInput, fieldErrors.password && styles.inputError]}
+                value={password}
+                onChangeText={(val) => {
+                  setPassword(val);
+                  if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: '' }));
+                }}
               />
               <TouchableOpacity 
                 style={styles.eyeButton} 
                 activeOpacity={0.7}
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                onPress={() => setShowPassword(!showPassword)}
               >
                 <Feather 
-                  name={showConfirmPassword ? "eye" : "eye-off"} 
+                  name={showPassword ? "eye" : "eye-off"} 
                   size={20} 
                   color="rgba(255, 255, 255, 0.5)" 
                 />
               </TouchableOpacity>
+            </View>
+            {fieldErrors.password && (
+              <Text style={styles.fieldErrorText}>{fieldErrors.password}</Text>
+            )}
+          </View>
+
+          {/* Campo Confirmar Contraseña (solo en registro) */}
+          {isRegister && (
+            <View style={styles.inputWrapper}>
+              <View style={styles.passwordContainer}>
+                <TextInput
+                  placeholder="Confirmar contraseña"
+                  placeholderTextColor="rgba(255, 255, 255, 0.25)"
+                  secureTextEntry={!showConfirmPassword}
+                  style={[styles.input, styles.passwordInput, fieldErrors.confirmPassword && styles.inputError]}
+                  value={confirmPassword}
+                  onChangeText={(val) => {
+                    setConfirmPassword(val);
+                    if (fieldErrors.confirmPassword) setFieldErrors(prev => ({ ...prev, confirmPassword: '' }));
+                  }}
+                />
+                <TouchableOpacity 
+                  style={styles.eyeButton} 
+                  activeOpacity={0.7}
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  <Feather 
+                    name={showConfirmPassword ? "eye" : "eye-off"} 
+                    size={20} 
+                    color="rgba(255, 255, 255, 0.5)" 
+                  />
+                </TouchableOpacity>
+              </View>
+              {fieldErrors.confirmPassword && (
+                <Text style={styles.fieldErrorText}>{fieldErrors.confirmPassword}</Text>
+              )}
             </View>
           )}
 
@@ -195,7 +262,7 @@ export default function LoginScreen() {
             disabled={isLoading}
           >
             <Text style={styles.buttonText}>
-              {isLoading ? 'Cargando...' : isRegister ? 'Crear Cuenta' : 'Iniciar Sesión'}
+              {isLoading ? 'Validando...' : isRegister ? 'Crear Cuenta' : 'Iniciar Sesión'}
             </Text>
           </TouchableOpacity>
 
@@ -310,6 +377,9 @@ const styles = StyleSheet.create({
     color: '#FF453A',
     flex: 1,
   },
+  inputWrapper: {
+    marginBottom: 14,
+  },
   input: {
     fontFamily: 'Poppins_400Regular',
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
@@ -319,12 +389,23 @@ const styles = StyleSheet.create({
     padding: 18,
     color: '#FFFFFF',
     fontSize: 15,
-    marginBottom: 16,
+    marginBottom: 0,
     ...Platform.select({
       web: {
         outlineStyle: 'none',
       },
     }) as any,
+  },
+  inputError: {
+    borderColor: '#FF453A',
+    backgroundColor: 'rgba(255, 69, 58, 0.06)',
+  },
+  fieldErrorText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 11,
+    color: '#FF453A',
+    marginTop: 4,
+    marginLeft: 6,
   },
   passwordContainer: {
     position: 'relative',

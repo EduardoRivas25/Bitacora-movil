@@ -10,6 +10,13 @@ import { useFocusEffect } from '@react-navigation/native';
 import GlassModal from '../../components/ui/GlassModal';
 import * as api from '../../services/api';
 import { Network, Subnet } from '../../types';
+import { 
+  validateIPv4, 
+  validateCIDR, 
+  validateNetworkAndCidr, 
+  validateSubnetAgainstParent, 
+  validateRequired 
+} from '../../utils/validators';
 
 export default function NetworkListScreen() {
   const { width } = useWindowDimensions();
@@ -26,53 +33,177 @@ export default function NetworkListScreen() {
   const [netIp, setNetIp] = useState('');
   const [netCidr, setNetCidr] = useState('16');
   const [netDesc, setNetDesc] = useState('');
+  const [netError, setNetError] = useState('');
+  const [netFieldErrors, setNetFieldErrors] = useState<{ [key: string]: string }>({});
+
   const [subName, setSubName] = useState('');
   const [subIp, setSubIp] = useState('');
   const [subCidr, setSubCidr] = useState('24');
   const [subDesc, setSubDesc] = useState('');
+  const [subError, setSubError] = useState('');
+  const [subFieldErrors, setSubFieldErrors] = useState<{ [key: string]: string }>({});
 
-  const loadNetworks = useCallback(async () => {
+  const loadNetworks = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
-      const data = await api.fetchNetworks();
+      if (!isSilent && networks.length === 0) setLoading(true);
+      const data = await api.fetchNetworks(isSilent);
       setNetworks(data);
       if (data.length > 0 && !expandedNetworkId) setExpandedNetworkId(data[0].id);
     } catch (err) { console.error('Error cargando redes:', err); }
     finally { setLoading(false); }
-  }, []);
+  }, [expandedNetworkId, networks.length]);
 
-  useFocusEffect(useCallback(() => { loadNetworks(); }, [loadNetworks]));
+  useFocusEffect(useCallback(() => { loadNetworks(true); }, [loadNetworks]));
 
   const toggleExpand = (id: string) => setExpandedNetworkId(expandedNetworkId === id ? null : id);
-  const handleOpenAddSubnet = (networkId: string) => { setSelectedNetworkForSubnet(networkId); setShowSubnetModal(true); };
+  const handleOpenAddSubnet = (networkId: string) => { 
+    setSelectedNetworkForSubnet(networkId); 
+    setSubError('');
+    setSubFieldErrors({});
+    setShowSubnetModal(true); 
+  };
+
+  const handleOpenAddNetwork = () => {
+    setNetError('');
+    setNetFieldErrors({});
+    setShowNetworkModal(true);
+  };
 
   const handleSaveNetwork = async () => {
-    if (!netName || !netIp || !netCidr) return;
+    setNetError('');
+    const errors: { [key: string]: string } = {};
+
+    const nameVal = validateRequired(netName, 2, 'El nombre de la red');
+    if (!nameVal.valid) errors.name = nameVal.error!;
+
+    const ipVal = validateIPv4(netIp);
+    if (!ipVal.valid) errors.ip = ipVal.error!;
+
+    const cidrVal = validateCIDR(netCidr, 1, 30);
+    if (!cidrVal.valid) errors.cidr = cidrVal.error!;
+
+    if (ipVal.valid && cidrVal.valid) {
+      const netCidrVal = validateNetworkAndCidr(netIp, netCidr);
+      if (!netCidrVal.valid) {
+        errors.ip = netCidrVal.error!;
+      }
+    }
+
+    setNetFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setNetError(Object.values(errors)[0]);
+      return;
+    }
+
     try {
-      await api.createNetwork({ name: netName, address: netIp, cidr: parseInt(netCidr, 10), description: netDesc });
-      setShowNetworkModal(false); setNetName(''); setNetIp(''); setNetCidr('16'); setNetDesc('');
-      await loadNetworks();
-    } catch (err) { console.error('Error creando red:', err); }
+      await api.createNetwork({ 
+        name: netName.trim(), 
+        address: netIp.trim(), 
+        cidr: parseInt(netCidr, 10), 
+        description: netDesc.trim() || 'Red principal' 
+      });
+      setShowNetworkModal(false); 
+      setNetName(''); 
+      setNetIp(''); 
+      setNetCidr('16'); 
+      setNetDesc('');
+      setNetError('');
+      setNetFieldErrors({});
+      loadNetworks(true);
+    } catch (err: any) { 
+      setNetError(err?.message || 'Error al guardar la red'); 
+      console.error('Error creando red:', err); 
+    }
   };
 
   const handleSaveSubnet = async () => {
-    if (!subName || !subIp || !subCidr) return;
+    setSubError('');
+    const errors: { [key: string]: string } = {};
+
+    const nameVal = validateRequired(subName, 2, 'El nombre de la subred');
+    if (!nameVal.valid) errors.name = nameVal.error!;
+
+    const ipVal = validateIPv4(subIp);
+    if (!ipVal.valid) errors.ip = ipVal.error!;
+
+    const cidrVal = validateCIDR(subCidr, 1, 32);
+    if (!cidrVal.valid) errors.cidr = cidrVal.error!;
+
+    const parentNet = networks.find(n => n.id === selectedNetworkForSubnet);
+    if (parentNet && ipVal.valid && cidrVal.valid) {
+      const relationVal = validateSubnetAgainstParent(
+        parentNet.address,
+        parentNet.cidr,
+        subIp.trim(),
+        parseInt(subCidr, 10)
+      );
+      if (!relationVal.valid) {
+        errors.relation = relationVal.error!;
+      }
+    }
+
+    setSubFieldErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      setSubError(Object.values(errors)[0]);
+      return;
+    }
+
     try {
-      await api.createSubnet({ name: subName, address: subIp, cidr: parseInt(subCidr, 10), description: subDesc, network_id: selectedNetworkForSubnet });
-      setShowSubnetModal(false); setSubName(''); setSubIp(''); setSubCidr('24'); setSubDesc('');
-      await loadNetworks();
-    } catch (err) { console.error('Error creando subred:', err); }
+      await api.createSubnet({ 
+        name: subName.trim(), 
+        address: subIp.trim(), 
+        cidr: parseInt(subCidr, 10), 
+        description: subDesc.trim() || 'Subred segmentada', 
+        network_id: selectedNetworkForSubnet 
+      });
+      setShowSubnetModal(false); 
+      setSubName(''); 
+      setSubIp(''); 
+      setSubCidr('24'); 
+      setSubDesc('');
+      setSubError('');
+      setSubFieldErrors({});
+      loadNetworks(true);
+    } catch (err: any) { 
+      setSubError(err?.message || 'Error al guardar la subred'); 
+      console.error('Error creando subred:', err); 
+    }
   };
 
   const handleDeleteNetwork = async (id: string) => {
-    try { await api.deleteNetwork(id); await loadNetworks(); } catch (err) { console.error(err); }
+    // Actualización optimista instantánea (0ms)
+    const prevNetworks = [...networks];
+    setNetworks(prev => prev.filter(n => n.id !== id));
+    try { 
+      await api.deleteNetwork(id); 
+    } catch (err) { 
+      console.error(err); 
+      setNetworks(prevNetworks);
+    }
   };
 
-  const handleDeleteSubnet = async (_networkId: string, subnetId: string) => {
-    try { await api.deleteSubnet(subnetId); await loadNetworks(); } catch (err) { console.error(err); }
+  const handleDeleteSubnet = async (networkId: string, subnetId: string) => {
+    // Actualización optimista instantánea (0ms)
+    const prevNetworks = [...networks];
+    setNetworks(prev => prev.map(net => {
+      if (net.id === networkId) {
+        return {
+          ...net,
+          subnets: (net.subnets || []).filter(s => s.id !== subnetId),
+          subnet_count: Math.max(0, (net.subnet_count || 1) - 1),
+        };
+      }
+      return net;
+    }));
+    try { 
+      await api.deleteSubnet(subnetId); 
+    } catch (err) { 
+      console.error(err); 
+      setNetworks(prevNetworks);
+    }
   };
 
-  if (loading) {
+  if (loading && networks.length === 0) {
     return (
       <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -81,6 +212,8 @@ export default function NetworkListScreen() {
       </LinearGradient>
     );
   }
+
+  const selectedParentNetwork = networks.find(n => n.id === selectedNetworkForSubnet);
 
   return (
     <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
@@ -91,7 +224,7 @@ export default function NetworkListScreen() {
             <Text style={styles.headerTitle}>Redes y Subredes</Text>
             <Text style={styles.headerSubtitle}>{networks.length} Redes Principales • {networks.reduce((acc, n) => acc + n.subnets.length, 0)} Subredes</Text>
           </View>
-          <TouchableOpacity style={styles.addButton} activeOpacity={0.8} onPress={() => setShowNetworkModal(true)}>
+          <TouchableOpacity style={styles.addButton} activeOpacity={0.8} onPress={handleOpenAddNetwork}>
             <Feather name="plus" size={18} color="#000000" />
             <Text style={styles.addButtonText}>Nueva Red</Text>
           </TouchableOpacity>
@@ -162,28 +295,125 @@ export default function NetworkListScreen() {
 
         {/* Modal Nueva Red */}
         <GlassModal visible={showNetworkModal} onClose={() => setShowNetworkModal(false)} title="Crear Red Principal" subtitle="Define el direccionamiento IPv4 base y máscara">
+          {netError !== '' && (
+            <View style={styles.modalErrorContainer}>
+              <Feather name="alert-circle" size={15} color="#FF453A" />
+              <Text style={styles.modalErrorText}>{netError}</Text>
+            </View>
+          )}
+
           <Text style={styles.inputLabel}>Nombre de la Red *</Text>
-          <TextInput placeholder="ej. Red Administrativa Campus" placeholderTextColor="rgba(255, 255, 255, 0.25)" style={styles.input} value={netName} onChangeText={setNetName} />
+          <TextInput 
+            placeholder="ej. Red Administrativa Campus" 
+            placeholderTextColor="rgba(255, 255, 255, 0.25)" 
+            style={[styles.input, netFieldErrors.name && styles.inputError]} 
+            value={netName} 
+            onChangeText={(val) => {
+              setNetName(val);
+              if (netFieldErrors.name) setNetFieldErrors(prev => ({ ...prev, name: '' }));
+            }} 
+          />
+          {netFieldErrors.name && <Text style={styles.fieldErrorText}>{netFieldErrors.name}</Text>}
+
           <View style={styles.formRow}>
-            <View style={{ flex: 2 }}><Text style={styles.inputLabel}>Dirección IPv4 Base *</Text><TextInput placeholder="ej. 192.168.0.0" placeholderTextColor="rgba(255, 255, 255, 0.25)" style={styles.input} value={netIp} onChangeText={setNetIp} /></View>
-            <View style={{ flex: 1 }}><Text style={styles.inputLabel}>CIDR (/)</Text><TextInput placeholder="16" placeholderTextColor="rgba(255, 255, 255, 0.25)" keyboardType="numeric" style={styles.input} value={netCidr} onChangeText={setNetCidr} /></View>
+            <View style={{ flex: 2 }}>
+              <Text style={styles.inputLabel}>Dirección IPv4 Base *</Text>
+              <TextInput 
+                placeholder="ej. 192.168.0.0" 
+                placeholderTextColor="rgba(255, 255, 255, 0.25)" 
+                style={[styles.input, netFieldErrors.ip && styles.inputError]} 
+                value={netIp} 
+                onChangeText={(val) => {
+                  setNetIp(val);
+                  if (netFieldErrors.ip) setNetFieldErrors(prev => ({ ...prev, ip: '' }));
+                }} 
+              />
+              {netFieldErrors.ip && <Text style={styles.fieldErrorText}>{netFieldErrors.ip}</Text>}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>CIDR (/)</Text>
+              <TextInput 
+                placeholder="16" 
+                placeholderTextColor="rgba(255, 255, 255, 0.25)" 
+                keyboardType="numeric" 
+                style={[styles.input, netFieldErrors.cidr && styles.inputError]} 
+                value={netCidr} 
+                onChangeText={(val) => {
+                  setNetCidr(val);
+                  if (netFieldErrors.cidr) setNetFieldErrors(prev => ({ ...prev, cidr: '' }));
+                }} 
+              />
+              {netFieldErrors.cidr && <Text style={styles.fieldErrorText}>{netFieldErrors.cidr}</Text>}
+            </View>
           </View>
           <Text style={styles.inputLabel}>Descripción u Observaciones</Text>
           <TextInput placeholder="Detalles sobre el uso o alcance de esta red..." placeholderTextColor="rgba(255, 255, 255, 0.25)" multiline numberOfLines={3} style={[styles.input, styles.textArea]} value={netDesc} onChangeText={setNetDesc} />
-          <TouchableOpacity style={styles.modalSubmitButton} activeOpacity={0.8} onPress={handleSaveNetwork}><Text style={styles.modalSubmitButtonText}>Guardar Red Principal</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.modalSubmitButton} activeOpacity={0.8} onPress={handleSaveNetwork}>
+            <Text style={styles.modalSubmitButtonText}>Guardar Red Principal</Text>
+          </TouchableOpacity>
         </GlassModal>
 
         {/* Modal Nueva Subred */}
-        <GlassModal visible={showSubnetModal} onClose={() => setShowSubnetModal(false)} title="Crear Subred (VLAN)" subtitle="Segmenta la red principal seleccionada">
+        <GlassModal visible={showSubnetModal} onClose={() => setShowSubnetModal(false)} title="Crear Subred (VLAN)" subtitle={`Segmentar ${selectedParentNetwork?.name || 'red'} (${selectedParentNetwork?.address}/${selectedParentNetwork?.cidr})`}>
+          {subError !== '' && (
+            <View style={styles.modalErrorContainer}>
+              <Feather name="alert-circle" size={15} color="#FF453A" />
+              <Text style={styles.modalErrorText}>{subError}</Text>
+            </View>
+          )}
+
           <Text style={styles.inputLabel}>Nombre de la Subred *</Text>
-          <TextInput placeholder="ej. VLAN 50 - Laboratorio Robótica" placeholderTextColor="rgba(255, 255, 255, 0.25)" style={styles.input} value={subName} onChangeText={setSubName} />
+          <TextInput 
+            placeholder="ej. VLAN 50 - Laboratorio Robótica" 
+            placeholderTextColor="rgba(255, 255, 255, 0.25)" 
+            style={[styles.input, subFieldErrors.name && styles.inputError]} 
+            value={subName} 
+            onChangeText={(val) => {
+              setSubName(val);
+              if (subFieldErrors.name) setSubFieldErrors(prev => ({ ...prev, name: '' }));
+            }} 
+          />
+          {subFieldErrors.name && <Text style={styles.fieldErrorText}>{subFieldErrors.name}</Text>}
+
           <View style={styles.formRow}>
-            <View style={{ flex: 2 }}><Text style={styles.inputLabel}>Dirección IPv4 Subred *</Text><TextInput placeholder="ej. 10.0.50.0" placeholderTextColor="rgba(255, 255, 255, 0.25)" style={styles.input} value={subIp} onChangeText={setSubIp} /></View>
-            <View style={{ flex: 1 }}><Text style={styles.inputLabel}>CIDR (/)</Text><TextInput placeholder="24" placeholderTextColor="rgba(255, 255, 255, 0.25)" keyboardType="numeric" style={styles.input} value={subCidr} onChangeText={setSubCidr} /></View>
+            <View style={{ flex: 2 }}>
+              <Text style={styles.inputLabel}>Dirección IPv4 Subred *</Text>
+              <TextInput 
+                placeholder={selectedParentNetwork ? `ej. ${selectedParentNetwork.address}` : 'ej. 10.0.50.0'} 
+                placeholderTextColor="rgba(255, 255, 255, 0.25)" 
+                style={[styles.input, (subFieldErrors.ip || subFieldErrors.relation) && styles.inputError]} 
+                value={subIp} 
+                onChangeText={(val) => {
+                  setSubIp(val);
+                  if (subFieldErrors.ip || subFieldErrors.relation) {
+                    setSubFieldErrors(prev => ({ ...prev, ip: '', relation: '' }));
+                  }
+                }} 
+              />
+              {subFieldErrors.ip && <Text style={styles.fieldErrorText}>{subFieldErrors.ip}</Text>}
+              {subFieldErrors.relation && <Text style={styles.fieldErrorText}>{subFieldErrors.relation}</Text>}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>CIDR (/)</Text>
+              <TextInput 
+                placeholder="24" 
+                placeholderTextColor="rgba(255, 255, 255, 0.25)" 
+                keyboardType="numeric" 
+                style={[styles.input, subFieldErrors.cidr && styles.inputError]} 
+                value={subCidr} 
+                onChangeText={(val) => {
+                  setSubCidr(val);
+                  if (subFieldErrors.cidr) setSubFieldErrors(prev => ({ ...prev, cidr: '' }));
+                }} 
+              />
+              {subFieldErrors.cidr && <Text style={styles.fieldErrorText}>{subFieldErrors.cidr}</Text>}
+            </View>
           </View>
           <Text style={styles.inputLabel}>Descripción u Observaciones</Text>
           <TextInput placeholder="Propósito de la VLAN..." placeholderTextColor="rgba(255, 255, 255, 0.25)" multiline numberOfLines={3} style={[styles.input, styles.textArea]} value={subDesc} onChangeText={setSubDesc} />
-          <TouchableOpacity style={styles.modalSubmitButton} activeOpacity={0.8} onPress={handleSaveSubnet}><Text style={styles.modalSubmitButtonText}>Guardar Subred</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.modalSubmitButton} activeOpacity={0.8} onPress={handleSaveSubnet}>
+            <Text style={styles.modalSubmitButtonText}>Guardar Subred</Text>
+          </TouchableOpacity>
         </GlassModal>
       </ScrollView>
     </LinearGradient>
@@ -234,6 +464,10 @@ const styles = StyleSheet.create({
   deleteSubnetBtn: { padding: 6 },
   inputLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: 'rgba(255, 255, 255, 0.7)', marginBottom: 6 },
   input: { fontFamily: 'Poppins_400Regular', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderRadius: 14, padding: 14, color: '#FFFFFF', fontSize: 14, marginBottom: 14, ...Platform.select({ web: { outlineStyle: 'none' } }) as any },
+  inputError: { borderColor: '#FF453A', backgroundColor: 'rgba(255, 69, 58, 0.06)' },
+  fieldErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 11, color: '#FF453A', marginTop: -10, marginBottom: 12, marginLeft: 4 },
+  modalErrorContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 69, 58, 0.12)', borderWidth: 1, borderColor: 'rgba(255, 69, 58, 0.3)', borderRadius: 12, padding: 12, marginBottom: 16, gap: 8 },
+  modalErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: '#FF453A', flex: 1 },
   formRow: { flexDirection: 'row', gap: 12 },
   textArea: { height: 70, textAlignVertical: 'top' },
   modalSubmitButton: { backgroundColor: '#FFFFFF', paddingVertical: 15, borderRadius: 14, alignItems: 'center', marginTop: 10 },

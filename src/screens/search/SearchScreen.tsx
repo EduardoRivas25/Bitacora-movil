@@ -19,16 +19,16 @@ export default function SearchScreen() {
   const [allDevices, setAllDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const loadDevices = useCallback(async () => {
+  const loadDevices = useCallback(async (isSilent = false) => {
     try {
-      setLoading(true);
-      const data = await api.fetchDevices();
+      if (!isSilent && allDevices.length === 0) setLoading(true);
+      const data = await api.fetchDevices(isSilent);
       setAllDevices(data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  }, []);
+  }, [allDevices.length]);
 
-  useFocusEffect(useCallback(() => { loadDevices(); }, [loadDevices]));
+  useFocusEffect(useCallback(() => { loadDevices(true); }, [loadDevices]));
 
   const filteredResults = allDevices.filter((dev) => {
     if (!query.trim()) return false;
@@ -45,7 +45,7 @@ export default function SearchScreen() {
     );
   });
 
-  if (loading) {
+  if (loading && allDevices.length === 0) {
     return (<LinearGradient colors={['#050505', '#121212']} style={styles.container}><View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#FF9F0A" /></View></LinearGradient>);
   }
 
