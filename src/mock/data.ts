@@ -1,4 +1,4 @@
-import { Network, Subnet, Device, RecentActivity, Building, Incident, Maintenance } from '../types';
+import { Network, Subnet, Device, RecentActivity, Building, Incident, Maintenance, DeviceConfig } from '../types';
 
 export const MOCK_NETWORKS: (Network & { subnets: Subnet[] })[] = [
   {
@@ -322,6 +322,17 @@ export const MOCK_ACTIVITIES: RecentActivity[] = [
     icon: 'shield',
     color: '#FF9F0A',
   },
+  {
+    id: 'act-4',
+    name: 'Cámara Domo IP CCTV-08',
+    status: 'offline',
+    statusText: 'Sin respuesta a Ping (ICMP Timeout)',
+    timestamp: 'Hace 2 horas',
+    icon: 'alert-triangle',
+    color: '#FF453A',
+  },
+];
+
 export const MOCK_INCIDENTS: Incident[] = [
   {
     id: 'inc-1',
@@ -418,5 +429,136 @@ export const MOCK_MAINTENANCES: Maintenance[] = [
     notes: 'Prueba de autonomía con carga simulada.',
   },
 ];
+
+export const MOCK_CONFIGS: DeviceConfig[] = [
+  {
+    id: 'cfg-1',
+    name: 'Backup VLANs & Trunk Ports v2.4',
+    description: 'Configuración de enlaces troncales hacia Edificio B y subredes VLAN 10, 20, 30.',
+    device_id: 'dev-1',
+    device_name: 'Switch Core Catalyst 9300',
+    device_type: 'Switch',
+    file_name: 'cisco-c9300-trunk-vlan.cfg',
+    file_size: '14.2 KB',
+    author: 'Ing. Eduardo Rivas',
+    created_at: '2026-08-30T10:00:00Z',
+    content: `! Cisco IOS XE Software - Catalyst 9300 Switch
+! Last configuration change at 10:00:00 UTC Sun Aug 30 2026 by admin
+version 17.6
+service timestamps debug datetime msec
+service timestamps log datetime msec
+service password-encryption
+!
+hostname SW-CORE-EDIF-A
+!
+vlan 10
+ name SERVIDORES-NOC
+!
+vlan 20
+ name ADMINISTRACION-FINANZAS
+!
+vlan 30
+ name LABORATORIOS-REDES
+!
+interface GigabitEthernet1/0/1
+ description Enlace Trunk Hacia Edificio B
+ switchport mode trunk
+ switchport trunk allowed vlan 10,20,30
+ switchport nonegotiate
+ spanning-tree portfast trunk
+!
+interface GigabitEthernet1/0/2
+ description Servidor Principal NOC
+ switchport mode access
+ switchport access vlan 10
+ spanning-tree portfast
+!
+interface Vlan10
+ description Gateway NOC
+ ip address 10.0.10.1 255.255.255.0
+ no shutdown
+!
+ip default-gateway 10.0.10.254
+ip route 0.0.0.0 0.0.0.0 10.0.10.254
+!
+line vty 0 4
+ transport input ssh
+ login local
+!
+end`,
+  },
+  {
+    id: 'cfg-2',
+    name: 'Reglas Firewall & NAT Perimetral',
+    description: 'Políticas de seguridad UTM, bloqueo de puertos y reenvío de tráfico DMZ.',
+    device_id: 'dev-6',
+    device_name: 'Firewall FortiGate 60F',
+    device_type: 'Firewall',
+    file_name: 'fortigate-utm-rules.bak',
+    file_size: '8.7 KB',
+    author: 'Ing. Eduardo Rivas',
+    created_at: '2026-08-25T16:30:00Z',
+    content: `# FortiOS FortiGate 60F Configuration File
+# Exported on 2026-08-25 16:30:00
+
+config system global
+    set hostname "FG-PERIMETER-EDIF-A"
+    set timezone 04
+    set admintimeout 15
+end
+
+config router static
+    edit 1
+        set dst 0.0.0.0 0.0.0.0
+        set gateway 201.144.10.1
+        set device "wan1"
+    next
+end
+
+config firewall policy
+    edit 10
+        set name "LAN_TO_INTERNET"
+        set srcintf "lan"
+        set dstintf "wan1"
+        set srcaddr "SUBNET_LAN_ADMIN"
+        set dstaddr "all"
+        set action accept
+        set schedule "always"
+        set service "ALL_HTTP_HTTPS"
+        set utm-status enable
+        set ssl-ssh-profile "certificate-inspection"
+        set av-profile "default"
+        set nat enable
+    next
+end`,
+  },
+  {
+    id: 'cfg-3',
+    name: 'Rutas OSPF y BGP MikroTik Gateway',
+    description: 'Enrutamiento dinámico entre sedes y balanceo de carga dual WAN.',
+    device_id: 'dev-2',
+    device_name: 'Router Gateway MikroTik CCR2004',
+    device_type: 'Router',
+    file_name: 'mikrotik-gateway-ospf.rsc',
+    file_size: '6.5 KB',
+    author: 'Ing. Eduardo Rivas',
+    created_at: '2026-08-18T12:15:00Z',
+    content: `# RouterOS v7.14
+# MikroTik CCR2004-1G-12S+2XS
+/interface ethernet
+set [ find default-name=sfp-sfpplus1 ] name=wan1-fibra-primaria
+set [ find default-name=sfp-sfpplus2 ] name=wan2-backup-enlace
+/ip address
+add address=10.0.10.254/24 interface=bridge-lan network=10.0.10.0
+add address=201.144.10.2/30 interface=wan1-fibra-primaria
+/routing ospf instance
+add name=ospf-campus-instance router-id=10.0.10.254
+/routing ospf area
+add instance=ospf-campus-instance name=backbone-area area-id=0.0.0.0
+/ip firewall nat
+add action=masquerade chain=srcnat out-interface=wan1-fibra-primaria`,
+  },
+];
+
 
 
