@@ -8,16 +8,18 @@ import DashboardScreen from '../screens/dashboard/DashboardScreen';
 import DeviceListScreen from '../screens/device/DeviceListScreen';
 import NetworkListScreen from '../screens/network/NetworkListScreen';
 import MapScreen from '../screens/map/MapScreen';
+import IncidentScreen from '../screens/incident/IncidentScreen';
+import ConfigScreen from '../screens/config/ConfigScreen';
 import SearchScreen from '../screens/search/SearchScreen';
 
 const Tab = createBottomTabNavigator();
 
-const TAB_COUNT = 5;
+const TAB_COUNT = 7;
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const { width } = useWindowDimensions();
-  // Ancho responsivo centrado: en móvil toma el ancho disponible con margen, en escritorio se limita a 480px
-  const effectiveWidth = Math.min(width - 32, 480);
+  // Ancho responsivo centrado: en móvil toma el ancho disponible con margen, en escritorio se expande hasta 580px
+  const effectiveWidth = Math.min(width - 20, 580);
   const TAB_WIDTH = effectiveWidth / TAB_COUNT;
 
   // Inicializamos el valor animado en el índice de la pantalla actual
@@ -33,10 +35,10 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
     }).start();
   }, [state.index]);
 
-  // Convertimos el índice (0..4) en posición de píxeles (X) exacta
+  // Convertimos el índice (0..6) en posición de píxeles (X) exacta
   const indicatorPosition = animatedValue.interpolate({
-    inputRange: [0, 1, 2, 3, 4],
-    outputRange: [0, TAB_WIDTH, TAB_WIDTH * 2, TAB_WIDTH * 3, TAB_WIDTH * 4],
+    inputRange: [0, 1, 2, 3, 4, 5, 6],
+    outputRange: [0, TAB_WIDTH, TAB_WIDTH * 2, TAB_WIDTH * 3, TAB_WIDTH * 4, TAB_WIDTH * 5, TAB_WIDTH * 6],
   });
 
   return (
@@ -78,6 +80,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           else if (route.name === 'Dispositivos') iconName = 'cpu';
           else if (route.name === 'Redes') iconName = 'wifi';
           else if (route.name === 'Mapa') iconName = 'map-pin';
+          else if (route.name === 'Incidentes') iconName = 'alert-triangle';
+          else if (route.name === 'Configuraciones') iconName = 'terminal';
           else if (route.name === 'Buscar') iconName = 'search';
 
           return (
@@ -89,7 +93,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             >
               <Feather 
                 name={iconName} 
-                size={21} 
+                size={19} 
                 color={isFocused ? '#000000' : 'rgba(255, 255, 255, 0.4)'} 
               />
             </TouchableOpacity>
@@ -110,6 +114,8 @@ export default function BottomTabNavigator() {
       <Tab.Screen name="Dispositivos" component={DeviceListScreen} />
       <Tab.Screen name="Redes" component={NetworkListScreen} />
       <Tab.Screen name="Mapa" component={MapScreen} />
+      <Tab.Screen name="Incidentes" component={IncidentScreen} />
+      <Tab.Screen name="Configuraciones" component={ConfigScreen} />
       <Tab.Screen name="Buscar" component={SearchScreen} />
     </Tab.Navigator>
   );
@@ -156,9 +162,9 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   circularIndicator: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
     shadowColor: '#FFF',
     shadowOffset: { width: 0, height: 0 },

@@ -27,6 +27,23 @@ export interface Subnet {
   device_count?: number;
 }
 
+export interface Building {
+  id: string;
+  name: string;
+  code: string;
+  latitude: number;
+  longitude: number;
+  description?: string;
+  departments: Department[];
+}
+
+export interface Department {
+  id: string;
+  building_id: string;
+  name: string;
+  floor: string;
+}
+
 export interface Device {
   id: string;
   subnet_id: string;
@@ -38,6 +55,13 @@ export interface Device {
   description: string;
   created_at: string;
   updated_at: string;
+  // Ubicación en mapa
+  latitude?: number;
+  longitude?: number;
+  building_id?: string;
+  building_name?: string;
+  department_id?: string;
+  department_name?: string;
   // Campos calculados (join)
   subnet_name?: string;
   network_name?: string;
@@ -66,6 +90,53 @@ export interface DeviceFormData {
   ipv4_address: string;
   subnet_id: string;
   description: string;
+  latitude?: number;
+  longitude?: number;
+  building_id?: string;
+  department_id?: string;
+}
+
+export interface Incident {
+  id: string;
+  title: string;
+  description: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  status: 'open' | 'in_progress' | 'resolved';
+  device_id: string;
+  device_name: string;
+  device_ip?: string;
+  location: string;
+  created_at: string;
+  resolved_at?: string;
+}
+
+export interface Maintenance {
+  id: string;
+  title: string;
+  type: 'preventive' | 'firmware' | 'cleaning' | 'ups_battery' | 'audit';
+  type_label: string;
+  device_name: string;
+  location: string;
+  scheduled_date: string;
+  time_window: string;
+  impact: 'none' | 'partial' | 'full';
+  technician: string;
+  status: 'scheduled' | 'in_progress' | 'completed';
+  notes?: string;
+}
+
+export interface DeviceConfig {
+  id: string;
+  name: string;
+  description: string;
+  device_id: string;
+  device_name: string;
+  device_type: string;
+  file_name: string;
+  file_size: string;
+  content: string;
+  created_at: string;
+  author: string;
 }
 
 // Tipos de navegación
@@ -80,9 +151,12 @@ export type RootStackParamList = {
 };
 
 export type BottomTabParamList = {
-  Dashboard: undefined;
+  Inicio: undefined;
+  Dispositivos: undefined;
   Redes: undefined;
-  Inventario: undefined;
+  Mapa: undefined;
+  Incidentes: undefined;
+  Configuraciones: undefined;
   Buscar: undefined;
 };
 

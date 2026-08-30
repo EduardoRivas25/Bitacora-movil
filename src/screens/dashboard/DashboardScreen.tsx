@@ -168,7 +168,7 @@ export default function DashboardScreen() {
             <TouchableOpacity 
               style={styles.metricAction}
               activeOpacity={0.7}
-              onPress={() => navigation.navigate('Dispositivos')}
+              onPress={() => navigation.navigate('Incidentes')}
             >
               <Text style={styles.metricActionText}>Atender</Text>
               <Feather name="chevron-right" size={13} color="#FFFFFF" />
