@@ -25,13 +25,13 @@
 | **Proyecto** | Bitácora Digital de Administración de Redes |
 | **Semestre** | 9° Semestre |
 | **Fecha** | Agosto 2026 |
-| **Institución** | <!-- Nombre de la institución --> |
+| **Institución** | <Instituto Tecnologico Superior de Uruapan |
 
 ### 👥 Integrantes del Equipo
 
 | # | Nombre | GitHub |
 |---|--------|--------|
-| 1 | Juan Eduardo Rojas Rivas | [@usuario1](https://github.com/EduardoRivas25) |
+| 1 | Juan Eduardo Rojas Rivas | [@EduardoRivas25](https://github.com/EduardoRivas25) |
 | 2 | Juan Manuel Moreno Garcia | [@juanitoelorigi](https://github.com/juanitoelorigi) |
 | 3 | <!-- Nombre del integrante 3 --> | [@usuario3](https://github.com/usuario3) |
 
@@ -138,8 +138,8 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 | Campo | Valor |
 |-------|-------|
-| **Correo electrónico** | `admin@redes.com` |
-| **Contraseña** | `admin123` |
+| **Correo electrónico** | `prueba1@gmail.com` |
+| **Contraseña** | `contra123` |
 
 <!-- 
   NOTA: Reemplazar con las credenciales reales proporcionadas por el docente.
