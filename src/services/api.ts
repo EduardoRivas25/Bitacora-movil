@@ -550,6 +550,24 @@ export async function createConfig(data: {
   return result;
 }
 
+export async function updateConfig(id: string, data: Partial<DeviceConfig>) {
+  const { data: result, error } = await supabase
+    .from('device_configs')
+    .update({
+      ...(data.name && { name: sanitize(data.name) }),
+      ...(data.description !== undefined && { description: sanitize(data.description) }),
+      ...(data.content !== undefined && { content: data.content }),
+      ...(data.file_name && { file_name: sanitize(data.file_name) }),
+      ...(data.file_size && { file_size: sanitize(data.file_size) }),
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return result;
+}
+
 export async function deleteConfig(id: string) {
   const { error } = await supabase.from('device_configs').delete().eq('id', id);
   if (error) throw error;

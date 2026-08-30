@@ -14,6 +14,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
+import { useAuth } from '../../contexts/AuthContext';
 import { fetchDashboardStats, fetchRecentActivities, DashboardStats } from '../../services/api';
 import { RecentActivity } from '../../types';
 
@@ -24,6 +25,7 @@ export default function DashboardScreen() {
   const isTablet = width > 768;
   const isDesktop = width > 1024;
   const navigation = useNavigation<any>();
+  const { signOut, user } = useAuth();
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [activities, setActivities] = useState<RecentActivity[]>([]);
@@ -44,6 +46,14 @@ export default function DashboardScreen() {
       setLoading(false);
     }
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Error al cerrar sesión:', err);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -71,7 +81,7 @@ export default function DashboardScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header con Logo Oficial y Estado */}
+        {/* Header con Logo Oficial, Estado y Acciones */}
         <View style={styles.header}>
           <View style={styles.headerBrand}>
             <View style={styles.logoContainer}>
@@ -87,17 +97,30 @@ export default function DashboardScreen() {
                 <Text style={styles.statusBadgeText}>SISTEMA EN LÍNEA</Text>
               </View>
               <Text style={styles.headerTitle}>Bitácora Digital</Text>
-              <Text style={styles.headerSubtitle}>Administración de Redes & Dispositivos</Text>
+              <Text style={styles.headerSubtitle}>
+                {user?.email ? user.email : 'Administración de Redes & Dispositivos'}
+              </Text>
             </View>
           </View>
 
-          <TouchableOpacity 
-            style={styles.searchHeaderButton}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate('Buscar')}
-          >
-            <Feather name="search" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity 
+              style={styles.searchHeaderButton}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('Buscar')}
+            >
+              <Feather name="search" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.logoutHeaderButton}
+              activeOpacity={0.8}
+              onPress={handleLogout}
+            >
+              <Feather name="log-out" size={16} color="#FF453A" />
+              <Text style={styles.logoutButtonText}>Salir</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* 📊 Grid de Métricas Principales */}
@@ -342,7 +365,10 @@ const styles = StyleSheet.create({
   statusBadgeText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10, color: '#30D158', letterSpacing: 1 },
   headerTitle: { fontFamily: 'Poppins_700Bold', fontSize: 24, color: '#FFFFFF', lineHeight: 28 },
   headerSubtitle: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: 'rgba(255, 255, 255, 0.45)' },
-  searchHeaderButton: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255, 255, 255, 0.06)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', alignItems: 'center', justifyContent: 'center' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  searchHeaderButton: { width: 40, height: 40, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.06)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', alignItems: 'center', justifyContent: 'center' },
+  logoutHeaderButton: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, height: 40, borderRadius: 12, backgroundColor: 'rgba(255, 69, 58, 0.12)', borderWidth: 1, borderColor: 'rgba(255, 69, 58, 0.3)' },
+  logoutButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: '#FF453A' },
   metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 12, marginBottom: 26 },
   metricCard: { padding: 16, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
   metricCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
