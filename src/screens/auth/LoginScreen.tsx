@@ -8,21 +8,20 @@ import {
   Platform, 
   View, 
   ScrollView,
-  Image
+  Image,
+  Alert
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
 import { Feather, Ionicons } from '@expo/vector-icons';
+import { useAuth } from '../../contexts/AuthContext';
 
-const APP_LOGO = Platform.OS === 'web'
-  ? require('../../../assets/logobitacoraredes.webp')
-  : require('../../../assets/logobitacoraredes.png');
+const APP_LOGO = require('../../../assets/logobitacoraredes.png');
 
 export default function LoginScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
-  const navigation = useNavigation<any>();
+  const { signIn, signUp, signInGoogle, signInGitHub, isLoading } = useAuth();
 
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState('');
@@ -31,22 +30,45 @@ export default function LoginScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubmit = () => {
-    if (isRegister) {
-      if (name.trim() !== '' && email.trim() !== '' && password !== '' && password === confirmPassword) {
-        navigation.navigate('Dashboard');
+  const handleSubmit = async () => {
+    setErrorMsg('');
+    try {
+      if (isRegister) {
+        if (!name.trim() || !email.trim() || !password) {
+          setErrorMsg('Todos los campos son obligatorios');
+          return;
+        }
+        if (password !== confirmPassword) {
+          setErrorMsg('Las contraseñas no coinciden');
+          return;
+        }
+        await signUp(email, password, name);
+      } else {
+        if (!email.trim() || !password) {
+          setErrorMsg('Ingresa correo y contraseña');
+          return;
+        }
+        await signIn(email, password);
       }
-    } else {
-      if (email.trim() !== '' && password !== '') {
-        navigation.navigate('Dashboard');
-      }
+    } catch (err: any) {
+      const msg = err?.message || 'Error de autenticación';
+      setErrorMsg(msg);
     }
   };
 
-  const handleSocialAuth = (provider: string) => {
-    // Simulación de autenticación social (Google / GitHub)
-    navigation.navigate('Dashboard');
+  const handleSocialAuth = async (provider: string) => {
+    setErrorMsg('');
+    try {
+      if (provider === 'Google') {
+        await signInGoogle();
+      } else {
+        await signInGitHub();
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || `Error al autenticar con ${provider}`);
+    }
   };
 
   const toggleMode = () => {
@@ -55,6 +77,7 @@ export default function LoginScreen() {
     setEmail('');
     setPassword('');
     setConfirmPassword('');
+    setErrorMsg('');
   };
 
   return (
@@ -78,6 +101,14 @@ export default function LoginScreen() {
             </View>
           </View>
 
+          {/* Mensaje de error */}
+          {errorMsg !== '' && (
+            <View style={styles.errorContainer}>
+              <Feather name="alert-circle" size={14} color="#FF453A" />
+              <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          )}
+
           {/* Campo Nombre (solo en registro) */}
           {isRegister && (
             <TextInput
@@ -90,9 +121,9 @@ export default function LoginScreen() {
             />
           )}
 
-          {/* Campo Correo */}
+          {/* Campo Correo / Usuario */}
           <TextInput
-            placeholder="Correo electrónico"
+            placeholder="Usuario o correo electrónico"
             placeholderTextColor="rgba(255, 255, 255, 0.25)"
             style={styles.input}
             autoCapitalize="none"
@@ -158,12 +189,13 @@ export default function LoginScreen() {
 
           {/* Botón Principal */}
           <TouchableOpacity 
-            style={[styles.button, isRegister && { marginTop: 10 }]} 
+            style={[styles.button, isRegister && { marginTop: 10 }, isLoading && { opacity: 0.6 }]} 
             activeOpacity={0.8} 
             onPress={handleSubmit}
+            disabled={isLoading}
           >
             <Text style={styles.buttonText}>
-              {isRegister ? 'Crear Cuenta' : 'Iniciar Sesión'}
+              {isLoading ? 'Cargando...' : isRegister ? 'Crear Cuenta' : 'Iniciar Sesión'}
             </Text>
           </TouchableOpacity>
 
@@ -260,6 +292,23 @@ const styles = StyleSheet.create({
   logoImage: {
     width: '100%',
     height: '100%',
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 69, 58, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 69, 58, 0.3)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  errorText: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    color: '#FF453A',
+    flex: 1,
   },
   input: {
     fontFamily: 'Poppins_400Regular',

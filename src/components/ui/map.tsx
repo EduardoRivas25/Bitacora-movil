@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, DimensionValue } from 'react-native';
 import { Device, Building } from '../../types';
 
 interface MapProps {
@@ -9,7 +9,7 @@ interface MapProps {
   buildings?: Building[];
   selectedDeviceId?: string | null;
   onSelectDevice?: (device: Device) => void;
-  height?: number | string;
+  height?: DimensionValue;
 }
 
 export function Map({

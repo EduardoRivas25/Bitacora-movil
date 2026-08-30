@@ -1,497 +1,150 @@
-import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  TextInput, 
-  useWindowDimensions, 
-  Platform 
-} from 'react-native';
-import { BlurView } from 'expo-blur';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { Map } from '../../components/ui/map';
-import GlassModal from '../../components/ui/GlassModal';
-import { MOCK_DEVICES, MOCK_BUILDINGS } from '../../mock/data';
+import * as api from '../../services/api';
 import { Device, Building } from '../../types';
 
 export default function MapScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
 
-  const [devices, setDevices] = useState<Device[]>(MOCK_DEVICES);
-  const [buildings, setBuildings] = useState<Building[]>(MOCK_BUILDINGS);
-  const [selectedBuildingFilter, setSelectedBuildingFilter] = useState<string>('all');
-  
-  // Modales
-  const [showBuildingModal, setShowBuildingModal] = useState(false);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [buildings, setBuildings] = useState<Building[]>([]);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Formulario Edificio
-  const [bldName, setBldName] = useState('');
-  const [bldCode, setBldCode] = useState('');
-  const [bldLat, setBldLat] = useState('19.4330');
-  const [bldLng, setBldLng] = useState('-99.1325');
-  const [bldDesc, setBldDesc] = useState('');
-  const [depName, setDepName] = useState('');
-  const [depFloor, setDepFloor] = useState('Piso 1');
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [devs, blds] = await Promise.all([api.fetchDevices(), api.fetchBuildings()]);
+      setDevices(devs);
+      setBuildings(blds);
+      if (devs.length > 0) setSelectedDevice(devs[0]);
+    } catch (err) {
+      console.error('Error cargando datos para mapa:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  // Filtrado de dispositivos según edificio seleccionado
-  const visibleDevices = devices.filter(d => {
-    if (selectedBuildingFilter === 'all') return true;
-    return d.building_id === selectedBuildingFilter;
-  });
+  useFocusEffect(useCallback(() => { loadData(); }, [loadData]));
 
-  const handleSaveBuilding = () => {
-    if (!bldName || !bldCode) return;
-
-    const newBuilding: Building = {
-      id: `bld-${Date.now()}`,
-      name: bldName,
-      code: bldCode.toUpperCase(),
-      latitude: parseFloat(bldLat) || 19.4326,
-      longitude: parseFloat(bldLng) || -99.1332,
-      description: bldDesc || 'Nuevo edificio agregado a la infraestructura.',
-      departments: depName ? [
-        {
-          id: `dep-${Date.now()}`,
-          building_id: `bld-${Date.now()}`,
-          name: depName,
-          floor: depFloor || 'Planta Baja',
-        }
-      ] : [],
-    };
-
-    setBuildings([...buildings, newBuilding]);
-    setShowBuildingModal(false);
-    setBldName('');
-    setBldCode('');
-    setBldDesc('');
-    setDepName('');
+  const getDeviceColor = (name: string): string => {
+    const lower = name.toLowerCase();
+    if (lower.includes('switch')) return '#0A84FF';
+    if (lower.includes('router')) return '#30D158';
+    if (lower.includes('firewall')) return '#FF9F0A';
+    if (lower.includes('servidor')) return '#BF5AF2';
+    if (lower.includes('access') || lower.includes('unifi')) return '#32D74B';
+    if (lower.includes('imac')) return '#FF6482';
+    return '#64D2FF';
   };
+
+  if (loading) {
+    return (
+      <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#0A84FF" />
+        </View>
+      </LinearGradient>
+    );
+  }
+
+  const mappedCount = devices.filter(d => d.latitude && d.longitude).length;
 
   return (
     <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
-      <ScrollView 
-        contentContainerStyle={[
-          styles.scrollContent, 
-          { paddingHorizontal: isTablet ? '8%' : '4%' }
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.headerBadge}>GEOLOCALIZACIÓN Y CROQUIS</Text>
-            <Text style={styles.headerTitle}>Mapa de Infraestructura</Text>
-            <Text style={styles.headerSubtitle}>
-              {visibleDevices.length} Equipos georreferenciados en {buildings.length} Edificios
-            </Text>
-          </View>
-          <TouchableOpacity 
-            style={styles.addButton}
-            activeOpacity={0.8}
-            onPress={() => setShowBuildingModal(true)}
-          >
-            <Feather name="plus" size={16} color="#000000" />
-            <Text style={styles.addButtonText}>Nuevo Edificio</Text>
-          </TouchableOpacity>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerBadge}>LOCALIZACIÓN GPS EN TIEMPO REAL</Text>
+          <Text style={styles.headerTitle}>Mapa de Red</Text>
         </View>
+        <View style={styles.headerStats}>
+          <View style={styles.counterBadge}>
+            <Feather name="map-pin" size={14} color="#0A84FF" />
+            <Text style={styles.counterText}>{mappedCount} equipos mapeados</Text>
+          </View>
+        </View>
+      </View>
 
-        {/* Filtros por Edificio */}
-        <ScrollView 
-          horizontal 
-          showsHorizontalScrollIndicator={false} 
-          contentContainerStyle={styles.buildingChips}
-        >
-          <TouchableOpacity
-            style={[styles.chip, selectedBuildingFilter === 'all' && styles.chipActive]}
-            activeOpacity={0.7}
-            onPress={() => setSelectedBuildingFilter('all')}
-          >
-            <Text style={[styles.chipText, selectedBuildingFilter === 'all' && styles.chipTextActive]}>
-              Todos los Edificios ({devices.length})
-            </Text>
-          </TouchableOpacity>
-
-          {buildings.map((bld) => {
-            const count = devices.filter(d => d.building_id === bld.id).length;
-            const isActive = selectedBuildingFilter === bld.id;
-            return (
-              <TouchableOpacity
-                key={bld.id}
-                style={[styles.chip, isActive && styles.chipActive]}
-                activeOpacity={0.7}
-                onPress={() => setSelectedBuildingFilter(bld.id)}
-              >
-                <Text style={[styles.chipText, isActive && styles.chipTextActive]}>
-                  {bld.code} ({count})
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* Contenedor del Mapa */}
-        <View style={styles.mapCardWrapper}>
-          <Map 
-            center={[-99.1332, 19.4326]}
-            zoom={16}
-            devices={visibleDevices}
+      <View style={[styles.mainLayout, isTablet && styles.mainLayoutTablet]}>
+        <View style={[styles.mapContainer, isTablet && styles.mapContainerTablet]}>
+          <Map
+            devices={devices}
             buildings={buildings}
-            height={420}
+            selectedDeviceId={selectedDevice?.id}
+            onSelectDevice={(d) => setSelectedDevice(d)}
+            height="100%"
           />
         </View>
 
-        {/* Resumen de Edificios y Departamentos */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Edificios y Departamentos Registrados</Text>
+        <View style={[styles.sidePanel, isTablet && styles.sidePanelTablet]}>
+          <Text style={styles.panelTitle}>DISPOSITIVOS</Text>
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {devices.map((dev) => {
+              const isSelected = selectedDevice?.id === dev.id;
+              const color = getDeviceColor(dev.name);
+              return (
+                <TouchableOpacity
+                  key={dev.id}
+                  style={[styles.deviceItem, isSelected && styles.deviceItemActive]}
+                  activeOpacity={0.7}
+                  onPress={() => setSelectedDevice(dev)}
+                >
+                  <View style={[styles.colorDot, { backgroundColor: color }]} />
+                  <View style={styles.deviceInfo}>
+                    <Text style={styles.deviceName} numberOfLines={1}>{dev.name}</Text>
+                    <Text style={styles.deviceIp}>{dev.ipv4_address} • {dev.location}</Text>
+                  </View>
+                  {dev.latitude && <Feather name="map-pin" size={12} color={color} />}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {selectedDevice && (
+            <BlurView intensity={30} tint="dark" style={styles.detailCard}>
+              <Text style={styles.detailName}>{selectedDevice.name}</Text>
+              <View style={styles.detailRow}><Text style={styles.detailLabel}>IPv4</Text><Text style={styles.detailValue}>{selectedDevice.ipv4_address}</Text></View>
+              <View style={styles.detailRow}><Text style={styles.detailLabel}>MAC</Text><Text style={styles.detailValue}>{selectedDevice.mac_address}</Text></View>
+              <View style={styles.detailRow}><Text style={styles.detailLabel}>Ubicación</Text><Text style={styles.detailValue}>{selectedDevice.location}</Text></View>
+              <View style={styles.detailRow}><Text style={styles.detailLabel}>GPS</Text><Text style={styles.detailValue}>{selectedDevice.latitude?.toFixed(4)}, {selectedDevice.longitude?.toFixed(4)}</Text></View>
+            </BlurView>
+          )}
         </View>
-
-        <View style={styles.buildingsGrid}>
-          {buildings.map((bld) => {
-            const bldDevices = devices.filter(d => d.building_id === bld.id);
-
-            return (
-              <BlurView key={bld.id} intensity={30} tint="dark" style={styles.buildingCard}>
-                <View style={styles.buildingCardHeader}>
-                  <View style={styles.buildingIconBadge}>
-                    <Feather name="layers" size={18} color="#0A84FF" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.buildingName}>{bld.name}</Text>
-                    <Text style={styles.buildingCoords}>Lat: {bld.latitude.toFixed(4)}, Lng: {bld.longitude.toFixed(4)}</Text>
-                  </View>
-                  <View style={styles.deviceCountPill}>
-                    <Text style={styles.deviceCountText}>{bldDevices.length} Equipos</Text>
-                  </View>
-                </View>
-
-                <Text style={styles.buildingDesc}>{bld.description}</Text>
-
-                {/* Lista de Departamentos */}
-                <View style={styles.deptList}>
-                  <Text style={styles.deptHeaderTitle}>DEPARTAMENTOS / PISOS</Text>
-                  {bld.departments.map((dept) => (
-                    <View key={dept.id} style={styles.deptItem}>
-                      <Feather name="folder" size={12} color="#BF5AF2" style={{ marginRight: 6 }} />
-                      <Text style={styles.deptName}>{dept.name}</Text>
-                      <Text style={styles.deptFloor}>{dept.floor}</Text>
-                    </View>
-                  ))}
-                </View>
-              </BlurView>
-            );
-          })}
-        </View>
-
-        {/* Modal Crear Edificio / Departamento */}
-        <GlassModal
-          visible={showBuildingModal}
-          onClose={() => setShowBuildingModal(false)}
-          title="Crear Edificio / Ubicación"
-          subtitle="Agrega una nueva ubicación física con coordenadas GPS"
-        >
-          <Text style={styles.inputLabel}>Nombre del Edificio / Sede *</Text>
-          <TextInput
-            placeholder="ej. Edificio D - Centro de Cómputo"
-            placeholderTextColor="rgba(255, 255, 255, 0.25)"
-            style={styles.input}
-            value={bldName}
-            onChangeText={setBldName}
-          />
-
-          <Text style={styles.inputLabel}>Código / Identificador *</Text>
-          <TextInput
-            placeholder="ej. EDIF-D"
-            placeholderTextColor="rgba(255, 255, 255, 0.25)"
-            autoCapitalize="characters"
-            style={styles.input}
-            value={bldCode}
-            onChangeText={setBldCode}
-          />
-
-          <View style={styles.formRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Latitud GPS</Text>
-              <TextInput
-                placeholder="19.4326"
-                placeholderTextColor="rgba(255, 255, 255, 0.25)"
-                style={styles.input}
-                value={bldLat}
-                onChangeText={setBldLat}
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Longitud GPS</Text>
-              <TextInput
-                placeholder="-99.1332"
-                placeholderTextColor="rgba(255, 255, 255, 0.25)"
-                style={styles.input}
-                value={bldLng}
-                onChangeText={setBldLng}
-              />
-            </View>
-          </View>
-
-          <Text style={styles.inputLabel}>Departamento / Área Inicial</Text>
-          <TextInput
-            placeholder="ej. Sala de Servidores Principal"
-            placeholderTextColor="rgba(255, 255, 255, 0.25)"
-            style={styles.input}
-            value={depName}
-            onChangeText={setDepName}
-          />
-
-          <Text style={styles.inputLabel}>Piso / Nivel</Text>
-          <TextInput
-            placeholder="ej. Planta Baja / Piso 2"
-            placeholderTextColor="rgba(255, 255, 255, 0.25)"
-            style={styles.input}
-            value={depFloor}
-            onChangeText={setDepFloor}
-          />
-
-          <Text style={styles.inputLabel}>Descripción u Observaciones</Text>
-          <TextInput
-            placeholder="Detalles sobre el acceso o infraestructura del edificio..."
-            placeholderTextColor="rgba(255, 255, 255, 0.25)"
-            multiline
-            numberOfLines={2}
-            style={[styles.input, styles.textArea]}
-            value={bldDesc}
-            onChangeText={setBldDesc}
-          />
-
-          <TouchableOpacity 
-            style={styles.modalSubmitButton}
-            activeOpacity={0.8}
-            onPress={handleSaveBuilding}
-          >
-            <Text style={styles.modalSubmitButtonText}>Guardar Edificio en Mapa</Text>
-          </TouchableOpacity>
-        </GlassModal>
-
-      </ScrollView>
+      </View>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingTop: 50,
-    paddingBottom: 120,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  headerBadge: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 11,
-    color: '#0A84FF',
-    letterSpacing: 1.5,
-    marginBottom: 2,
-  },
-  headerTitle: {
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 28,
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
-  },
-  headerSubtitle: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.45)',
-    marginTop: 2,
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 12,
-    gap: 6,
-  },
-  addButtonText: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12,
-    color: '#000000',
-  },
-  buildingChips: {
-    gap: 8,
-    marginBottom: 20,
-    paddingVertical: 2,
-  },
-  chip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  chipActive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FFFFFF',
-  },
-  chipText: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
-  chipTextActive: {
-    color: '#000000',
-  },
-  mapCardWrapper: {
-    marginBottom: 28,
-    borderRadius: 24,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 20,
-  },
-  sectionHeader: {
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 16,
-    color: '#FFFFFF',
-    letterSpacing: 0.3,
-  },
-  buildingsGrid: {
-    gap: 16,
-  },
-  buildingCard: {
-    padding: 18,
-    borderRadius: 22,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  buildingCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-    gap: 12,
-  },
-  buildingIconBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: 'rgba(10, 132, 255, 0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buildingName: {
-    fontFamily: 'Poppins_700Bold',
-    fontSize: 15,
-    color: '#FFFFFF',
-  },
-  buildingCoords: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.4)',
-  },
-  deviceCountPill: {
-    backgroundColor: 'rgba(48, 209, 88, 0.15)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  deviceCountText: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 11,
-    color: '#30D158',
-  },
-  buildingDesc: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
-    marginBottom: 14,
-  },
-  deptList: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-    gap: 8,
-  },
-  deptHeaderTitle: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.35)',
-    letterSpacing: 1,
-    marginBottom: 2,
-  },
-  deptItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  deptName: {
-    flex: 1,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 12,
-    color: '#FFFFFF',
-  },
-  deptFloor: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.45)',
-  },
-  inputLabel: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginBottom: 6,
-  },
-  input: {
-    fontFamily: 'Poppins_400Regular',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 14,
-    padding: 14,
-    color: '#FFFFFF',
-    fontSize: 14,
-    marginBottom: 14,
-    ...Platform.select({
-      web: { outlineStyle: 'none' },
-    }) as any,
-  },
-  formRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  textArea: {
-    height: 60,
-    textAlignVertical: 'top',
-  },
-  modalSubmitButton: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 15,
-    borderRadius: 14,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  modalSubmitButtonText: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 14,
-    color: '#000000',
-  },
+  container: { flex: 1 },
+  header: { paddingHorizontal: '5%', paddingTop: 45, paddingBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerBadge: { fontFamily: 'Poppins_600SemiBold', fontSize: 10, color: '#30D158', letterSpacing: 1.5 },
+  headerTitle: { fontFamily: 'Poppins_700Bold', fontSize: 22, color: '#FFFFFF', lineHeight: 28 },
+  headerStats: { alignItems: 'flex-end' },
+  counterBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(10, 132, 255, 0.12)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(10, 132, 255, 0.25)' },
+  counterText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#0A84FF' },
+  mainLayout: { flex: 1, flexDirection: 'column', padding: 10 },
+  mainLayoutTablet: { flexDirection: 'row', paddingHorizontal: '3%' },
+  mapContainer: { flex: 1, borderRadius: 16, overflow: 'hidden', minHeight: 350, marginBottom: 10 },
+  mapContainerTablet: { flex: 3, marginBottom: 0, marginRight: 12 },
+  sidePanel: { flex: 1, maxHeight: 300 },
+  sidePanelTablet: { flex: 1, maxHeight: undefined },
+  panelTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: 'rgba(255, 255, 255, 0.4)', letterSpacing: 1, marginBottom: 8, paddingHorizontal: 4 },
+  deviceItem: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.03)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.04)', marginBottom: 6 },
+  deviceItemActive: { borderColor: '#0A84FF', backgroundColor: 'rgba(10, 132, 255, 0.1)' },
+  colorDot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
+  deviceInfo: { flex: 1 },
+  deviceName: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: '#FFFFFF' },
+  deviceIp: { fontFamily: 'Poppins_400Regular', fontSize: 10, color: 'rgba(255, 255, 255, 0.5)' },
+  detailCard: { padding: 14, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', backgroundColor: 'rgba(0, 0, 0, 0.5)', marginTop: 10 },
+  detailName: { fontFamily: 'Poppins_700Bold', fontSize: 14, color: '#FFFFFF', marginBottom: 10 },
+  detailRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  detailLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 10, color: 'rgba(255, 255, 255, 0.4)' },
+  detailValue: { fontFamily: 'Poppins_400Regular', fontSize: 11, color: '#FFFFFF' },
 });
