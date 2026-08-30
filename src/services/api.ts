@@ -777,31 +777,122 @@ export async function fetchDashboardStats(forceRefresh = false): Promise<Dashboa
   return result;
 }
 
+function formatRelativeTime(dateStr?: string): string {
+  if (!dateStr) return 'Reciente';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 'Reciente';
+    const now = new Date();
+    const diffMs = now.getTime() - d.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMin / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffMin < 1) return 'Justo ahora';
+    if (diffMin < 60) return `Hace ${diffMin} min`;
+    if (diffHours < 24) return `Hace ${diffHours} h`;
+    if (diffDays === 1) return 'Ayer';
+    if (diffDays < 7) return `Hace ${diffDays} d`;
+    return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short' });
+  } catch {
+    return 'Reciente';
+  }
+}
+
 export async function fetchRecentActivities(forceRefresh = false): Promise<RecentActivity[]> {
   if (!forceRefresh) {
     const cached = getCached<RecentActivity[]>('recent_activities');
     if (cached) return cached;
   }
 
-  const { data, error } = await supabase
-    .from('recent_activities')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(10);
+  try {
+    // 1. Consultar eventos reales en paralelo desde tablas activas
+    const [
+      { data: incData },
+      { data: maintData },
+      { data: cfgData },
+      { data: devData },
+    ] = await Promise.all([
+      supabase.from('incidents').select('*').order('created_at', { ascending: false }).limit(6),
+      supabase.from('maintenances').select('*').order('created_at', { ascending: false }).limit(4),
+      supabase.from('device_configs').select('*').order('created_at', { ascending: false }).limit(4),
+      supabase.from('devices').select('id, name, ipv4_address, location, created_at').order('created_at', { ascending: false }).limit(4),
+    ]);
 
-  if (error) throw error;
-  const result = (data || []).map((a: any) => ({
-    id: a.id,
-    name: a.name,
-    status: a.status,
-    statusText: a.status_text,
-    timestamp: a.timestamp_label,
-    icon: a.icon,
-    color: a.color,
-  }));
+    const events: (RecentActivity & { rawDate: number })[] = [];
 
-  setCache('recent_activities', result);
-  return result;
+    // Transformar incidentes
+    (incData || []).forEach((inc: any) => {
+      const isResolved = inc.status === 'resolved';
+      const isCritical = inc.severity === 'critical';
+      const isHigh = inc.severity === 'high';
+      
+      events.push({
+        id: `inc-${inc.id}`,
+        name: inc.device_name || 'Equipo de Red',
+        status: isResolved ? 'online' : isCritical ? 'offline' : 'warning',
+        statusText: isResolved 
+          ? `Incidente Resuelto: ${inc.title}`
+          : `[${inc.severity.toUpperCase()}] ${inc.title} - ${inc.location || 'Red'}`,
+        timestamp: formatRelativeTime(isResolved ? (inc.resolved_at || inc.created_at) : inc.created_at),
+        icon: isResolved ? 'check-circle' : 'alert-triangle',
+        color: isResolved ? '#30D158' : isCritical ? '#FF453A' : isHigh ? '#FF9F0A' : '#FFD60A',
+        rawDate: new Date(inc.created_at || 0).getTime(),
+      });
+    });
+
+    // Transformar mantenimientos
+    (maintData || []).forEach((mnt: any) => {
+      events.push({
+        id: `mnt-${mnt.id}`,
+        name: mnt.device_name || 'Mantenimiento de Red',
+        status: mnt.status === 'completed' ? 'online' : 'warning',
+        statusText: `${mnt.title} (${mnt.scheduled_date || 'Próximo'} • ${mnt.time_window || 'NOC'})`,
+        timestamp: formatRelativeTime(mnt.created_at),
+        icon: 'tool',
+        color: '#BF5AF2',
+        rawDate: new Date(mnt.created_at || 0).getTime(),
+      });
+    });
+
+    // Transformar backups y configuraciones
+    (cfgData || []).forEach((cfg: any) => {
+      events.push({
+        id: `cfg-${cfg.id}`,
+        name: cfg.device_name || cfg.name,
+        status: 'online',
+        statusText: `Backup guardado: ${cfg.file_name} (${cfg.file_size || 'Script'})`,
+        timestamp: formatRelativeTime(cfg.created_at),
+        icon: 'file-text',
+        color: '#0A84FF',
+        rawDate: new Date(cfg.created_at || 0).getTime(),
+      });
+    });
+
+    // Transformar dispositivos registrados
+    (devData || []).forEach((dev: any) => {
+      events.push({
+        id: `dev-${dev.id}`,
+        name: dev.name,
+        status: 'online',
+        statusText: `Equipo activo en ${dev.location || 'Campus'} (${dev.ipv4_address || 'Sin IP'})`,
+        timestamp: formatRelativeTime(dev.created_at),
+        icon: 'cpu',
+        color: '#64D2FF',
+        rawDate: new Date(dev.created_at || 0).getTime(),
+      });
+    });
+
+    // Ordenar cronológicamente descendente y tomar únicamente los últimos 3 eventos
+    events.sort((a, b) => b.rawDate - a.rawDate);
+    const result: RecentActivity[] = events.slice(0, 3).map(({ rawDate, ...item }) => item);
+
+    setCache('recent_activities', result);
+    return result;
+  } catch (err) {
+    console.error('Error calculando eventos de infraestructura:', err);
+    return [];
+  }
 }
 
 // ============================================================

@@ -55,6 +55,16 @@ export default function DashboardScreen() {
     }
   };
 
+  const handleActivityPress = (actId: string) => {
+    if (actId.startsWith('inc-') || actId.startsWith('mnt-')) {
+      navigation.navigate('Incidentes');
+    } else if (actId.startsWith('cfg-')) {
+      navigation.navigate('Configuraciones');
+    } else if (actId.startsWith('dev-')) {
+      navigation.navigate('Dispositivos');
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       loadData(true);
@@ -72,6 +82,19 @@ export default function DashboardScreen() {
     );
   }
 
+  const metrics = [
+    { label: 'Redes Base', value: stats.totalNetworks, icon: 'wifi', color: '#0A84FF', bg: 'rgba(10, 132, 255, 0.15)', actionLabel: 'Ver redes', onPress: () => navigation.navigate('Redes') },
+    { label: 'Subredes VLAN', value: stats.totalSubnets, icon: 'layers', color: '#BF5AF2', bg: 'rgba(191, 90, 242, 0.15)', actionLabel: 'Ver VLANs', onPress: () => navigation.navigate('Redes') },
+    { label: 'Equipos', value: stats.totalDevices, icon: 'cpu', color: '#30D158', bg: 'rgba(48, 209, 88, 0.15)', actionLabel: 'Inventario', onPress: () => navigation.navigate('Dispositivos') },
+    { label: 'Incidentes', value: stats.activeIncidents, icon: 'alert-triangle', color: '#FF453A', bg: 'rgba(255, 69, 58, 0.15)', actionLabel: 'Atender', onPress: () => navigation.navigate('Incidentes') }
+  ];
+
+  const quickActions = [
+    { title: 'Nueva Red', subtitle: 'Crear segmento IPv4', icon: 'plus', color: '#0A84FF', bg: 'rgba(10, 132, 255, 0.15)', onPress: () => navigation.navigate('Redes') },
+    { title: 'Registrar Equipo', subtitle: 'Asignar MAC e IP', icon: 'hard-drive', color: '#30D158', bg: 'rgba(48, 209, 88, 0.15)', onPress: () => navigation.navigate('Dispositivos') },
+    { title: 'Escanear / Buscar', subtitle: 'Por IP, MAC o VLAN', icon: 'search', color: '#FF9F0A', bg: 'rgba(255, 159, 10, 0.15)', onPress: () => navigation.navigate('Buscar') }
+  ];
+
   return (
     <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
       <ScrollView 
@@ -81,7 +104,6 @@ export default function DashboardScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header con Logo Oficial, Estado y Acciones */}
         <View style={styles.header}>
           <View style={styles.headerBrand}>
             <View style={styles.logoContainer}>
@@ -319,24 +341,31 @@ export default function DashboardScreen() {
             </BlurView>
           </View>
 
-          {/* Columna Derecha: Actividad en Vivo */}
+          {/* Columna Derecha: Eventos de Infraestructura Activos */}
           <View style={[styles.splitCol, { flex: isDesktop ? 1 : undefined }]}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Eventos de Infraestructura</Text>
             </View>
 
             <View style={styles.activityList}>
-              {activities.map((act) => (
-                <BlurView key={act.id} intensity={25} tint="dark" style={styles.activityCard}>
-                  <View style={[styles.activityStatusIndicator, { backgroundColor: act.color }]} />
-                  <View style={styles.activityContent}>
-                    <View style={styles.activityRowTop}>
-                      <Text style={styles.activityDeviceName}>{act.name}</Text>
-                      <Text style={styles.activityTimestamp}>{act.timestamp}</Text>
+              {activities.slice(0, 3).map((act) => (
+                <TouchableOpacity 
+                  key={act.id} 
+                  activeOpacity={0.7} 
+                  onPress={() => handleActivityPress(act.id)}
+                >
+                  <BlurView intensity={25} tint="dark" style={styles.activityCard}>
+                    <View style={[styles.activityStatusIndicator, { backgroundColor: act.color }]} />
+                    <View style={styles.activityContent}>
+                      <View style={styles.activityRowTop}>
+                        <Text style={styles.activityDeviceName} numberOfLines={1}>{act.name}</Text>
+                        <Text style={styles.activityTimestamp}>{act.timestamp}</Text>
+                      </View>
+                      <Text style={styles.activityDetailText} numberOfLines={2}>{act.statusText}</Text>
                     </View>
-                    <Text style={styles.activityDetailText}>{act.statusText}</Text>
-                  </View>
-                </BlurView>
+                    <Feather name="chevron-right" size={13} color="rgba(255,255,255,0.25)" style={{ marginLeft: 6 }} />
+                  </BlurView>
+                </TouchableOpacity>
               ))}
 
               {activities.length === 0 && (
