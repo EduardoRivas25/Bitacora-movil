@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Dimensions, Animated, Platform } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Dimensions, Animated, Platform, useWindowDimensions } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
@@ -7,54 +7,55 @@ import { Feather } from '@expo/vector-icons';
 import DashboardScreen from '../screens/dashboard/DashboardScreen';
 import DeviceListScreen from '../screens/device/DeviceListScreen';
 import NetworkListScreen from '../screens/network/NetworkListScreen';
+import MapScreen from '../screens/map/MapScreen';
 import SearchScreen from '../screens/search/SearchScreen';
 
 const Tab = createBottomTabNavigator();
-const { width } = Dimensions.get('window');
 
-// Cálculos para que el círculo se mueva exactamente al centro de cada ícono
-const TAB_MARGIN = 20;
-const TAB_BAR_WIDTH = width - TAB_MARGIN * 2;
-const TAB_COUNT = 4;
-const TAB_WIDTH = TAB_BAR_WIDTH / TAB_COUNT;
+const TAB_COUNT = 5;
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
+  const { width } = useWindowDimensions();
+  // Ancho responsivo centrado: en móvil toma el ancho disponible con margen, en escritorio se limita a 480px
+  const effectiveWidth = Math.min(width - 32, 480);
+  const TAB_WIDTH = effectiveWidth / TAB_COUNT;
+
   // Inicializamos el valor animado en el índice de la pantalla actual
   const animatedValue = useRef(new Animated.Value(state.index)).current;
 
-  // Cada vez que cambias de pestaña, se dispara esta animación fluida
+  // Cada vez que cambias de pestaña, se dispara la animación hacia la posición exacta
   useEffect(() => {
     Animated.spring(animatedValue, {
       toValue: state.index,
-      tension: 15,  // Tensión baja = movimiento más lento y relajado
-      friction: 6,  // Fricción ajustada para que el rebote sea suave (estilo líquido)
+      tension: 20,
+      friction: 7,
       useNativeDriver: true,
     }).start();
   }, [state.index]);
 
-  // Convertimos el índice (0, 1, 2, 3) en posición de píxeles (X)
+  // Convertimos el índice (0..4) en posición de píxeles (X) exacta
   const indicatorPosition = animatedValue.interpolate({
-    inputRange: [0, 1, 2, 3],
-    outputRange: [0, TAB_WIDTH, TAB_WIDTH * 2, TAB_WIDTH * 3],
+    inputRange: [0, 1, 2, 3, 4],
+    outputRange: [0, TAB_WIDTH, TAB_WIDTH * 2, TAB_WIDTH * 3, TAB_WIDTH * 4],
   });
 
   return (
-    <View style={styles.tabBarContainer}>
+    <View style={[styles.tabBarContainer, { width: effectiveWidth, left: (width - effectiveWidth) / 2 }]}>
       {/* Fondo de cristal oscuro */}
       <BlurView intensity={50} tint="dark" style={styles.blurBackground} />
       
       <View style={styles.contentContainer}>
-        {/* Este es el círculo blanco que se desliza por detrás */}
+        {/* Círculo blanco animado exactamente centrado */}
         <Animated.View
           style={[
             styles.indicatorWrapper,
-            { transform: [{ translateX: indicatorPosition }] }
+            { width: TAB_WIDTH, transform: [{ translateX: indicatorPosition }] }
           ]}
         >
           <View style={styles.circularIndicator} />
         </Animated.View>
 
-        {/* Renderizamos los botones interactivos por encima del indicador */}
+        {/* Botones interactivos */}
         {state.routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
@@ -71,24 +72,24 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             }
           };
 
-          // Asignamos el ícono correspondiente según la pantalla
+          // Íconos según la pantalla
           let iconName: keyof typeof Feather.glyphMap = 'home';
           if (route.name === 'Inicio') iconName = 'home';
           else if (route.name === 'Dispositivos') iconName = 'cpu';
           else if (route.name === 'Redes') iconName = 'wifi';
+          else if (route.name === 'Mapa') iconName = 'map-pin';
           else if (route.name === 'Buscar') iconName = 'search';
 
           return (
             <TouchableOpacity
               key={index}
-              activeOpacity={1} // Evitamos el parpadeo nativo al tocar
+              activeOpacity={1}
               onPress={onPress}
               style={styles.tabItem}
             >
               <Feather 
                 name={iconName} 
-                size={22} 
-                // Si el círculo blanco está detrás (isFocused), el ícono se vuelve negro
+                size={21} 
                 color={isFocused ? '#000000' : 'rgba(255, 255, 255, 0.4)'} 
               />
             </TouchableOpacity>
@@ -108,6 +109,7 @@ export default function BottomTabNavigator() {
       <Tab.Screen name="Inicio" component={DashboardScreen} />
       <Tab.Screen name="Dispositivos" component={DeviceListScreen} />
       <Tab.Screen name="Redes" component={NetworkListScreen} />
+      <Tab.Screen name="Mapa" component={MapScreen} />
       <Tab.Screen name="Buscar" component={SearchScreen} />
     </Tab.Navigator>
   );
@@ -117,24 +119,22 @@ const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 30 : 20,
-    left: TAB_MARGIN,
-    right: TAB_MARGIN,
-    height: 75,
-    borderRadius: 38,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: 'transparent',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 20,
     elevation: 10,
   },
   blurBackground: {
     ...StyleSheet.absoluteFill,
-    borderRadius: 38,
+    borderRadius: 36,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
   },
   contentContainer: {
     flex: 1,
@@ -146,24 +146,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     height: '100%',
-    zIndex: 2, // Asegura que los íconos estén por encima del círculo
+    zIndex: 2,
   },
   indicatorWrapper: {
     position: 'absolute',
     height: '100%',
-    width: TAB_WIDTH,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
   },
   circularIndicator: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#FFFFFF',
     shadowColor: '#FFF',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
+    shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 5,
   },
