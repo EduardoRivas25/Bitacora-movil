@@ -252,36 +252,64 @@ export default function DeviceListScreen() {
     return 'cpu';
   };
 
+  const isSmallMobile = width < 380;
+  const isDesktop = width >= 1024;
+  const cardWidth = isDesktop ? '31.8%' : isTablet ? '48.5%' : '100%';
+
   if (loading && devices.length === 0) {
     return (<LinearGradient colors={['#050505', '#121212']} style={styles.container}><View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#0A84FF" /></View></LinearGradient>);
   }
 
   return (
     <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isTablet ? '10%' : '5%' }]} showsVerticalScrollIndicator={false}>
-        <View style={styles.header}>
-          <View><Text style={styles.headerBadge}>INVENTARIO DE EQUIPOS</Text><Text style={styles.headerTitle}>Dispositivos</Text><Text style={styles.headerSubtitle}>{devices.length} Equipos registrados en la infraestructura</Text></View>
-          <TouchableOpacity style={styles.addButton} activeOpacity={0.8} onPress={handleOpenAddDevice}><Feather name="plus" size={18} color="#000000" /><Text style={styles.addButtonText}>Nuevo Equipo</Text></TouchableOpacity>
-        </View>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isDesktop ? '6%' : isTablet ? '4%' : 16 }]} showsVerticalScrollIndicator={false}>
+        <View style={styles.innerWrapper}>
+          <View style={styles.header}>
+            <View style={{ flex: 1, minWidth: 200 }}>
+              <Text style={styles.headerBadge}>INVENTARIO DE EQUIPOS</Text>
+              <Text style={[styles.headerTitle, isSmallMobile && { fontSize: 22 }]}>Dispositivos</Text>
+              <Text style={styles.headerSubtitle}>{devices.length} Equipos registrados en la infraestructura</Text>
+            </View>
+            <TouchableOpacity style={styles.addButton} activeOpacity={0.8} onPress={handleOpenAddDevice}>
+              <Feather name="plus" size={17} color="#000000" />
+              <Text style={styles.addButtonText}>Nuevo Equipo</Text>
+            </TouchableOpacity>
+          </View>
 
-        <View style={styles.searchBar}>
-          <Feather name="search" size={16} color="rgba(255, 255, 255, 0.4)" />
-          <TextInput placeholder="Buscar por IP, MAC, nombre, ubicación..." placeholderTextColor="rgba(255, 255, 255, 0.3)" style={styles.searchInput} value={searchQuery} onChangeText={setSearchQuery} />
-          {searchQuery.length > 0 && (<TouchableOpacity onPress={() => setSearchQuery('')}><Feather name="x" size={14} color="rgba(255, 255, 255, 0.4)" /></TouchableOpacity>)}
-        </View>
+          <View style={styles.searchBar}>
+            <Feather name="search" size={16} color="rgba(255, 255, 255, 0.4)" />
+            <TextInput placeholder="Buscar por IP, MAC, nombre, ubicación..." placeholderTextColor="rgba(255, 255, 255, 0.3)" style={styles.searchInput} value={searchQuery} onChangeText={setSearchQuery} />
+            {searchQuery.length > 0 && (<TouchableOpacity onPress={() => setSearchQuery('')}><Feather name="x" size={14} color="rgba(255, 255, 255, 0.4)" /></TouchableOpacity>)}
+          </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesContainer}>
-          {CATEGORIES.map((cat) => { const isActive = selectedCategory === cat; return (<TouchableOpacity key={cat} style={[styles.categoryChip, isActive && styles.categoryChipActive]} activeOpacity={0.7} onPress={() => setSelectedCategory(cat)}><Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>{cat}</Text></TouchableOpacity>); })}
-        </ScrollView>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesContainer}>
+            {CATEGORIES.map((cat) => { const isActive = selectedCategory === cat; return (<TouchableOpacity key={cat} style={[styles.categoryChip, isActive && styles.categoryChipActive]} activeOpacity={0.7} onPress={() => setSelectedCategory(cat)}><Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>{cat}</Text></TouchableOpacity>); })}
+          </ScrollView>
 
-        <View style={styles.deviceList}>
-          {filteredDevices.map((dev) => { const icon = getDeviceIcon(dev.name); return (
-            <BlurView key={dev.id} intensity={30} tint="dark" style={styles.deviceCard}>
-              <View style={styles.cardHeaderRow}><View style={styles.deviceIconWrapper}><Feather name={icon} size={20} color="#0A84FF" /></View><View style={styles.deviceTitleBlock}><View style={styles.titleWithStatus}><Text style={styles.deviceName}>{dev.name}</Text><View style={styles.statusDot} /></View><Text style={styles.manufacturerText}>{dev.manufacturer} • {dev.location}</Text></View><TouchableOpacity style={styles.deleteButton} activeOpacity={0.7} onPress={() => handleDeleteDevice(dev.id)}><Feather name="trash-2" size={16} color="rgba(255, 69, 58, 0.7)" /></TouchableOpacity></View>
-              <View style={styles.specsContainer}><View style={styles.specBadge}><Text style={styles.specLabel}>IPv4</Text><Text style={styles.specValueIp}>{dev.ipv4_address}</Text></View><View style={styles.specBadge}><Text style={styles.specLabel}>MAC</Text><Text style={styles.specValueMac}>{dev.mac_address}</Text></View></View>
-              <View style={styles.subnetFooter}><View style={styles.subnetTag}><Feather name="layers" size={12} color="#BF5AF2" /><Text style={styles.subnetTagText} numberOfLines={1}>{dev.subnet_name || 'VLAN Asignada'}</Text></View><Text style={styles.networkSubtag} numberOfLines={1}>{dev.network_name || 'Red Central'}</Text></View>
-            </BlurView>); })}
-          {filteredDevices.length === 0 && <Text style={styles.emptyText}>No se encontraron dispositivos con ese criterio.</Text>}
+          <View style={styles.deviceList}>
+            {filteredDevices.map((dev) => { const icon = getDeviceIcon(dev.name); return (
+              <BlurView key={dev.id} intensity={30} tint="dark" style={[styles.deviceCard, { width: cardWidth }]}>
+                <View style={styles.cardHeaderRow}>
+                  <View style={styles.deviceIconWrapper}><Feather name={icon} size={19} color="#0A84FF" /></View>
+                  <View style={styles.deviceTitleBlock}>
+                    <View style={styles.titleWithStatus}><Text style={styles.deviceName} numberOfLines={1}>{dev.name}</Text><View style={styles.statusDot} /></View>
+                    <Text style={styles.manufacturerText} numberOfLines={1}>{dev.manufacturer} • {dev.location}</Text>
+                  </View>
+                  <TouchableOpacity style={styles.deleteButton} activeOpacity={0.7} onPress={() => handleDeleteDevice(dev.id)}>
+                    <Feather name="trash-2" size={15} color="rgba(255, 69, 58, 0.7)" />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.specsContainer}>
+                  <View style={styles.specBadge}><Text style={styles.specLabel}>IPv4</Text><Text style={styles.specValueIp} numberOfLines={1}>{dev.ipv4_address}</Text></View>
+                  <View style={styles.specBadge}><Text style={styles.specLabel}>MAC</Text><Text style={styles.specValueMac} numberOfLines={1}>{dev.mac_address}</Text></View>
+                </View>
+                <View style={styles.subnetFooter}>
+                  <View style={styles.subnetTag}><Feather name="layers" size={12} color="#BF5AF2" /><Text style={styles.subnetTagText} numberOfLines={1}>{dev.subnet_name || 'VLAN Asignada'}</Text></View>
+                  <Text style={styles.networkSubtag} numberOfLines={1}>{dev.network_name || 'Red Central'}</Text>
+                </View>
+              </BlurView>); })}
+            {filteredDevices.length === 0 && <Text style={styles.emptyText}>No se encontraron dispositivos con ese criterio.</Text>}
+          </View>
         </View>
 
         {/* Modal Registrar Nuevo Dispositivo */}
@@ -306,7 +334,7 @@ export default function DeviceListScreen() {
           />
           {fieldErrors.name && <Text style={styles.fieldErrorText}>{fieldErrors.name}</Text>}
           
-          <View style={styles.formRow}>
+          <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>Dirección IPv4 *</Text>
               <TextInput 
@@ -336,7 +364,7 @@ export default function DeviceListScreen() {
             </View>
           </View>
 
-          <View style={styles.formRow}>
+          <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>Fabricante / Marca</Text>
               <TextInput placeholder="ej. Cisco / Ubiquiti" placeholderTextColor="rgba(255, 255, 255, 0.25)" style={styles.input} value={devBrand} onChangeText={setDevBrand} />
@@ -347,7 +375,7 @@ export default function DeviceListScreen() {
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 4 }}>
             <Text style={styles.inputLabel}>Edificio / Ubicación Física *</Text>
             <TouchableOpacity onPress={handleOpenNewBuildingModal} activeOpacity={0.7} style={styles.addBldSmallBtn}>
               <Feather name="plus" size={12} color="#0A84FF" />
@@ -362,7 +390,7 @@ export default function DeviceListScreen() {
             ))}
           </View>
 
-          <View style={styles.formRow}>
+          <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>Latitud GPS</Text>
               <TextInput 
@@ -437,7 +465,7 @@ export default function DeviceListScreen() {
           <Text style={styles.inputLabel}>Código Corto *</Text>
           <TextInput placeholder="ej. EDIF-D" placeholderTextColor="rgba(255, 255, 255, 0.25)" autoCapitalize="characters" style={styles.input} value={newBldCode} onChangeText={setNewBldCode} />
           
-          <View style={styles.formRow}>
+          <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>Latitud *</Text>
               <TextInput placeholder="19.4326" placeholderTextColor="rgba(255, 255, 255, 0.25)" style={styles.input} value={newBldLat} onChangeText={setNewBldLat} />
@@ -470,57 +498,60 @@ export default function DeviceListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 }, scrollContent: { paddingTop: 55, paddingBottom: 120 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  headerBadge: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#30D158', letterSpacing: 1.5, marginBottom: 2 },
-  headerTitle: { fontFamily: 'Poppins_700Bold', fontSize: 28, color: '#FFFFFF', letterSpacing: 0.3 },
-  headerSubtitle: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: 'rgba(255, 255, 255, 0.45)', marginTop: 2 },
-  addButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14, gap: 6 },
-  addButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 13, color: '#000000' },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 16, gap: 10 },
+  container: { flex: 1 },
+  scrollContent: { paddingTop: 45, paddingBottom: 110 },
+  innerWrapper: { maxWidth: 1200, width: '100%', alignSelf: 'center' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 },
+  headerBadge: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#30D158', letterSpacing: 1.5, marginBottom: 2 },
+  headerTitle: { fontFamily: 'Poppins_700Bold', fontSize: 26, color: '#FFFFFF', letterSpacing: 0.3 },
+  headerSubtitle: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: 'rgba(255, 255, 255, 0.45)', marginTop: 2 },
+  addButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, gap: 5 },
+  addButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 12.5, color: '#000000' },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 14, gap: 10 },
   searchInput: { flex: 1, fontFamily: 'Poppins_400Regular', color: '#FFFFFF', fontSize: 13, ...Platform.select({ web: { outlineStyle: 'none' } }) as any },
-  categoriesContainer: { gap: 10, marginBottom: 20, paddingVertical: 4 },
-  categoryChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)' },
+  categoriesContainer: { gap: 8, marginBottom: 18, paddingVertical: 4 },
+  categoryChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)' },
   categoryChipActive: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
-  categoryChipText: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: 'rgba(255, 255, 255, 0.7)' },
+  categoryChipText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.7)' },
   categoryChipTextActive: { color: '#000000' },
-  emptyText: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: 'rgba(255, 255, 255, 0.4)', fontStyle: 'italic', paddingVertical: 16, textAlign: 'center' },
-  deviceList: { gap: 16 },
-  deviceCard: { padding: 18, borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
-  cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-  deviceIconWrapper: { width: 42, height: 42, borderRadius: 12, backgroundColor: 'rgba(10, 132, 255, 0.12)', borderWidth: 1, borderColor: 'rgba(10, 132, 255, 0.25)', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
-  deviceTitleBlock: { flex: 1 }, titleWithStatus: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  deviceName: { fontFamily: 'Poppins_700Bold', fontSize: 16, color: '#FFFFFF' },
-  statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#30D158' },
-  manufacturerText: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: 'rgba(255, 255, 255, 0.45)', marginTop: 1 },
-  deleteButton: { padding: 6 },
-  specsContainer: { flexDirection: 'row', gap: 10, marginBottom: 14 },
-  specBadge: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, gap: 8 },
-  specLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 10, color: 'rgba(255, 255, 255, 0.4)' },
-  specValueIp: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: '#0A84FF' },
-  specValueMac: { fontFamily: 'Poppins_400Regular', fontSize: 11, color: '#FFFFFF', letterSpacing: 0.5 },
-  subnetFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, borderTopWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' },
-  subnetTag: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: '65%' },
-  subnetTagText: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: '#BF5AF2' },
-  networkSubtag: { fontFamily: 'Poppins_400Regular', fontSize: 11, color: 'rgba(255, 255, 255, 0.35)', maxWidth: '35%' },
-  inputLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: 'rgba(255, 255, 255, 0.7)', marginBottom: 6 },
-  input: { fontFamily: 'Poppins_400Regular', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderRadius: 14, padding: 14, color: '#FFFFFF', fontSize: 14, marginBottom: 14, ...Platform.select({ web: { outlineStyle: 'none' } }) as any },
+  emptyText: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: 'rgba(255, 255, 255, 0.4)', fontStyle: 'italic', paddingVertical: 16, textAlign: 'center', width: '100%' },
+  deviceList: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  deviceCard: { padding: 16, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
+  cardHeaderRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  deviceIconWrapper: { width: 38, height: 38, borderRadius: 11, backgroundColor: 'rgba(10, 132, 255, 0.12)', borderWidth: 1, borderColor: 'rgba(10, 132, 255, 0.25)', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  deviceTitleBlock: { flex: 1 },
+  titleWithStatus: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  deviceName: { fontFamily: 'Poppins_700Bold', fontSize: 14.5, color: '#FFFFFF' },
+  statusDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#30D158' },
+  manufacturerText: { fontFamily: 'Poppins_400Regular', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.45)', marginTop: 1 },
+  deleteButton: { padding: 5 },
+  specsContainer: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+  specBadge: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, gap: 6 },
+  specLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 9.5, color: 'rgba(255, 255, 255, 0.4)' },
+  specValueIp: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: '#0A84FF', flex: 1 },
+  specValueMac: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, color: '#FFFFFF', letterSpacing: 0.5, flex: 1 },
+  subnetFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTopWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' },
+  subnetTag: { flexDirection: 'row', alignItems: 'center', gap: 5, maxWidth: '65%' },
+  subnetTagText: { fontFamily: 'Poppins_400Regular', fontSize: 11.5, color: '#BF5AF2' },
+  networkSubtag: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, color: 'rgba(255, 255, 255, 0.35)', maxWidth: '35%' },
+  inputLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.7)', marginBottom: 5 },
+  input: { fontFamily: 'Poppins_400Regular', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderRadius: 13, padding: 12, color: '#FFFFFF', fontSize: 13.5, marginBottom: 12, ...Platform.select({ web: { outlineStyle: 'none' } }) as any },
   inputError: { borderColor: '#FF453A', backgroundColor: 'rgba(255, 69, 58, 0.06)' },
-  fieldErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 11, color: '#FF453A', marginTop: -10, marginBottom: 12, marginLeft: 4 },
-  modalErrorContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 69, 58, 0.12)', borderWidth: 1, borderColor: 'rgba(255, 69, 58, 0.3)', borderRadius: 12, padding: 12, marginBottom: 16, gap: 8 },
-  modalErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: '#FF453A', flex: 1 },
-  formRow: { flexDirection: 'row', gap: 12 },
-  buildingSelector: { flexDirection: 'row', gap: 8, marginBottom: 14, flexWrap: 'wrap' },
-  addBldSmallBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 2, paddingHorizontal: 6 },
-  addBldSmallBtnText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#0A84FF' },
-  buildingOption: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', alignItems: 'center' },
+  fieldErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, color: '#FF453A', marginTop: -8, marginBottom: 10, marginLeft: 4 },
+  modalErrorContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 69, 58, 0.12)', borderWidth: 1, borderColor: 'rgba(255, 69, 58, 0.3)', borderRadius: 11, padding: 10, marginBottom: 14, gap: 8 },
+  modalErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: '#FF453A', flex: 1 },
+  formRow: { flexDirection: 'row', gap: 10 },
+  buildingSelector: { flexDirection: 'row', gap: 6, marginBottom: 12, flexWrap: 'wrap' },
+  addBldSmallBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 2, paddingHorizontal: 4 },
+  addBldSmallBtnText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#0A84FF' },
+  buildingOption: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 9, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', alignItems: 'center' },
   buildingOptionActive: { backgroundColor: 'rgba(10, 132, 255, 0.2)', borderColor: '#0A84FF' },
-  buildingOptionText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: 'rgba(255, 255, 255, 0.6)' },
+  buildingOptionText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: 'rgba(255, 255, 255, 0.6)' },
   buildingOptionTextActive: { color: '#0A84FF' },
-  subnetOption: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', alignItems: 'center', marginRight: 8 },
+  subnetOption: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 9, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', alignItems: 'center', marginRight: 6 },
   subnetOptionActive: { backgroundColor: 'rgba(191, 90, 242, 0.2)', borderColor: '#BF5AF2' },
-  subnetOptionText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#FFFFFF' },
-  textArea: { height: 60, textAlignVertical: 'top' },
-  modalSubmitButton: { backgroundColor: '#FFFFFF', paddingVertical: 15, borderRadius: 14, alignItems: 'center', marginTop: 10 },
-  modalSubmitButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 14, color: '#000000' },
+  subnetOptionText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#FFFFFF' },
+  textArea: { height: 55, textAlignVertical: 'top' },
+  modalSubmitButton: { backgroundColor: '#FFFFFF', paddingVertical: 14, borderRadius: 13, alignItems: 'center', marginTop: 8 },
+  modalSubmitButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 13.5, color: '#000000' },
 });

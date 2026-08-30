@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Platform, DimensionValue } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { Device, Building } from '../../types';
 
 interface MapProps {
@@ -469,7 +470,17 @@ export function Map({
 
   return (
     <View style={[styles.container, { height }]}>
-      <View style={styles.nativeFallback} />
+      <WebView
+        originWhitelist={['*']}
+        source={{ html: mapHtml }}
+        style={styles.webView}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        scalesPageToFit={true}
+        scrollEnabled={false}
+        showsHorizontalScrollIndicator={false}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 }
@@ -483,7 +494,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.1)',
     backgroundColor: '#0b0b0e',
   },
-  nativeFallback: {
+  webView: {
     flex: 1,
     backgroundColor: '#0b0b0e',
   },

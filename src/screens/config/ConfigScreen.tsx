@@ -20,6 +20,7 @@ import { DeviceConfig, Device } from '../../types';
 
 export default function ConfigScreen() {
   const { width } = useWindowDimensions();
+  const isTablet = width > 768;
   const isDesktop = width > 900;
   const navigation = useNavigation<any>();
 
@@ -314,6 +315,8 @@ export default function ConfigScreen() {
 
   const lineCount = configContent ? configContent.split('\n').length : 1;
 
+  const isSmallMobile = width < 380;
+
   return (
     <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
       {/* Input oculto para carga de archivos en Web */}
@@ -330,48 +333,49 @@ export default function ConfigScreen() {
       <ScrollView 
         contentContainerStyle={[
           styles.scrollContent, 
-          { paddingHorizontal: isDesktop ? '6%' : '4%' }
+          { paddingHorizontal: isDesktop ? '6%' : isTablet ? '4%' : 16 }
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View>
-            <Text style={styles.headerBadge}>HISTORIAL & BACKUPS DE EQUIPOS</Text>
-            <Text style={styles.headerTitle}>Configuraciones</Text>
-            <Text style={styles.headerSubtitle}>
-              Almacena, visualiza y edita scripts de configuración en tiempo real desde la base de datos
-            </Text>
+        <View style={styles.innerWrapper}>
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={{ flex: 1, minWidth: 200 }}>
+              <Text style={styles.headerBadge}>HISTORIAL & BACKUPS DE EQUIPOS</Text>
+              <Text style={[styles.headerTitle, isSmallMobile && { fontSize: 22 }]}>Configuraciones</Text>
+              <Text style={styles.headerSubtitle}>
+                Almacena, visualiza y edita scripts de configuración en tiempo real desde la base de datos
+              </Text>
+            </View>
+
+            {/* Botón Nuevo en Blanco */}
+            <TouchableOpacity 
+              style={styles.newConfigBtn} 
+              activeOpacity={0.8}
+              onPress={handleClearEditor}
+            >
+              <Feather name="file-plus" size={15} color="#FFFFFF" />
+              <Text style={styles.newConfigBtnText}>Nuevo Script</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Botón Nuevo en Blanco */}
-          <TouchableOpacity 
-            style={styles.newConfigBtn} 
-            activeOpacity={0.8}
-            onPress={handleClearEditor}
-          >
-            <Feather name="file-plus" size={16} color="#FFFFFF" />
-            <Text style={styles.newConfigBtnText}>Nuevo Script</Text>
-          </TouchableOpacity>
-        </View>
+          {/* Notificación flotante de estado */}
+          {statusMsg && (
+            <View style={[
+              styles.toastBanner, 
+              statusMsg.type === 'error' ? styles.toastError : styles.toastSuccess
+            ]}>
+              <Feather 
+                name={statusMsg.type === 'error' ? 'alert-circle' : 'check-circle'} 
+                size={16} 
+                color={statusMsg.type === 'error' ? '#FF453A' : '#30D158'} 
+              />
+              <Text style={styles.toastText}>{statusMsg.text}</Text>
+            </View>
+          )}
 
-        {/* Notificación flotante de estado */}
-        {statusMsg && (
-          <View style={[
-            styles.toastBanner, 
-            statusMsg.type === 'error' ? styles.toastError : styles.toastSuccess
-          ]}>
-            <Feather 
-              name={statusMsg.type === 'error' ? 'alert-circle' : 'check-circle'} 
-              size={16} 
-              color={statusMsg.type === 'error' ? '#FF453A' : '#30D158'} 
-            />
-            <Text style={styles.toastText}>{statusMsg.text}</Text>
-          </View>
-        )}
-
-        {/* Layout 2 Columnas */}
-        <View style={[styles.mainLayout, isDesktop && styles.mainLayoutDesktop]}>
+          {/* Layout 2 Columnas */}
+          <View style={[styles.mainLayout, isDesktop && styles.mainLayoutDesktop]}>
           
           {/* COLUMNA IZQUIERDA: Formulario de Carga y Lista de Backups */}
           <View style={[styles.leftColumn, isDesktop && styles.leftColumnDesktop]}>
@@ -772,6 +776,7 @@ export default function ConfigScreen() {
           </View>
 
         </View>
+        </View>
       </ScrollView>
     </LinearGradient>
   );
@@ -782,16 +787,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingTop: 50,
-    paddingBottom: 120,
+    paddingTop: 45,
+    paddingBottom: 110,
+  },
+  innerWrapper: {
+    maxWidth: 1280,
+    width: '100%',
+    alignSelf: 'center',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 20,
+    marginBottom: 18,
     flexWrap: 'wrap',
-    gap: 12,
+    gap: 10,
   },
   headerBadge: {
     fontFamily: 'Poppins_600SemiBold',

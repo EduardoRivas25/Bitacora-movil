@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Dimensions, Animated, Platform, useWindowDimensions } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Animated, Platform, useWindowDimensions } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
@@ -18,9 +18,15 @@ const TAB_COUNT = 7;
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const { width } = useWindowDimensions();
+  const isSmallMobile = width < 380;
+  const isDesktop = width > 1024;
+  
   // Ancho responsivo centrado: en móvil toma el ancho disponible con margen, en escritorio se expande hasta 580px
-  const effectiveWidth = Math.min(width - 20, 580);
+  const horizontalMargin = isSmallMobile ? 12 : 20;
+  const effectiveWidth = Math.min(width - horizontalMargin, isDesktop ? 620 : 580);
   const TAB_WIDTH = effectiveWidth / TAB_COUNT;
+  const indicatorSize = Math.min(42, Math.max(34, TAB_WIDTH - 4));
+  const iconSize = TAB_WIDTH < 48 ? 16 : 19;
 
   // Inicializamos el valor animado en el índice de la pantalla actual
   const animatedValue = useRef(new Animated.Value(state.index)).current;
@@ -54,7 +60,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             { width: TAB_WIDTH, transform: [{ translateX: indicatorPosition }] }
           ]}
         >
-          <View style={styles.circularIndicator} />
+          <View style={[styles.circularIndicator, { width: indicatorSize, height: indicatorSize, borderRadius: indicatorSize / 2 }]} />
         </Animated.View>
 
         {/* Botones interactivos */}
@@ -93,7 +99,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             >
               <Feather 
                 name={iconName} 
-                size={19} 
+                size={iconSize} 
                 color={isFocused ? '#000000' : 'rgba(255, 255, 255, 0.4)'} 
               />
             </TouchableOpacity>
@@ -124,9 +130,9 @@ export default function BottomTabNavigator() {
 const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 30 : 20,
-    height: 72,
-    borderRadius: 36,
+    bottom: Platform.OS === 'ios' ? 26 : 18,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: 'transparent',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
@@ -136,7 +142,7 @@ const styles = StyleSheet.create({
   },
   blurBackground: {
     ...StyleSheet.absoluteFill,
-    borderRadius: 36,
+    borderRadius: 34,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.08)',
@@ -162,9 +168,6 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   circularIndicator: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
     backgroundColor: '#FFFFFF',
     shadowColor: '#FFF',
     shadowOffset: { width: 0, height: 0 },

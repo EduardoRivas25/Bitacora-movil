@@ -114,6 +114,8 @@ export default function LoginScreen() {
     setFieldErrors({});
   };
 
+  const isSmallMobile = width < 380;
+
   return (
     <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
       <ScrollView 
@@ -124,9 +126,16 @@ export default function LoginScreen() {
         <BlurView 
           intensity={30} 
           tint="dark" 
-          style={[styles.glassCard, { width: isTablet ? 430 : '90%', maxWidth: 450 }]}
+          style={[
+            styles.glassCard, 
+            { 
+              width: isTablet ? 440 : isSmallMobile ? '94%' : '90%', 
+              maxWidth: 460,
+              padding: isSmallMobile ? 22 : 32 
+            }
+          ]}
         >
-          <Text style={styles.title}>
+          <Text style={[styles.title, isSmallMobile && { fontSize: 22, lineHeight: 28 }]}>
             {isRegister ? 'Crear Cuenta en\nBitácora Digital' : 'Bienvenido a\nBitácora Digital'}
           </Text>
           

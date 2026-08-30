@@ -29,8 +29,10 @@ export default function GlassModal({
   subtitle,
   children,
 }: GlassModalProps) {
-  const { width } = useWindowDimensions();
-  const isTablet = width > 768;
+  const { width, height } = useWindowDimensions();
+  const isTablet = width >= 768;
+  const isSmallMobile = width < 380;
+  const modalWidth = isTablet ? 560 : isSmallMobile ? '96%' : '92%';
 
   return (
     <Modal
@@ -47,14 +49,14 @@ export default function GlassModal({
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={[
             styles.modalWrapper, 
-            { width: isTablet ? 520 : '92%', maxWidth: 540 }
+            { width: modalWidth, maxWidth: 580, maxHeight: height * 0.88 }
           ]}
         >
           <BlurView intensity={70} tint="dark" style={styles.modalContent}>
             {/* Header fijo */}
-            <View style={styles.header}>
+            <View style={[styles.header, isSmallMobile && { paddingHorizontal: 16, paddingTop: 18 }]}>
               <View style={styles.headerTitles}>
-                <Text style={styles.title}>{title}</Text>
+                <Text style={[styles.title, isSmallMobile && { fontSize: 18 }]}>{title}</Text>
                 {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
               </View>
               <TouchableOpacity 
@@ -62,13 +64,13 @@ export default function GlassModal({
                 onPress={onClose}
                 activeOpacity={0.7}
               >
-                <Feather name="x" size={20} color="rgba(255, 255, 255, 0.7)" />
+                <Feather name="x" size={18} color="rgba(255, 255, 255, 0.7)" />
               </TouchableOpacity>
             </View>
 
             {/* Scrollable Body */}
             <ScrollView 
-              style={styles.scrollView}
+              style={[styles.scrollView, isSmallMobile && { paddingHorizontal: 16 }]}
               contentContainerStyle={styles.scrollBody}
               showsVerticalScrollIndicator={true}
               keyboardShouldPersistTaps="handled"
@@ -86,18 +88,17 @@ export default function GlassModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    backgroundColor: 'rgba(0, 0, 0, 0.78)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
   },
   modalWrapper: {
-    borderRadius: 28,
+    borderRadius: 26,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
-    maxHeight: '85%',
-    backgroundColor: 'rgba(15, 15, 15, 0.9)',
+    backgroundColor: 'rgba(15, 15, 18, 0.95)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.6,
@@ -113,8 +114,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingHorizontal: 22,
+    paddingTop: 22,
     paddingBottom: 14,
     borderBottomWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.06)',
@@ -130,20 +131,20 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontFamily: 'Poppins_400Regular',
-    fontSize: 13,
+    fontSize: 12.5,
     color: 'rgba(255, 255, 255, 0.5)',
     marginTop: 2,
   },
   closeButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   scrollView: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
     paddingTop: 16,
     flexGrow: 0,
     flexShrink: 1,
