@@ -25,7 +25,7 @@
 | **Proyecto** | Bitácora Digital de Administración de Redes |
 | **Semestre** | 9° Semestre |
 | **Fecha** | Agosto 2026 |
-| **Institución** | <Instituto Tecnologico Superior de Uruapan |
+| **Institución** | Instituto Tecnologico Superior de Uruapan |
 
 ### 👥 Integrantes del Equipo
 
