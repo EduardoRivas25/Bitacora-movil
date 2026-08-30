@@ -50,13 +50,12 @@ export default function MapScreen() {
       const [devs, blds] = await Promise.all([api.fetchDevices(isSilent), api.fetchBuildings(isSilent)]);
       setDevices(devs);
       setBuildings(blds);
-      if (devs.length > 0 && !selectedDevice) setSelectedDevice(devs[0]);
     } catch (err) {
       console.error('Error cargando datos para mapa:', err);
     } finally {
       setLoading(false);
     }
-  }, [selectedDevice, devices.length, buildings.length]);
+  }, [devices.length, buildings.length]);
 
   useFocusEffect(useCallback(() => { loadData(true); }, [loadData]));
 
@@ -156,6 +155,19 @@ export default function MapScreen() {
           <Text style={styles.headerTitle}>Mapa de Red</Text>
         </View>
         <View style={styles.headerActions}>
+          {(selectedBuilding || selectedDevice) && (
+            <TouchableOpacity 
+              style={styles.resetViewBtn} 
+              activeOpacity={0.8} 
+              onPress={() => {
+                setSelectedBuilding(null);
+                setSelectedDevice(null);
+              }}
+            >
+              <Feather name="maximize-2" size={13} color="#0A84FF" />
+              <Text style={styles.resetViewBtnText}>Ver Todos</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.addBuildingBtn} activeOpacity={0.8} onPress={handleOpenAddBuilding}>
             <Feather name="plus" size={14} color="#000000" />
             <Text style={styles.addBuildingBtnText}>Nuevo Edificio</Text>
@@ -170,10 +182,21 @@ export default function MapScreen() {
       <View style={[styles.mainLayout, isTablet && styles.mainLayoutTablet]}>
         <View style={[styles.mapContainer, isTablet && styles.mapContainerTablet]}>
           <Map
+            center={
+              selectedBuilding
+                ? [selectedBuilding.latitude, selectedBuilding.longitude]
+                : (selectedDevice?.latitude && selectedDevice?.longitude)
+                  ? [selectedDevice.latitude, selectedDevice.longitude]
+                  : undefined
+            }
+            zoom={selectedBuilding || selectedDevice ? 18 : 16}
             devices={devices}
             buildings={buildings}
             selectedDeviceId={selectedDevice?.id}
-            onSelectDevice={(d) => setSelectedDevice(d)}
+            onSelectDevice={(d) => {
+              setSelectedDevice(d);
+              setSelectedBuilding(null);
+            }}
             height="100%"
           />
         </View>
@@ -215,7 +238,10 @@ export default function MapScreen() {
                     key={dev.id}
                     style={[styles.deviceItem, isSelected && styles.deviceItemActive]}
                     activeOpacity={0.7}
-                    onPress={() => setSelectedDevice(dev)}
+                    onPress={() => {
+                      setSelectedDevice(dev);
+                      setSelectedBuilding(null);
+                    }}
                   >
                     <View style={[styles.colorDot, { backgroundColor: color }]} />
                     <View style={styles.deviceInfo}>
@@ -239,7 +265,10 @@ export default function MapScreen() {
                     key={bld.id}
                     style={[styles.buildingCardItem, isSelected && styles.buildingCardItemActive]}
                     activeOpacity={0.7}
-                    onPress={() => setSelectedBuilding(bld)}
+                    onPress={() => {
+                      setSelectedBuilding(bld);
+                      setSelectedDevice(null);
+                    }}
                   >
                     <View style={styles.bldTop}>
                       <View style={styles.bldBadge}>
@@ -403,7 +432,9 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: '5%', paddingTop: 45, paddingBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerBadge: { fontFamily: 'Poppins_600SemiBold', fontSize: 10, color: '#30D158', letterSpacing: 1.5 },
   headerTitle: { fontFamily: 'Poppins_700Bold', fontSize: 22, color: '#FFFFFF', lineHeight: 28 },
-  headerActions: { alignItems: 'flex-end', gap: 6 },
+  headerActions: { alignItems: 'flex-end', gap: 6, flexDirection: 'row' },
+  resetViewBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(10, 132, 255, 0.15)', borderWidth: 1, borderColor: 'rgba(10, 132, 255, 0.35)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, gap: 5 },
+  resetViewBtnText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#0A84FF' },
   addBuildingBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, gap: 5 },
   addBuildingBtnText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#000000' },
   counterBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(10, 132, 255, 0.12)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(10, 132, 255, 0.25)' },
