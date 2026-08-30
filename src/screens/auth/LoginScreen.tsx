@@ -7,12 +7,17 @@ import {
   useWindowDimensions, 
   Platform, 
   View, 
-  ScrollView 
+  ScrollView,
+  Image
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { Feather, Ionicons } from '@expo/vector-icons';
+
+const APP_LOGO = Platform.OS === 'web'
+  ? require('../../../assets/logobitacoraredes.webp')
+  : require('../../../assets/logobitacoraredes.png');
 
 export default function LoginScreen() {
   const { width } = useWindowDimensions();
@@ -68,11 +73,9 @@ export default function LoginScreen() {
           </Text>
           
           <View style={styles.navIconContainer}>
-            <Feather 
-              name={isRegister ? "user-plus" : "navigation"} 
-              size={28} 
-              color="rgba(255, 255, 255, 0.4)" 
-            />
+            <View style={styles.logoBadge}>
+              <Image source={APP_LOGO} style={styles.logoImage} resizeMode="contain" />
+            </View>
           </View>
 
           {/* Campo Nombre (solo en registro) */}
@@ -241,7 +244,22 @@ const styles = StyleSheet.create({
   },
   navIconContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 26,
+  },
+  logoBadge: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   input: {
     fontFamily: 'Poppins_400Regular',
