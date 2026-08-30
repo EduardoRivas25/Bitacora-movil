@@ -32,7 +32,7 @@
 | # | Nombre | GitHub |
 |---|--------|--------|
 | 1 | Juan Eduardo Rojas Rivas | [@usuario1](https://github.com/EduardoRivas25) |
-| 2 | <!-- Nombre del integrante 2 --> | [@usuario2](https://github.com/usuario2) |
+| 2 | Juan Manuel Moreno Garcia | [@juanitoelorigi](https://github.com/juanitoelorigi) |
 | 3 | <!-- Nombre del integrante 3 --> | [@usuario3](https://github.com/usuario3) |
 
 ---
