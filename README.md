@@ -35,7 +35,8 @@
 | 1 | Juan Eduardo Rojas Rivas | [@EduardoRivas25](https://github.com/EduardoRivas25) |
 | 2 | Juan Manuel Moreno Garcia | [@juanitoelorigi](https://github.com/juanitoelorigi) |
 | 3 | Guadalupe Jazmin Becerra Morales | [@JazBM21](https://github.com/JazBM21) |
-| 4 | <!-- Nombre del integrante 4 --> | [@usuario4](https://github.com/usuario3) |
+| 4 | German Jafet Orozco Rios | [@Itachi1902a](https://github.com/Itachi1902a) |
+| 5 | <!-- Nombre del integrante 5 --> | [@usuario5](https://github.com/usuario3) |
 
 ---
 
