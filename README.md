@@ -22,6 +22,7 @@
 | Campo | Detalle |
 |-------|---------|
 | **Asignatura** | Administración de Redes |
+| **Docente** | M.B.A. Jonathan Zacek Alcazar Jurado |
 | **Proyecto** | Bitácora Digital de Administración de Redes |
 | **Semestre** | 9° Semestre |
 | **Fecha** | Agosto 2026 |
@@ -33,7 +34,8 @@
 |---|--------|--------|
 | 1 | Juan Eduardo Rojas Rivas | [@EduardoRivas25](https://github.com/EduardoRivas25) |
 | 2 | Juan Manuel Moreno Garcia | [@juanitoelorigi](https://github.com/juanitoelorigi) |
-| 3 | <!-- Nombre del integrante 3 --> | [@usuario3](https://github.com/usuario3) |
+| 3 | Guadalupe Jazmin Becerra Morales | [@JazBM21](https://github.com/JazBM21) |
+| 4 | <!-- Nombre del integrante 4 --> | [@usuario4](https://github.com/usuario3) |
 
 ---
 
