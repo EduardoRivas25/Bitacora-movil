@@ -241,7 +241,7 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <!-- Captura de lista de subredes -->
 <p align="center">
-  <img src="./capturas/listar-subredes.png" alt="Lista de Subredes" width="300"/>
+  <img src="./capturas/Lista_Subredes.png" alt="Lista de Subredes" width="300"/>
 </p>
 
 <p align="center"><em>Subredes asociadas a una red específica</em></p>
