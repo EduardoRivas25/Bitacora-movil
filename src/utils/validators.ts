@@ -16,7 +16,7 @@ export interface ValidationResult {
  */
 export function validateEmail(email: string): ValidationResult {
   if (!email || !email.trim()) {
-    return { valid: false, error: 'El correo electrónico es obligatorio.' };
+    return { valid: false, error: 'El campo de correo no puede estar vacío.' };
   }
 
   const clean = email.trim();
@@ -24,7 +24,7 @@ export function validateEmail(email: string): ValidationResult {
   if (!clean.includes('@')) {
     return {
       valid: false,
-      error: 'El correo debe incluir el carácter "@" (ej. usuario@dominio.com).',
+      error: 'Falta el arroba (@) en la dirección introducida (ej. usuario@dominio.com).',
     };
   }
 
@@ -32,7 +32,7 @@ export function validateEmail(email: string): ValidationResult {
   if (parts.length !== 2 || !parts[0] || !parts[1]) {
     return {
       valid: false,
-      error: 'Formato de correo incompleto (ej. usuario@dominio.com).',
+      error: 'Asegúrate de incluir un usuario y un dominio válidos (ej. usuario@dominio.com).',
     };
   }
 
@@ -40,7 +40,7 @@ export function validateEmail(email: string): ValidationResult {
   if (!domain.includes('.') || domain.startsWith('.') || domain.endsWith('.')) {
     return {
       valid: false,
-      error: 'El dominio del correo debe tener una extensión válida (ej. .com, .net, .edu).',
+      error: 'El formato de la extensión (.com, .org, etc.) es incorrecto.',
     };
   }
 
@@ -49,7 +49,7 @@ export function validateEmail(email: string): ValidationResult {
   if (!emailRegex.test(clean)) {
     return {
       valid: false,
-      error: 'El correo contiene caracteres no permitidos o formato inválido.',
+      error: 'Dirección de correo no válida. Revisa los caracteres ingresados.',
     };
   }
 
@@ -88,7 +88,7 @@ export function validateIPv4(ip: string): ValidationResult {
   if (octets.length !== 4) {
     return {
       valid: false,
-      error: `La dirección IPv4 debe tener exactamente 4 octetos separados por puntos (tiene ${octets.length}). Ej: 192.168.1.1`,
+      error: `Estructura IPv4 inválida. Se requieren 4 segmentos separados por puntos (tiene ${octets.length}). Ej: 192.168.1.1`,
     };
   }
 
@@ -121,7 +121,7 @@ export function validateIPv4(ip: string): ValidationResult {
     if (num < 0 || num > 255) {
       return {
         valid: false,
-        error: `El octeto #${i + 1} (${num}) está fuera de rango. Debe estar entre 0 y 255.`,
+        error: `El octeto #${i + 1} (${num}) es un valor fuera de límite permitido (0-255) en segmento.`,
       };
     }
   }
@@ -138,12 +138,12 @@ export function validateCIDR(
   max = 32
 ): ValidationResult {
   if (cidr === undefined || cidr === null || cidr === '') {
-    return { valid: false, error: 'El valor CIDR es obligatorio.' };
+    return { valid: false, error: 'El parámetro CIDR no puede estar vacío.' };
   }
 
   const str = String(cidr).trim();
   if (!/^\d+$/.test(str)) {
-    return { valid: false, error: 'El CIDR debe ser un número entero (ej. 24).' };
+    return { valid: false, error: 'La máscara CIDR debe contener solo números enteros (ej. /24).' };
   }
 
   const num = parseInt(str, 10);
@@ -325,14 +325,14 @@ export function validateGPS(lat: string | number, lng: string | number): Validat
   if (isNaN(latNum) || latNum < -90 || latNum > 90) {
     return {
       valid: false,
-      error: 'La latitud debe ser un valor numérico entre -90 y 90 (ej. 19.4326).',
+      error: 'La latitud debe estar en el rango de -90 a 90 grados.',
     };
   }
 
   if (isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
     return {
       valid: false,
-      error: 'La longitud debe ser un valor numérico entre -180 y 180 (ej. -99.1332).',
+      error: 'La longitud debe estar en el rango de -180 a 180 grados.',
     };
   }
 
