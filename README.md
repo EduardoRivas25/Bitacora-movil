@@ -232,7 +232,7 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <!-- Captura de crear subred -->
 <p align="center">
-  <img src="./capturas/crear-subred.png" alt="Crear Subred" width="300"/>
+  <img src="./capturas/Crear_Subred.png" alt="Crear Subred" width="300"/>
 </p>
 
 <p align="center"><em>Creación de subred con validación de que pertenezca a la red padre</em></p>
@@ -259,7 +259,7 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <!-- Captura de eliminar subred -->
 <p align="center">
-  <img src="./capturas/eliminar-subred.png" alt="Eliminar Subred" width="300"/>
+  <img src="./capturas/Eliminar_Subred.png" alt="Eliminar Subred" width="300"/>
 </p>
 
 <p align="center"><em>Confirmación de eliminación de subred</em></p>
@@ -272,7 +272,7 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <!-- Captura de crear dispositivo -->
 <p align="center">
-  <img src="./capturas/crear-dispositivo.png" alt="Crear Dispositivo" width="300"/>
+  <img src="./capturas/Crear_Dispositivo.png" alt="Crear Dispositivo" width="300"/>
 </p>
 
 <p align="center"><em>Registro de nuevo dispositivo con validación de IPv4 y MAC (XX:XX:XX:XX:XX:XX)</em></p>
