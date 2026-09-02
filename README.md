@@ -464,6 +464,9 @@ Este proyecto fue desarrollado con fines académicos para la asignatura de Admin
 
 ---
 ## Conclusiones
+### Juan Eduardo Rojas
+
+Este proyecto fue una buena oportunidad para poner en práctica lo aprendido durante el curso. Con la aplicación logramos facilitar la administración y organización de redes, subredes y dispositivos, integrando herramientas como búsquedas, validaciones, mapas y un centro de control. También aprendimos la importancia del trabajo en equipo y de resolver los problemas que surgieron durante el desarrollo. Al final, conseguimos una aplicación funcional y útil para la gestión de redes.
 
 ### German Jafet Orozco Ríos 
 
