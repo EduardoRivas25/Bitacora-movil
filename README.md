@@ -290,7 +290,7 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <!-- Captura del detalle de dispositivo -->
 <p align="center">
-  <img src="./capturas/Detalle-Dispositivo.png" alt="Detalle Dispositivo" width="300"/>
+  <img src="./capturas/Detalle-Dispositivos.png" alt="Detalle Dispositivo" width="300"/>
 </p>
 
 <p align="center"><em>Información completa del dispositivo: nombre, dirección MAC, fabricante, ubicación, IPv4 y red/subred asociada</em></p>
