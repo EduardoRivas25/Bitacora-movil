@@ -277,15 +277,6 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <p align="center"><em>Información completa del dispositivo: nombre, dirección MAC, fabricante, ubicación, IPv4 y red/subred asociada</em></p>
 
-### Modificar Dispositivo
-
-<!-- Captura de editar dispositivo -->
-<p align="center">
-  <img src="./capturas/editar-dispositivo.png" alt="Editar Dispositivo" width="300"/>
-</p>
-
-<p align="center"><em>Edición de datos de un dispositivo registrado</em></p>
-
 ### Eliminar Dispositivo
 
 <!-- Captura de eliminar dispositivo -->
