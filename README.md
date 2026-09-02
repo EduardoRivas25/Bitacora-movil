@@ -281,7 +281,7 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <!-- Captura de lista de dispositivos -->
 <p align="center">
-  <img src="./capturas/listar-dispositivos.png" alt="Lista de Dispositivos" width="300"/>
+  <img src="./capturas/Lista_Dispositivos.png" alt="Lista de Dispositivos" width="300"/>
 </p>
 
 <p align="center"><em>Inventario completo de dispositivos con nombre, IP, MAC, fabricante y ubicación</em></p>
