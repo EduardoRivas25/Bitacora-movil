@@ -288,6 +288,78 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 ---
 
+## 📍 Evidencias del Mapa de Red y Localización GPS
+
+### Mapa de Red en Tiempo Real
+
+<!-- Captura del mapa de red -->
+<p align="center"> 
+  <img src="./capturas/mapa-red.png" alt="Mapa de Red" width="300"/> 
+</p> 
+
+<p align="center"><em>Visualización geográfica de edificios y equipos con localización GPS en tiempo real</em></p>
+
+### Registrar Edificio
+
+<!-- Captura de registrar edificio --> 
+<p align="center">
+  <img src="./capturas/registrar-edificio.png" alt="Registrar Edificio" width="300"/>
+</p> 
+
+<p align="center"><em>Registro de una nueva ubicación física con coordenadas GPS (latitud, longitud), código corto, departamento/área y piso/nivel</em></p>
+
+---
+## 🚨 Evidencias del Centro de Control (Incidentes & Mantenimiento)
+
+### Panel de Incidentes y Mantenimientos
+
+<!-- Captura del centro de control --> 
+<p align="center"> 
+  <img src="./capturas/centro-control.png" alt="Centro de Control" width="300"/>
+</p> 
+
+<p align="center"><em>Panel con incidentes activos y tareas programadas, filtrable por severidad (Crítico, Alto, Medio, Bajo, Resuelto)</em></p>
+
+### Reportar Incidente
+
+<!-- Captura de reportar incidente --> 
+<p align="center">
+  <img src="./capturas/reportar-incidente.png" alt="Reportar Incidente" width="300"/>
+</p> 
+
+<p align="center"><em>Formulario para registrar una falla o evento crítico, con selección de severidad y de los equipos afectados agrupados por edificio</em></p>
+
+### Agendar Mantenimiento
+<!-- Captura de agendar mantenimiento --> 
+<p align="center"> 
+  <img src="./capturas/agendar-mantenimiento.png" alt="Agendar Mantenimiento" width="300"/>
+</p>
+
+<p align="center"><em>Programación de tareas de mantenimiento preventivo o correctivo, con tipo, equipos afectados, ubicación, fecha y ventana horaria</em></p>
+
+---
+## 🗄️ Evidencias de Configuraciones (Historial & Backups de Equipos)
+
+### Cargar o Crear Configuración
+
+<!-- Captura de configuraciones --> 
+<p align="center">
+  <img src="./capturas/configuraciones.png" alt="Configuraciones" width="300"/>
+</p> 
+
+<p align="center"><em>Almacenamiento, visualización y edición de scripts de configuración en tiempo real, con carga de archivos (.txt, .cfg, .bak, .conf, .rsc, .sh) asociados a un dispositivo de la base de datos</em></p>
+
+### Backups Guardados
+
+<!-- Captura de backups --> 
+<p align="center"> 
+  <img src="./capturas/backups-guardados.png" alt="Backups Guardados" width="300"/> 
+</p> 
+
+<p align="center"><em>Historial de backups guardados en la base de datos, disponibles para consulta y restauración</em></p>
+
+---
+
 ## 🔍 Evidencias del Buscador
 
 ### Búsqueda por Nombre
