@@ -463,6 +463,11 @@ bitacora-redes/
 Este proyecto fue desarrollado con fines académicos para la asignatura de Administración de Redes.
 
 ---
+## Conclusiones
+
+### German Jafet Orozco Ríos 
+
+Este proyecto nos permitió poner en práctica lo aprendido en clase. Creamos una aplicación móvil funcional que facilita la gestión de redes, subredes y dispositivos. Logramos integrar validaciones, búsquedas, mapas y un centro de control en una sola herramienta. El trabajo en equipo fue clave para cumplir los objetivos. Al final, obtuvimos una solución útil y escalable para la administración de redes.
 
 <p align="center">
   Hecho con ❤️ por el equipo de desarrollo — Agosto 2026
