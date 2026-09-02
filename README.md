@@ -469,6 +469,8 @@ Este proyecto fue desarrollado con fines académicos para la asignatura de Admin
 
 Este proyecto nos permitió poner en práctica lo aprendido en clase. Creamos una aplicación móvil funcional que facilita la gestión de redes, subredes y dispositivos. Logramos integrar validaciones, búsquedas, mapas y un centro de control en una sola herramienta. El trabajo en equipo fue clave para cumplir los objetivos. Al final, obtuvimos una solución útil y escalable para la administración de redes.
 
+### Salvador Alejandro Lopez Duarte
+En el proyecto de la App movil y web permitio ver como se distribuyen las diferentes redes dentro de un area local mediante mascaras, switch y demas por lo que podemos decir que nos ayuda a una gran gestion y mejor control con las validaciones y busquedas de las redes
 <p align="center">
   Hecho con ❤️ por el equipo de desarrollo — Agosto 2026
 </p>
