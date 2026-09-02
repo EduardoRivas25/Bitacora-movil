@@ -478,6 +478,11 @@ En el proyecto de la App movil y web permitio ver como se distribuyen las difere
 ### Guadalupe jazmin Becerra Morales
 
 Trabajar en esta aplicación fue una gran experiencia. Aunque debo admitir que al principio me trabé bastante y varias veces sentí que no le hallaba la forma correcta de moverle al proyecto, superar ese reto hizo que valiera la pena. Lo que más disfruté fue aprender a dominar GitHub para coordinarnos. Al final, pasar de no saber bien por dónde empezar a ver una herramienta funcional de administración de redes con mapas y centro de control fue grato y el apoyo de mis compañeros.
+
+### Moreno Garcia Juan Manuel
+
+Estuvo muy bien y me gusto darle diseño minimalista y base al proyecto, ojala les guste el liquid glass, vamos por más retos y desarrollo en proyecto, mas que nada en diseños minimalistas y practicar más armanado redes y moviendo el trafico en las redes.
+
 <p align="center">
   Hecho con ❤️ por el equipo de desarrollo — Agosto 2026
 </p>
