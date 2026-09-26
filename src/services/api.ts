@@ -5,7 +5,8 @@
 // consultas paralelas e invalidación inteligente.
 // ============================================================
 import { supabase } from '../lib/supabaseClient';
-import { Platform, Linking } from 'react-native';
+import { Platform } from 'react-native';
+import * as Linking from 'expo-linking';
 import {
   Network,
   Subnet,
