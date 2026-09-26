@@ -22,23 +22,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Escuchar cambios de autenticación al montar
   useEffect(() => {
-    // Obtener sesión actual
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setIsLoading(false);
-    });
+    let isMounted = true;
 
-    // Suscribirse a cambios de auth
+    const hydrateSession = async () => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+      } catch (error) {
+        console.warn('Auth session hydration failed', error);
+        if (isMounted) {
+          setSession(null);
+          setUser(null);
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    hydrateSession();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      if (!isMounted) return;
       setSession(newSession);
       setUser(newSession?.user ?? null);
       setIsLoading(false);
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -62,17 +76,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signInGoogle = useCallback(async () => {
-    await api.signInWithGoogle();
+    setIsLoading(true);
+    try {
+      await api.signInWithGoogle();
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const signInGitHub = useCallback(async () => {
-    await api.signInWithGitHub();
+    setIsLoading(true);
+    try {
+      await api.signInWithGitHub();
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   const handleSignOut = useCallback(async () => {
-    await api.signOut();
-    setUser(null);
-    setSession(null);
+    try {
+      await api.signOut();
+    } finally {
+      setUser(null);
+      setSession(null);
+      setIsLoading(false);
+    }
   }, []);
 
   return (
