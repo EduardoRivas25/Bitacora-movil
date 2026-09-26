@@ -1,19 +1,61 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, useWindowDimensions, Platform, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback, useMemo } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  useWindowDimensions,
+  Platform,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as api from '../../services/api';
-import { Device } from '../../types';
+import { AccountRequest, AuditLogEntry, Device, NotificationItem, PdfDocumentLink, UserAccessRecord } from '../../types';
 
 const SEARCH_FILTERS = ['Todo', 'Nombre', 'IPv4', 'MAC', 'Fabricante', 'Ubicación'];
 const POPULAR_QUERIES = ['Cisco', '10.0.10.', 'UniFi', 'MikroTik', 'Rack 01', 'Apple', 'Fortinet'];
 
+const INITIAL_ACCOUNT_REQUESTS: AccountRequest[] = [
+  { id: 'req-1', name: 'Ana García', email: 'ana.garcia@redes.com', area: 'Infraestructura', workInfo: 'Analista de redes y soporte WAN', activities: 'Monitoreo de enlaces, mantenimiento de switches y administración de VLAN.', requestType: 'tecnico_red', status: 'pendiente', created_at: '2026-02-28T09:15:00Z' },
+  { id: 'req-2', name: 'Luis Romero', email: 'luis.romero@empresa.com', area: 'Administración', workInfo: 'Coordinador del área de TI', activities: 'Gestión de usuarios, permisos y políticas de seguridad.', requestType: 'administrador', status: 'pendiente', created_at: '2026-02-27T14:20:00Z' },
+  { id: 'req-3', name: 'Rosa Torres', email: 'rosa.torres@redes.com', area: 'Seguridad', workInfo: 'Especialista en seguridad de la red', activities: 'Auditoría de firewalls, segmentación y control de accesos.', requestType: 'tecnico_red', status: 'pendiente', created_at: '2026-02-26T11:05:00Z' },
+];
+
+const INITIAL_USERS: UserAccessRecord[] = [
+  { id: 'user-1', name: 'María Solis', email: 'maria@empresa.com', area: 'Infraestructura', role: 'Administrador', status: 'activo', lastLogin: 'Hace 10 min' },
+  { id: 'user-2', name: 'Pedro Nava', email: 'pedro@empresa.com', area: 'Soporte', role: 'Técnico de red', status: 'activo', lastLogin: 'Hace 42 min' },
+  { id: 'user-3', name: 'Elena Ruiz', email: 'elena@empresa.com', area: 'Seguridad', role: 'Técnico de red', status: 'pendiente', lastLogin: 'Sin acceso' },
+];
+
+const INITIAL_NOTIFICATIONS: NotificationItem[] = [
+  { id: 'n-1', title: 'Cambio de configuración', message: 'Se actualizó la VLAN 20 y se reconfiguraron los accesos de seguridad.', type: 'info', time: 'Hace 8 min', unread: true },
+  { id: 'n-2', title: 'Incidente resuelto', message: 'La interrupción en el firewall principal fue atendida por el equipo de soporte.', type: 'success', time: 'Hace 35 min', unread: true },
+  { id: 'n-3', title: 'Usuario pendiente', message: 'Se solicitó acceso para una nueva cuenta y requiere aprobación.', type: 'warning', time: 'Hace 1 hora', unread: false },
+];
+
+const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
+  { id: 'a-1', user: 'María Solis', module: 'Infraestructura', action: 'Actualizó red', description: 'Se modificó el segmento de la VLAN 20 y se validó la identificación de equipos.', date: '2026-02-28', area: 'Infraestructura', status: 'ok' },
+  { id: 'a-2', user: 'Pedro Nava', module: 'Incidentes', action: 'Cerró incidente', description: 'Se solucionó la alerta en el switch core y se activó la revisión final.', date: '2026-02-28', area: 'Soporte', status: 'warning' },
+  { id: 'a-3', user: 'Elena Ruiz', module: 'Usuarios', action: 'Aprobó solicitud', description: 'Se validó la solicitud de acceso del usuario Rosa Torres.', date: '2026-02-27', area: 'Seguridad', status: 'ok' },
+];
+
+const INITIAL_PDF_LINKS: PdfDocumentLink[] = [
+  { id: 'pdf-1', title: 'Infraestructura general', kind: 'infraestructura', generatedAt: 'Hoy, 10:05' },
+  { id: 'pdf-2', title: 'Bitácora de cambios', kind: 'bitacora', generatedAt: 'Hoy, 09:40' },
+  { id: 'pdf-3', title: 'Incidentes', kind: 'incidentes', generatedAt: 'Ayer, 18:15' },
+  { id: 'pdf-4', title: 'Usuarios y accesos', kind: 'usuarios', generatedAt: 'Ayer, 16:00' },
+  { id: 'pdf-5', title: 'Segmentación de red', kind: 'segmentacion', generatedAt: 'Hoy, 08:25' },
+];
+
 export default function SearchScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
-
   const isSmallMobile = width < 380;
   const isDesktop = width >= 1024;
   const cardWidth = isDesktop ? '31.8%' : isTablet ? '48.5%' : '100%';
@@ -22,6 +64,9 @@ export default function SearchScreen() {
   const [activeFilter, setActiveFilter] = useState('Todo');
   const [allDevices, setAllDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeAdminTab, setActiveAdminTab] = useState<'Solicitudes' | 'Usuarios' | 'Bitácora' | 'Documentos'>('Solicitudes');
+  const [adminSearch, setAdminSearch] = useState('');
+  const [accountRequests, setAccountRequests] = useState<AccountRequest[]>(INITIAL_ACCOUNT_REQUESTS);
 
   const loadDevices = useCallback(async (isSilent = false) => {
     try {
@@ -48,6 +93,24 @@ export default function SearchScreen() {
       dev.location.toLowerCase().includes(q) || (dev.subnet_name && dev.subnet_name.toLowerCase().includes(q))
     );
   });
+
+  const filteredRequests = useMemo(() => {
+    const q = adminSearch.trim().toLowerCase();
+    return accountRequests.filter((req) => {
+      if (!q) return true;
+      return (
+        req.name.toLowerCase().includes(q) ||
+        req.email.toLowerCase().includes(q) ||
+        req.area.toLowerCase().includes(q) ||
+        req.requestType.toLowerCase().includes(q)
+      );
+    });
+  }, [accountRequests, adminSearch]);
+
+  const handleRequestDecision = (id: string, status: 'activo' | 'rechazado') => {
+    setAccountRequests((current) => current.map((item) => item.id === id ? { ...item, status } : item));
+    Alert.alert('Solicitud actualizada', status === 'activo' ? 'Se habilitó el acceso al usuario.' : 'Se rechazó la solicitud y se registró la decisión.');
+  };
 
   if (loading && allDevices.length === 0) {
     return (<LinearGradient colors={['#050505', '#121212']} style={styles.container}><View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#FF9F0A" /></View></LinearGradient>);
@@ -85,6 +148,134 @@ export default function SearchScreen() {
                 <View style={styles.resultSubnet}><Feather name="layers" size={11} color="#BF5AF2" /><Text style={styles.resultSubnetText} numberOfLines={1}>{dev.subnet_name || 'Sin VLAN asignada'}</Text></View>
               </BlurView>))}</View>)}
           </View>)}
+
+          <BlurView intensity={30} tint="dark" style={styles.adminPanel}>
+            <View style={styles.adminHeader}>
+              <Text style={styles.adminTitle}>Administración de usuarios y acceso</Text>
+              <Text style={styles.adminMeta}>{accountRequests.filter((item) => item.status === 'pendiente').length} pendientes</Text>
+            </View>
+
+            <View style={styles.adminTabsRow}>
+              {['Solicitudes', 'Usuarios', 'Bitácora', 'Documentos'].map((tab) => (
+                <TouchableOpacity
+                  key={tab}
+                  activeOpacity={0.8}
+                  onPress={() => setActiveAdminTab(tab as any)}
+                  style={[styles.adminTab, activeAdminTab === tab && styles.adminTabActive]}
+                >
+                  <Text style={[styles.adminTabText, activeAdminTab === tab && styles.adminTabTextActive]}>{tab}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={styles.adminSearchRow}>
+              <Feather name="search" size={15} color="rgba(255,255,255,0.45)" />
+              <TextInput
+                placeholder="Buscar por nombre, correo o área..."
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                style={styles.adminSearchInput}
+                value={adminSearch}
+                onChangeText={setAdminSearch}
+              />
+            </View>
+
+            {activeAdminTab === 'Solicitudes' && (
+              <View style={styles.adminList}>
+                {filteredRequests.map((req) => (
+                  <View key={req.id} style={styles.userCard}>
+                    <View style={styles.userCardHeader}>
+                      <View>
+                        <Text style={styles.userName}>{req.name}</Text>
+                        <Text style={styles.userEmail}>{req.email}</Text>
+                      </View>
+                      <View style={[styles.statusPill, req.status === 'activo' ? styles.statusActive : req.status === 'rechazado' ? styles.statusRejected : styles.statusPending]}>
+                        <Text style={styles.statusText}>{req.status}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.userMeta}>Área: {req.area}</Text>
+                    <Text style={styles.userMeta}>Tipo: {req.requestType === 'tecnico_red' ? 'Técnico de red' : 'Administrador'}</Text>
+                    <Text style={styles.userDetail}>{req.workInfo}</Text>
+                    <Text style={styles.userDetail}>{req.activities}</Text>
+                    <View style={styles.cardActions}>
+                      <TouchableOpacity style={styles.primaryAction} onPress={() => handleRequestDecision(req.id, 'activo')}>
+                        <Text style={styles.primaryActionText}>Aceptar</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.secondaryAction} onPress={() => handleRequestDecision(req.id, 'rechazado')}>
+                        <Text style={styles.secondaryActionText}>Rechazar</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))}
+                {filteredRequests.length === 0 && <Text style={styles.emptyState}>No hay solicitudes que coincidan con la búsqueda.</Text>}
+              </View>
+            )}
+
+            {activeAdminTab === 'Usuarios' && (
+              <View style={styles.adminList}>
+                {INITIAL_USERS.filter((user) => {
+                  const q = adminSearch.trim().toLowerCase();
+                  if (!q) return true;
+                  return user.name.toLowerCase().includes(q) || user.email.toLowerCase().includes(q) || user.area.toLowerCase().includes(q);
+                }).map((user) => (
+                  <View key={user.id} style={styles.userCard}>
+                    <View style={styles.userCardHeader}>
+                      <View>
+                        <Text style={styles.userName}>{user.name}</Text>
+                        <Text style={styles.userEmail}>{user.email}</Text>
+                      </View>
+                      <View style={[styles.statusPill, user.status === 'activo' ? styles.statusActive : styles.statusPending]}>
+                        <Text style={styles.statusText}>{user.status}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.userMeta}>Área: {user.area}</Text>
+                    <Text style={styles.userMeta}>Rol: {user.role}</Text>
+                    <Text style={styles.userMeta}>Último acceso: {user.lastLogin}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {activeAdminTab === 'Bitácora' && (
+              <View style={styles.adminList}>
+                {INITIAL_AUDIT_LOGS.filter((item) => {
+                  const q = adminSearch.trim().toLowerCase();
+                  if (!q) return true;
+                  return item.user.toLowerCase().includes(q) || item.module.toLowerCase().includes(q) || item.action.toLowerCase().includes(q) || item.area.toLowerCase().includes(q);
+                }).map((item) => (
+                  <View key={item.id} style={styles.auditCard}>
+                    <View style={styles.userCardHeader}>
+                      <View>
+                        <Text style={styles.userName}>{item.user}</Text>
+                        <Text style={styles.userEmail}>{item.module}</Text>
+                      </View>
+                      <View style={[styles.statusPill, item.status === 'ok' ? styles.statusActive : item.status === 'warning' ? styles.statusPending : styles.statusRejected]}>
+                        <Text style={styles.statusText}>{item.status}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.userMeta}>Acción: {item.action}</Text>
+                    <Text style={styles.userDetail}>{item.description}</Text>
+                    <Text style={styles.userMeta}>Fecha: {item.date} • Área: {item.area}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {activeAdminTab === 'Documentos' && (
+              <View style={styles.adminList}>
+                {INITIAL_PDF_LINKS.map((doc) => (
+                  <View key={doc.id} style={styles.docCard}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.userName}>{doc.title}</Text>
+                      <Text style={styles.userMeta}>Generado: {doc.generatedAt}</Text>
+                    </View>
+                    <TouchableOpacity style={styles.primaryAction} onPress={() => Alert.alert('Documento', `Se está generando el PDF de ${doc.title}.`)}>
+                      <Text style={styles.primaryActionText}>Generar PDF</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+          </BlurView>
         </View>
       </ScrollView>
     </LinearGradient>
@@ -135,4 +326,35 @@ const styles = StyleSheet.create({
   specMac: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, color: '#FFFFFF', flex: 1 },
   resultSubnet: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingTop: 8, borderTopWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' },
   resultSubnetText: { fontFamily: 'Poppins_400Regular', fontSize: 11, color: '#BF5AF2' },
+  adminPanel: { marginTop: 24, padding: 18, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 22, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  adminHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  adminTitle: { fontFamily: 'Poppins_700Bold', fontSize: 18, color: '#FFFFFF' },
+  adminMeta: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#FF9F0A' },
+  adminTabsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  adminTab: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  adminTabActive: { backgroundColor: '#FFFFFF' },
+  adminTabText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: 'rgba(255,255,255,0.7)' },
+  adminTabTextActive: { color: '#000000' },
+  adminSearchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 10, marginBottom: 12 },
+  adminSearchInput: { flex: 1, color: '#FFFFFF', fontFamily: 'Poppins_400Regular', fontSize: 12 },
+  adminList: { gap: 10 },
+  userCard: { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 14, padding: 12 },
+  userCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  userName: { fontFamily: 'Poppins_700Bold', fontSize: 14, color: '#FFFFFF' },
+  userEmail: { fontFamily: 'Poppins_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  statusPill: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
+  statusPending: { backgroundColor: 'rgba(255,159,10,0.14)' },
+  statusActive: { backgroundColor: 'rgba(48,209,88,0.14)' },
+  statusRejected: { backgroundColor: 'rgba(255,69,58,0.14)' },
+  statusText: { fontFamily: 'Poppins_600SemiBold', fontSize: 9.5, color: '#FFFFFF', textTransform: 'capitalize' },
+  userMeta: { fontFamily: 'Poppins_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  userDetail: { fontFamily: 'Poppins_400Regular', fontSize: 11.5, color: 'rgba(255,255,255,0.6)', marginTop: 8, lineHeight: 18 },
+  cardActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  primaryAction: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  primaryActionText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#000000' },
+  secondaryAction: { flex: 1, backgroundColor: 'rgba(255,69,58,0.12)', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,69,58,0.3)' },
+  secondaryActionText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#FF453A' },
+  auditCard: { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 14, padding: 12 },
+  docCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 14, padding: 12 },
+  emptyState: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.5)', paddingVertical: 12 },
 });
