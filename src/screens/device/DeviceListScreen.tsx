@@ -28,6 +28,7 @@ export default function DeviceListScreen() {
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingDeviceId, setEditingDeviceId] = useState<string | null>(null);
 
   // Formulario Dispositivo
   const [devName, setDevName] = useState('');
@@ -71,6 +72,31 @@ export default function DeviceListScreen() {
   useFocusEffect(useCallback(() => { loadData(true); }, [loadData]));
 
   const handleOpenAddDevice = () => {
+    setEditingDeviceId(null);
+    setDevName('');
+    setDevMac('');
+    setDevBrand('');
+    setDevLocation('');
+    setDevIp('');
+    setDevDesc('');
+    setModalError('');
+    setFieldErrors({});
+    setShowModal(true);
+  };
+
+  const handleOpenEditDevice = (device: Device) => {
+    setEditingDeviceId(device.id);
+    setDevName(device.name);
+    setDevMac(device.mac_address);
+    setDevBrand(device.manufacturer || '');
+    setDevLocation(device.location || '');
+    setDevIp(device.ipv4_address);
+    setDevSubnet(device.subnet_id);
+    setDevBuilding(device.building_id || '');
+    setDevDept(device.department_id || '');
+    setDevLat(String(device.latitude ?? 19.4326));
+    setDevLng(String(device.longitude ?? -99.1332));
+    setDevDesc(device.description || '');
     setModalError('');
     setFieldErrors({});
     setShowModal(true);
@@ -201,7 +227,7 @@ export default function DeviceListScreen() {
     const dept = bld?.departments.find(d => d.id === devDept);
     try {
       setIsSubmitting(true);
-      const created = await api.createDevice({
+      const deviceData = {
         name: devName.trim(), 
         mac_address: macVal.formatted || devMac.toUpperCase().trim(), 
         manufacturer: devBrand.trim() || 'Genérico',
@@ -213,8 +239,14 @@ export default function DeviceListScreen() {
         longitude: parseFloat(devLng) || bld?.longitude || -99.1332,
         building_id: devBuilding || undefined, 
         department_id: devDept || undefined,
-      });
+      };
+      if (editingDeviceId) {
+        await api.updateDevice(editingDeviceId, deviceData);
+      } else {
+        await api.createDevice(deviceData);
+      }
       setShowModal(false); 
+      setEditingDeviceId(null);
       setDevName(''); 
       setDevMac(''); 
       setDevBrand(''); 
@@ -295,7 +327,10 @@ export default function DeviceListScreen() {
                     <View style={styles.titleWithStatus}><Text style={styles.deviceName} numberOfLines={1}>{dev.name}</Text><View style={styles.statusDot} /></View>
                     <Text style={styles.manufacturerText} numberOfLines={1}>{dev.manufacturer} • {dev.location}</Text>
                   </View>
-                  <TouchableOpacity style={styles.deleteButton} activeOpacity={0.7} onPress={() => handleDeleteDevice(dev.id)}>
+                  <TouchableOpacity style={styles.deleteButton} activeOpacity={0.7} accessibilityLabel={`Editar ${dev.name}`} onPress={() => handleOpenEditDevice(dev)}>
+                    <Feather name="edit-2" size={15} color="#FFD60A" />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.deleteButton} activeOpacity={0.7} accessibilityLabel={`Eliminar ${dev.name}`} onPress={() => handleDeleteDevice(dev.id)}>
                     <Feather name="trash-2" size={15} color="rgba(255, 69, 58, 0.7)" />
                   </TouchableOpacity>
                 </View>
@@ -313,7 +348,7 @@ export default function DeviceListScreen() {
         </View>
 
         {/* Modal Registrar Nuevo Dispositivo */}
-        <GlassModal visible={showModal} onClose={() => setShowModal(false)} title="Registrar Dispositivo" subtitle="Asocia un nuevo equipo a una subred activa">
+        <GlassModal visible={showModal} onClose={() => setShowModal(false)} title={editingDeviceId ? 'Editar Dispositivo' : 'Registrar Dispositivo'} subtitle="Asocia el equipo a una subred activa">
           {modalError !== '' && (
             <View style={styles.modalErrorContainer}>
               <Feather name="alert-circle" size={15} color="#FF453A" />
@@ -441,7 +476,7 @@ export default function DeviceListScreen() {
             {isSubmitting ? (
               <ActivityIndicator size="small" color="#000000" />
             ) : (
-              <Text style={styles.modalSubmitButtonText}>Guardar en Inventario</Text>
+              <Text style={styles.modalSubmitButtonText}>{editingDeviceId ? 'Actualizar Dispositivo' : 'Guardar en Inventario'}</Text>
             )}
           </TouchableOpacity>
         </GlassModal>
