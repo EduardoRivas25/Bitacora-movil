@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, Animated, Platform, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
@@ -11,22 +12,24 @@ import MapScreen from '../screens/map/MapScreen';
 import IncidentScreen from '../screens/incident/IncidentScreen';
 import ConfigScreen from '../screens/config/ConfigScreen';
 import SearchScreen from '../screens/search/SearchScreen';
+import LogbookScreen from '../screens/logbook/LogbookScreen';
 
 const Tab = createBottomTabNavigator();
 
-const TAB_COUNT = 7;
+const TAB_COUNT = 8;
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const isSmallMobile = width < 380;
   const isDesktop = width > 1024;
-  
-  // Ancho responsivo centrado: en móvil toma el ancho disponible con margen, en escritorio se expande hasta 580px
+
   const horizontalMargin = isSmallMobile ? 12 : 20;
   const effectiveWidth = Math.min(width - horizontalMargin, isDesktop ? 620 : 580);
   const TAB_WIDTH = effectiveWidth / TAB_COUNT;
   const indicatorSize = Math.min(42, Math.max(34, TAB_WIDTH - 4));
   const iconSize = TAB_WIDTH < 48 ? 16 : 19;
+  const bottomInset = Platform.OS === 'ios' ? insets.bottom + 8 : 18;
 
   // Inicializamos el valor animado en el índice de la pantalla actual
   const animatedValue = useRef(new Animated.Value(state.index)).current;
@@ -41,14 +44,14 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
     }).start();
   }, [state.index]);
 
-  // Convertimos el índice (0..6) en posición de píxeles (X) exacta
+  // Convertimos el índice (0..7) en posición de píxeles (X) exacta
   const indicatorPosition = animatedValue.interpolate({
-    inputRange: [0, 1, 2, 3, 4, 5, 6],
-    outputRange: [0, TAB_WIDTH, TAB_WIDTH * 2, TAB_WIDTH * 3, TAB_WIDTH * 4, TAB_WIDTH * 5, TAB_WIDTH * 6],
+    inputRange: [0, 1, 2, 3, 4, 5, 6, 7],
+    outputRange: [0, TAB_WIDTH, TAB_WIDTH * 2, TAB_WIDTH * 3, TAB_WIDTH * 4, TAB_WIDTH * 5, TAB_WIDTH * 6, TAB_WIDTH * 7],
   });
 
   return (
-    <View style={[styles.tabBarContainer, { width: effectiveWidth, left: (width - effectiveWidth) / 2 }]}>
+    <View style={[styles.tabBarContainer, { width: effectiveWidth, left: (width - effectiveWidth) / 2, bottom: bottomInset }]}>
       {/* Fondo de cristal oscuro */}
       <BlurView intensity={50} tint="dark" style={styles.blurBackground} />
       
@@ -89,12 +92,16 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           else if (route.name === 'Incidentes') iconName = 'alert-triangle';
           else if (route.name === 'Configuraciones') iconName = 'terminal';
           else if (route.name === 'Buscar') iconName = 'search';
+          else if (route.name === 'Bitácora') iconName = 'book-open';
 
           return (
             <TouchableOpacity
               key={index}
               activeOpacity={1}
               onPress={onPress}
+              accessibilityRole="tab"
+              accessibilityLabel={options.tabBarAccessibilityLabel ?? route.name}
+              accessibilityState={{ selected: isFocused }}
               style={styles.tabItem}
             >
               <Feather 
@@ -123,6 +130,7 @@ export default function BottomTabNavigator() {
       <Tab.Screen name="Incidentes" component={IncidentScreen} />
       <Tab.Screen name="Configuraciones" component={ConfigScreen} />
       <Tab.Screen name="Buscar" component={SearchScreen} />
+      <Tab.Screen name="Bitácora" component={LogbookScreen} />
     </Tab.Navigator>
   );
 }
@@ -130,7 +138,6 @@ export default function BottomTabNavigator() {
 const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 26 : 18,
     height: 68,
     borderRadius: 34,
     backgroundColor: 'transparent',
