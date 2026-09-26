@@ -8,7 +8,8 @@ import {
   TextInput, 
   useWindowDimensions, 
   Platform, 
-  ActivityIndicator
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +18,8 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as api from '../../services/api';
 import { DeviceConfig, Device } from '../../types';
+
+const UTILITY_TABS = ['Notificaciones', 'Perfil', 'Seguridad', 'Preferencias', 'Acerca de'];
 
 export default function ConfigScreen() {
   const { width } = useWindowDimensions();
@@ -42,6 +45,7 @@ export default function ConfigScreen() {
   const [isDragging, setIsDragging] = useState(false);
   const [copiedSuccess, setCopiedSuccess] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [selectedUtility, setSelectedUtility] = useState('Notificaciones');
 
   // Ref para input de archivo en Web
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -290,14 +294,23 @@ export default function ConfigScreen() {
   };
 
   // Copiar contenido al portapapeles
-  const handleCopyCode = () => {
+  const handleCopyCode = async () => {
     if (!configContent) return;
+
     if (Platform.OS === 'web' && navigator?.clipboard) {
-      navigator.clipboard.writeText(configContent);
+      await navigator.clipboard.writeText(configContent);
       setCopiedSuccess(true);
       setTimeout(() => setCopiedSuccess(false), 2000);
       showFeedback('¡Copiado al portapapeles!');
+      return;
     }
+
+    if (Platform.OS !== 'web') {
+      showFeedback('La copia no está disponible en esta plataforma.', 'error');
+      return;
+    }
+
+    showFeedback('No se pudo acceder al portapapeles del navegador.', 'error');
   };
 
   if (loading && configs.length === 0 && devices.length === 0) {
@@ -316,6 +329,26 @@ export default function ConfigScreen() {
   const lineCount = configContent ? configContent.split('\n').length : 1;
 
   const isSmallMobile = width < 380;
+  const notificationList = [
+    { title: 'Cambio de acceso', detail: 'Se aprobo el acceso del usuario Ana García', type: 'success' },
+    { title: 'Incidente crítico', detail: 'Se registró una caída en el firewall principal', type: 'danger' },
+    { title: 'Copia de seguridad', detail: 'Se generó la réplica del segmento interno', type: 'info' },
+  ];
+
+  const profileSummary = [
+    { label: 'Nombre', value: 'Administrador Bitácora' },
+    { label: 'Correo', value: 'admin@bitacora.local' },
+    { label: 'Área', value: 'Infraestructura general' },
+    { label: 'Rol', value: 'Administrador' },
+  ];
+
+  const documentLinks = [
+    'Infraestructura general',
+    'Bitácora de operaciones',
+    'Incidentes de red',
+    'Usuarios y accesos',
+    'Segmentación por VLAN',
+  ];
 
   return (
     <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
@@ -373,6 +406,78 @@ export default function ConfigScreen() {
               <Text style={styles.toastText}>{statusMsg.text}</Text>
             </View>
           )}
+
+          <BlurView intensity={30} tint="dark" style={styles.utilityCard}>
+            <View style={styles.utilityHeader}>
+              <Text style={styles.cardSectionTitle}>Sistema y configuración</Text>
+              <View style={styles.editingBadge}>
+                <Text style={styles.editingBadgeText}>Panel administrativo</Text>
+              </View>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.utilityTabsRow}>
+              {UTILITY_TABS.map((tab) => (
+                <TouchableOpacity
+                  key={tab}
+                  activeOpacity={0.8}
+                  onPress={() => setSelectedUtility(tab)}
+                  style={[styles.utilityTab, selectedUtility === tab && styles.utilityTabActive]}
+                >
+                  <Text style={[styles.utilityTabText, selectedUtility === tab && styles.utilityTabTextActive]}>{tab}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {selectedUtility === 'Notificaciones' && (
+              <View style={styles.utilityContent}>
+                {notificationList.map((item, index) => (
+                  <View key={`${item.title}-${index}`} style={styles.utilityItem}>
+                    <View style={[styles.utilityMarker, { backgroundColor: item.type === 'success' ? '#30D158' : item.type === 'danger' ? '#FF453A' : '#0A84FF' }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.utilityItemTitle}>{item.title}</Text>
+                      <Text style={styles.utilityItemText}>{item.detail}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {selectedUtility === 'Perfil' && (
+              <View style={styles.utilityContent}>
+                {profileSummary.map((item) => (
+                  <View key={item.label} style={styles.profileRow}>
+                    <Text style={styles.profileLabel}>{item.label}</Text>
+                    <Text style={styles.profileValue}>{item.value}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {selectedUtility === 'Seguridad' && (
+              <View style={styles.utilityContent}>
+                <Text style={styles.utilityItemTitle}>Autenticación y seguridad</Text>
+                <Text style={styles.utilityItemText}>Política activa: autenticación reforzada con MFA, sesiones limitadas y validación por administrador.</Text>
+                <Text style={styles.utilityItemText}>Último escaneo: 2 días atrás • Estado: normal</Text>
+              </View>
+            )}
+
+            {selectedUtility === 'Preferencias' && (
+              <View style={styles.utilityContent}>
+                <Text style={styles.utilityItemText}>Tema visual: Oscuro</Text>
+                <Text style={styles.utilityItemText}>Notificaciones: Activadas</Text>
+                <Text style={styles.utilityItemText}>Idioma: Español</Text>
+                <Text style={styles.utilityItemText}>Área predeterminada: Infraestructura</Text>
+              </View>
+            )}
+
+            {selectedUtility === 'Acerca de' && (
+              <View style={styles.utilityContent}>
+                <Text style={styles.utilityItemTitle}>Bitácora Digital</Text>
+                <Text style={styles.utilityItemText}>Sistema para registrar cambios, incidentes, infraestructura, usuarios y reportes administrativos.</Text>
+                <Text style={styles.utilityItemText}>Versión: 1.0.0 • Componentes: React Native + Expo + Supabase</Text>
+              </View>
+            )}
+          </BlurView>
 
           {/* Layout 2 Columnas */}
           <View style={[styles.mainLayout, isDesktop && styles.mainLayoutDesktop]}>
