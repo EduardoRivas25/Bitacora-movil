@@ -28,6 +28,8 @@ export default function NetworkListScreen() {
   const [showNetworkModal, setShowNetworkModal] = useState(false);
   const [showSubnetModal, setShowSubnetModal] = useState(false);
   const [selectedNetworkForSubnet, setSelectedNetworkForSubnet] = useState<string>('');
+  const [editingNetworkId, setEditingNetworkId] = useState<string | null>(null);
+  const [editingSubnetId, setEditingSubnetId] = useState<string | null>(null);
 
   const [netName, setNetName] = useState('');
   const [netIp, setNetIp] = useState('');
@@ -59,15 +61,48 @@ export default function NetworkListScreen() {
   const toggleExpand = (id: string) => setExpandedNetworkId(expandedNetworkId === id ? null : id);
   const handleOpenAddSubnet = (networkId: string) => { 
     setSelectedNetworkForSubnet(networkId); 
+    setEditingSubnetId(null);
+    setSubName('');
+    setSubIp('');
+    setSubCidr('24');
+    setSubDesc('');
     setSubError('');
     setSubFieldErrors({});
     setShowSubnetModal(true); 
   };
 
   const handleOpenAddNetwork = () => {
+    setEditingNetworkId(null);
+    setNetName('');
+    setNetIp('');
+    setNetCidr('16');
+    setNetDesc('');
     setNetError('');
     setNetFieldErrors({});
     setShowNetworkModal(true);
+  };
+
+  const handleOpenEditNetwork = (network: Network) => {
+    setEditingNetworkId(network.id);
+    setNetName(network.name);
+    setNetIp(network.address);
+    setNetCidr(String(network.cidr));
+    setNetDesc(network.description || '');
+    setNetError('');
+    setNetFieldErrors({});
+    setShowNetworkModal(true);
+  };
+
+  const handleOpenEditSubnet = (networkId: string, subnet: Subnet) => {
+    setSelectedNetworkForSubnet(networkId);
+    setEditingSubnetId(subnet.id);
+    setSubName(subnet.name);
+    setSubIp(subnet.address);
+    setSubCidr(String(subnet.cidr));
+    setSubDesc(subnet.description || '');
+    setSubError('');
+    setSubFieldErrors({});
+    setShowSubnetModal(true);
   };
 
   const handleSaveNetwork = async () => {
@@ -99,13 +134,19 @@ export default function NetworkListScreen() {
 
     try {
       setIsSubmitting(true);
-      await api.createNetwork({ 
+      const networkData = {
         name: netName.trim(), 
         address: netIp.trim(), 
         cidr: parseInt(netCidr, 10), 
         description: netDesc.trim() || 'Red principal' 
-      });
+      };
+      if (editingNetworkId) {
+        await api.updateNetwork(editingNetworkId, networkData);
+      } else {
+        await api.createNetwork(networkData);
+      }
       setShowNetworkModal(false); 
+      setEditingNetworkId(null);
       setNetName(''); 
       setNetIp(''); 
       setNetCidr('16'); 
@@ -156,14 +197,19 @@ export default function NetworkListScreen() {
 
     try {
       setIsSubmitting(true);
-      await api.createSubnet({ 
+      const subnetData = {
         name: subName.trim(), 
         address: subIp.trim(), 
         cidr: parseInt(subCidr, 10), 
-        description: subDesc.trim() || 'Subred segmentada', 
-        network_id: selectedNetworkForSubnet 
-      });
+        description: subDesc.trim() || 'Subred segmentada',
+      };
+      if (editingSubnetId) {
+        await api.updateSubnet(editingSubnetId, subnetData);
+      } else {
+        await api.createSubnet({ ...subnetData, network_id: selectedNetworkForSubnet });
+      }
       setShowSubnetModal(false); 
+      setEditingSubnetId(null);
       setSubName(''); 
       setSubIp(''); 
       setSubCidr('24'); 
@@ -270,6 +316,7 @@ export default function NetworkListScreen() {
                     </TouchableOpacity>
                     <View style={styles.cardControlButtons}>
                       <TouchableOpacity style={styles.iconActionButton} activeOpacity={0.7} onPress={() => handleOpenAddSubnet(net.id)}><Feather name="plus-circle" size={15} color="#0A84FF" /></TouchableOpacity>
+                      <TouchableOpacity style={styles.iconActionButton} activeOpacity={0.7} accessibilityLabel={`Editar ${net.name}`} onPress={() => handleOpenEditNetwork(net)}><Feather name="edit-2" size={15} color="#FFD60A" /></TouchableOpacity>
                       <TouchableOpacity style={styles.iconActionButton} activeOpacity={0.7} onPress={() => handleDeleteNetwork(net.id)}><Feather name="trash-2" size={15} color="#FF453A" /></TouchableOpacity>
                     </View>
                   </View>
@@ -295,6 +342,7 @@ export default function NetworkListScreen() {
                             </View>
                             <View style={styles.subnetSide}>
                               <View style={styles.deviceCountBadge}><Feather name="cpu" size={11} color="#30D158" /><Text style={styles.deviceCountText}>{(sub as any).device_count || 0}</Text></View>
+                              <TouchableOpacity style={styles.deleteSubnetBtn} activeOpacity={0.7} accessibilityLabel={`Editar ${sub.name}`} onPress={() => handleOpenEditSubnet(net.id, sub)}><Feather name="edit-2" size={13} color="#FFD60A" /></TouchableOpacity>
                               <TouchableOpacity style={styles.deleteSubnetBtn} activeOpacity={0.7} onPress={() => handleDeleteSubnet(net.id, sub.id)}><Feather name="trash-2" size={13} color="rgba(255, 69, 58, 0.7)" /></TouchableOpacity>
                             </View>
                           </View>
@@ -309,7 +357,7 @@ export default function NetworkListScreen() {
         </View>
 
         {/* Modal Nueva Red */}
-        <GlassModal visible={showNetworkModal} onClose={() => setShowNetworkModal(false)} title="Crear Red Principal" subtitle="Define el direccionamiento IPv4 base y máscara">
+        <GlassModal visible={showNetworkModal} onClose={() => setShowNetworkModal(false)} title={editingNetworkId ? 'Editar Red Principal' : 'Crear Red Principal'} subtitle="Define el direccionamiento IPv4 base y máscara">
           {netError !== '' && (
             <View style={styles.modalErrorContainer}>
               <Feather name="alert-circle" size={15} color="#FF453A" />
@@ -372,13 +420,13 @@ export default function NetworkListScreen() {
             {isSubmitting ? (
               <ActivityIndicator size="small" color="#000000" />
             ) : (
-              <Text style={styles.modalSubmitButtonText}>Guardar Red Principal</Text>
+              <Text style={styles.modalSubmitButtonText}>{editingNetworkId ? 'Actualizar Red Principal' : 'Guardar Red Principal'}</Text>
             )}
           </TouchableOpacity>
         </GlassModal>
 
         {/* Modal Nueva Subred */}
-        <GlassModal visible={showSubnetModal} onClose={() => setShowSubnetModal(false)} title="Crear Subred (VLAN)" subtitle={`Segmentar ${selectedParentNetwork?.name || 'red'} (${selectedParentNetwork?.address}/${selectedParentNetwork?.cidr})`}>
+        <GlassModal visible={showSubnetModal} onClose={() => setShowSubnetModal(false)} title={editingSubnetId ? 'Editar Subred (VLAN)' : 'Crear Subred (VLAN)'} subtitle={`Segmentar ${selectedParentNetwork?.name || 'red'} (${selectedParentNetwork?.address}/${selectedParentNetwork?.cidr})`}>
           {subError !== '' && (
             <View style={styles.modalErrorContainer}>
               <Feather name="alert-circle" size={15} color="#FF453A" />
@@ -444,7 +492,7 @@ export default function NetworkListScreen() {
             {isSubmitting ? (
               <ActivityIndicator size="small" color="#000000" />
             ) : (
-              <Text style={styles.modalSubmitButtonText}>Guardar Subred</Text>
+              <Text style={styles.modalSubmitButtonText}>{editingSubnetId ? 'Actualizar Subred' : 'Guardar Subred'}</Text>
             )}
           </TouchableOpacity>
         </GlassModal>
