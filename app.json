@@ -22,6 +22,7 @@
     "plugins": [
       "expo-font",
       "expo-web-browser"
+      "expo-sharing"
     ]
   }
 }
