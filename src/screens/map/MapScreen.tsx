@@ -34,6 +34,7 @@ export default function MapScreen() {
 
   // Modal Nuevo Edificio
   const [showBuildingModal, setShowBuildingModal] = useState(false);
+  const [editingBuildingId, setEditingBuildingId] = useState<string | null>(null);
   const [bldName, setBldName] = useState('');
   const [bldCode, setBldCode] = useState('');
   const [bldLat, setBldLat] = useState('19.4326');
@@ -72,6 +73,26 @@ export default function MapScreen() {
   };
 
   const handleOpenAddBuilding = () => {
+    setEditingBuildingId(null);
+    setBldName('');
+    setBldCode('');
+    setBldLat('19.4326');
+    setBldLng('-99.1332');
+    setBldDeptName('');
+    setBldDeptFloor('Planta Baja');
+    setBldDesc('');
+    setBldError('');
+    setBldFieldErrors({});
+    setShowBuildingModal(true);
+  };
+
+  const handleOpenEditBuilding = (building: Building) => {
+    setEditingBuildingId(building.id);
+    setBldName(building.name);
+    setBldCode(building.code);
+    setBldLat(String(building.latitude));
+    setBldLng(String(building.longitude));
+    setBldDesc(building.description || '');
     setBldError('');
     setBldFieldErrors({});
     setShowBuildingModal(true);
@@ -99,17 +120,29 @@ export default function MapScreen() {
 
     try {
       setIsSubmitting(true);
-      await api.createBuilding({
+      const buildingData = {
         name: bldName.trim(),
         code: bldCode.toUpperCase().trim(),
         latitude: parseFloat(bldLat),
         longitude: parseFloat(bldLng),
         description: bldDesc.trim(),
-        department_name: bldDeptName.trim() || undefined,
-        department_floor: bldDeptFloor.trim() || 'Planta Baja',
-      });
+      };
+      if (editingBuildingId) {
+        await api.updateBuilding(editingBuildingId, buildingData);
+        const updatedBuildings = await api.fetchBuildings(true);
+        setBuildings(updatedBuildings);
+        setSelectedBuilding(updatedBuildings.find(building => building.id === editingBuildingId) || null);
+      } else {
+        await api.createBuilding({
+          ...buildingData,
+          department_name: bldDeptName.trim() || undefined,
+          department_floor: bldDeptFloor.trim() || 'Planta Baja',
+        });
+        await loadData(true);
+      }
 
       setShowBuildingModal(false);
+      setEditingBuildingId(null);
       setBldName('');
       setBldCode('');
       setBldDesc('');
@@ -279,8 +312,17 @@ export default function MapScreen() {
                         <View style={styles.bldBadge}>
                           <Text style={styles.bldBadgeText}>{bld.code}</Text>
                         </View>
+                        <TouchableOpacity
+                          style={[styles.deleteBldBtn, { marginRight: 8 }]}
+                          accessibilityLabel={`Editar ${bld.name}`}
+                          onPress={() => handleOpenEditBuilding(bld)}
+                          activeOpacity={0.7}
+                        >
+                          <Feather name="edit-2" size={13} color="#FFD60A" />
+                        </TouchableOpacity>
                         <TouchableOpacity 
                           style={styles.deleteBldBtn} 
+                          accessibilityLabel={`Eliminar ${bld.name}`}
                           onPress={() => handleDeleteBuilding(bld.id, bld.name)}
                           activeOpacity={0.7}
                         >
@@ -309,8 +351,8 @@ export default function MapScreen() {
       <GlassModal 
         visible={showBuildingModal} 
         onClose={() => setShowBuildingModal(false)} 
-        title="Registrar Edificio" 
-        subtitle="Agrega una nueva ubicación física con coordenadas GPS"
+        title={editingBuildingId ? 'Editar Edificio' : 'Registrar Edificio'}
+        subtitle={editingBuildingId ? 'Actualiza la ubicación física y sus coordenadas GPS' : 'Agrega una nueva ubicación física con coordenadas GPS'}
       >
         {bldError !== '' && (
           <View style={styles.modalErrorContainer}>
@@ -376,28 +418,30 @@ export default function MapScreen() {
         </View>
         {bldFieldErrors.gps && <Text style={styles.fieldErrorText}>{bldFieldErrors.gps}</Text>}
 
-        <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
-          <View style={{ flex: 2 }}>
-            <Text style={styles.inputLabel}>Departamento / Área Inicial</Text>
-            <TextInput 
-              placeholder="ej. Laboratorio de Redes y Telecom" 
-              placeholderTextColor="rgba(255, 255, 255, 0.25)" 
-              style={styles.input} 
-              value={bldDeptName} 
-              onChangeText={setBldDeptName} 
-            />
+        {!editingBuildingId && (
+          <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
+            <View style={{ flex: 2 }}>
+              <Text style={styles.inputLabel}>Departamento / Área Inicial</Text>
+              <TextInput
+                placeholder="ej. Laboratorio de Redes y Telecom"
+                placeholderTextColor="rgba(255, 255, 255, 0.25)"
+                style={styles.input}
+                value={bldDeptName}
+                onChangeText={setBldDeptName}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>Piso / Nivel</Text>
+              <TextInput
+                placeholder="Piso 1"
+                placeholderTextColor="rgba(255, 255, 255, 0.25)"
+                style={styles.input}
+                value={bldDeptFloor}
+                onChangeText={setBldDeptFloor}
+              />
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.inputLabel}>Piso / Nivel</Text>
-            <TextInput 
-              placeholder="Piso 1" 
-              placeholderTextColor="rgba(255, 255, 255, 0.25)" 
-              style={styles.input} 
-              value={bldDeptFloor} 
-              onChangeText={setBldDeptFloor} 
-            />
-          </View>
-        </View>
+        )}
 
         <Text style={styles.inputLabel}>Descripción u Observaciones</Text>
         <TextInput 
@@ -419,7 +463,7 @@ export default function MapScreen() {
           {isSubmitting ? (
             <ActivityIndicator size="small" color="#000000" />
           ) : (
-            <Text style={styles.modalSubmitButtonText}>Guardar Edificio en Mapa</Text>
+            <Text style={styles.modalSubmitButtonText}>{editingBuildingId ? 'Actualizar Edificio' : 'Guardar Edificio en Mapa'}</Text>
           )}
         </TouchableOpacity>
       </GlassModal>
