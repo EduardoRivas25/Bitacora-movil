@@ -11,7 +11,11 @@ import BottomTabNavigator from './BottomTabNavigator';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
 
   return (
     <NavigationContainer
@@ -26,22 +30,22 @@ export default function AppNavigator() {
           notification: Colors.danger,
         },
         fonts: {
-          regular: {
-            fontFamily: 'System',
-            fontWeight: '400',
-          },
-          medium: {
-            fontFamily: 'System',
-            fontWeight: '500',
-          },
-          bold: {
-            fontFamily: 'System',
-            fontWeight: '700',
-          },
-          heavy: {
-            fontFamily: 'System',
-            fontWeight: '800',
-          },
+          regular: { 
+                fontFamily: 'System', 
+                fontWeight: '400' 
+                  },
+          medium: { 
+                fontFamily: 'System', 
+                fontWeight: '500' 
+                  },
+          bold: { 
+                fontFamily: 'System', 
+                fontWeight: '700' 
+              },
+          heavy: { 
+            fontFamily: 'System', 
+            fontWeight: '800' 
+              },
         },
       }}>
       <Stack.Navigator
