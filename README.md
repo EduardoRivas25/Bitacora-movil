@@ -59,10 +59,17 @@ Esta aplicación resuelve estos problemas al ofrecer:
 
 - ✅ **Acceso multiplataforma** (iOS, Android y Web) desde cualquier dispositivo.
 - ✅ **CRUD completo** para redes, subredes y dispositivos.
+- ✅ **Edición de redes, subredes, dispositivos y edificios** desde sus apartados.
+- ✅ **Bitácora con reportes PDF** de redes, dispositivos, edificios, incidentes, mantenimientos o toda la infraestructura.
 - ✅ **Validaciones automáticas** de direcciones IPv4 y MAC.
 - ✅ **Buscador integrado** por nombre, IP, MAC, fabricante y ubicación.
 - ✅ **Interfaz moderna e intuitiva** con diseño oscuro profesional.
 - ✅ **Almacenamiento en la nube** con Supabase (PostgreSQL).
+
+---
+## 📑 Bitácora y reportes PDF
+
+En la pestaña **Bitácora**, selecciona Gestión de red, Dispositivos, Edificios, Incidentes, Mantenimientos o Bitácora completa y pulsa **Generar PDF**. El reporte se construye con los registros actuales de Supabase. En Android e iOS se abre el menú para guardar o compartir el archivo PDF; en web se abre el diálogo de impresión, donde se puede elegir **Guardar como PDF**.
 
 ---
 
@@ -206,6 +213,15 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <p align="center"><em>Detalle de red con subredes asociadas e información de direccionamiento</em></p>
 
+#### Modificar Red
+
+<!-- Captura de editar red -->
+<p align="center">
+  <img src="./capturas/editar-red.png" alt="Editar Red" width="300"/>
+</p>
+
+<p align="center"><em>Edición de una red existente</em></p>
+
 #### Eliminar Red
 
 <!-- Captura de eliminar red -->
@@ -236,6 +252,15 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 </p>
 
 <p align="center"><em>Subredes asociadas a una red específica</em></p>
+
+#### Modificar Subred
+
+<!-- Captura de editar subred -->
+<p align="center">
+  <img src="./capturas/editar-subred.png" alt="Editar Subred" width="300"/>
+</p>
+
+<p align="center"><em>Edición de una subred existente</em></p>
 
 #### Eliminar Subred
 
@@ -276,6 +301,15 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 </p>
 
 <p align="center"><em>Información completa del dispositivo: nombre, dirección MAC, fabricante, ubicación, IPv4 y red/subred asociada</em></p>
+
+### Modificar Dispositivo
+
+<!-- Captura de editar dispositivo -->
+<p align="center">
+  <img src="./capturas/editar-dispositivo.png" alt="Editar Dispositivo" width="300"/>
+</p>
+
+<p align="center"><em>Edición de datos de un dispositivo registrado</em></p>
 
 ### Eliminar Dispositivo
 
@@ -452,6 +486,7 @@ bitacora-redes/
     │   ├── network/                 # Gestión de redes
     │   ├── subnet/                  # Gestión de subredes
     │   ├── device/                  # Inventario de dispositivos
+    │   ├── logbook/                 # Reportes PDF por área
     │   └── search/                  # Buscador
     └── navigation/                  # Navegación (Stack + Tabs)
 ```
