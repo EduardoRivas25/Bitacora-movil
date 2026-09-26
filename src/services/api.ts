@@ -5,11 +5,12 @@
 // consultas paralelas e invalidación inteligente.
 // ============================================================
 import { supabase } from '../lib/supabaseClient';
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
 import {
   Network,
   Subnet,
   Device,
+  DeviceFormData,
   Building,
   Department,
   Incident,
@@ -122,11 +123,22 @@ export async function signUpWithEmail(emailOrUser: string, password: string, nam
   return data;
 }
 
+function getAuthRedirectUri() {
+  if (Platform.OS === 'web') {
+    if (typeof window !== 'undefined' && window.location?.origin) {
+      return window.location.origin;
+    }
+    return 'http://localhost:19006';
+  }
+
+  return Linking.createURL('/');
+}
+
 export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: Platform.OS === 'web' ? window.location.origin : undefined,
+      redirectTo: getAuthRedirectUri(),
     },
   });
   if (error) throw error;
@@ -137,7 +149,7 @@ export async function signInWithGitHub() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'github',
     options: {
-      redirectTo: Platform.OS === 'web' ? window.location.origin : undefined,
+      redirectTo: getAuthRedirectUri(),
     },
   });
   if (error) throw error;
@@ -279,6 +291,24 @@ export async function createSubnet(data: { name: string; address: string; cidr: 
   return result;
 }
 
+export async function updateSubnet(id: string, data: Partial<Pick<Subnet, 'name' | 'address' | 'cidr' | 'description'>>) {
+  const { data: result, error } = await supabase
+    .from('subnets')
+    .update({
+      ...(data.name !== undefined && { name: sanitize(data.name) }),
+      ...(data.address !== undefined && { address: sanitize(data.address) }),
+      ...(data.cidr !== undefined && { cidr: data.cidr }),
+      ...(data.description !== undefined && { description: sanitize(data.description) }),
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  invalidateCache('networks', 'subnets_flat', 'devices', 'dashboard_stats');
+  return result;
+}
+
 export async function deleteSubnet(id: string) {
   const { error } = await supabase.from('subnets').delete().eq('id', id);
   if (error) throw error;
@@ -378,6 +408,31 @@ export async function createDevice(data: {
   return result;
 }
 
+export async function updateDevice(id: string, data: Partial<DeviceFormData>) {
+  const { data: result, error } = await supabase
+    .from('devices')
+    .update({
+      ...(data.name !== undefined && { name: sanitize(data.name) }),
+      ...(data.mac_address !== undefined && { mac_address: sanitize(data.mac_address).toUpperCase() }),
+      ...(data.manufacturer !== undefined && { manufacturer: sanitize(data.manufacturer) }),
+      ...(data.location !== undefined && { location: sanitize(data.location) }),
+      ...(data.ipv4_address !== undefined && { ipv4_address: sanitize(data.ipv4_address) }),
+      ...(data.subnet_id !== undefined && { subnet_id: data.subnet_id }),
+      ...(data.description !== undefined && { description: sanitize(data.description) }),
+      ...(data.latitude !== undefined && { latitude: data.latitude }),
+      ...(data.longitude !== undefined && { longitude: data.longitude }),
+      ...('building_id' in data && { building_id: data.building_id || null }),
+      ...('department_id' in data && { department_id: data.department_id || null }),
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  invalidateCache('devices', 'networks', 'dashboard_stats');
+  return result;
+}
+
 export async function deleteDevice(id: string) {
   const { error } = await supabase.from('devices').delete().eq('id', id);
   if (error) throw error;
@@ -462,6 +517,25 @@ export async function createBuilding(data: {
 
   invalidateCache('buildings', 'devices');
   return building;
+}
+
+export async function updateBuilding(id: string, data: Partial<Pick<Building, 'name' | 'code' | 'latitude' | 'longitude' | 'description'>>) {
+  const { data: result, error } = await supabase
+    .from('buildings')
+    .update({
+      ...(data.name !== undefined && { name: sanitize(data.name) }),
+      ...(data.code !== undefined && { code: sanitize(data.code).toUpperCase() }),
+      ...(data.latitude !== undefined && { latitude: data.latitude }),
+      ...(data.longitude !== undefined && { longitude: data.longitude }),
+      ...(data.description !== undefined && { description: sanitize(data.description) }),
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  invalidateCache('buildings', 'devices');
+  return result;
 }
 
 export async function deleteBuilding(id: string) {
