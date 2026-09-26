@@ -139,6 +139,59 @@ export interface DeviceConfig {
   author: string;
 }
 
+export type AccountRequestType = 'tecnico_red' | 'administrador';
+export type AccessStatus = 'activo' | 'pendiente' | 'rechazado';
+
+export interface AccountRequest {
+  id: string;
+  name: string;
+  email: string;
+  area: string;
+  workInfo: string;
+  activities: string;
+  requestType: AccountRequestType;
+  status: AccessStatus;
+  created_at: string;
+  lastUpdated?: string;
+}
+
+export interface UserAccessRecord {
+  id: string;
+  name: string;
+  email: string;
+  area: string;
+  role: 'Administrador' | 'Técnico de red';
+  status: AccessStatus;
+  lastLogin: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'danger';
+  time: string;
+  unread: boolean;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  user: string;
+  module: string;
+  action: string;
+  description: string;
+  date: string;
+  area: string;
+  status: 'ok' | 'warning' | 'error';
+}
+
+export interface PdfDocumentLink {
+  id: string;
+  title: string;
+  kind: 'infraestructura' | 'bitacora' | 'incidentes' | 'usuarios' | 'segmentacion';
+  generatedAt: string;
+}
+
 // Tipos de navegación
 export type RootStackParamList = {
   Login: undefined;
@@ -158,6 +211,7 @@ export type BottomTabParamList = {
   Incidentes: undefined;
   Configuraciones: undefined;
   Buscar: undefined;
+  'Bitácora': undefined;
 };
 
 // Tipo para la actividad reciente del dashboard
