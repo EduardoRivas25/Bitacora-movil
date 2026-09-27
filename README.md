@@ -181,6 +181,7 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 ## 📱 Capturas del Funcionamiento
 
 ### Pantalla de Inicio de Sesión
+### Crear una cuenta
 
 <!-- Captura de la pantalla de login -->
 <p align="center">
