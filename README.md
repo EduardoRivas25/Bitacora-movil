@@ -59,17 +59,10 @@ Esta aplicación resuelve estos problemas al ofrecer:
 
 - ✅ **Acceso multiplataforma** (iOS, Android y Web) desde cualquier dispositivo.
 - ✅ **CRUD completo** para redes, subredes y dispositivos.
-- ✅ **Edición de redes, subredes, dispositivos y edificios** desde sus apartados.
-- ✅ **Bitácora con reportes PDF** de redes, dispositivos, edificios, incidentes, mantenimientos o toda la infraestructura.
 - ✅ **Validaciones automáticas** de direcciones IPv4 y MAC.
 - ✅ **Buscador integrado** por nombre, IP, MAC, fabricante y ubicación.
 - ✅ **Interfaz moderna e intuitiva** con diseño oscuro profesional.
 - ✅ **Almacenamiento en la nube** con Supabase (PostgreSQL).
-
----
-## 📑 Bitácora y reportes PDF
-
-En la pestaña **Bitácora**, selecciona Gestión de red, Dispositivos, Edificios, Incidentes, Mantenimientos o Bitácora completa y pulsa **Generar PDF**. El reporte se construye con los registros actuales de Supabase. En Android e iOS se abre el menú para guardar o compartir el archivo PDF; en web se abre el diálogo de impresión, donde se puede elegir **Guardar como PDF**.
 
 ---
 
