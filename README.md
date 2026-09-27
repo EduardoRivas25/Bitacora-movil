@@ -191,6 +191,7 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 <p align="center"><em>Pantalla de autenticación con validación de credenciales</em></p>
 
 ### Pantalla Principal (Dashboard)
+#### Menu
 
 <!-- Captura del dashboard -->
 <p align="center">
