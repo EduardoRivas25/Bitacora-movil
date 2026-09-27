@@ -59,10 +59,35 @@ Esta aplicación resuelve estos problemas al ofrecer:
 
 - ✅ **Acceso multiplataforma** (iOS, Android y Web) desde cualquier dispositivo.
 - ✅ **CRUD completo** para redes, subredes y dispositivos.
+- ✅ **Edición de redes, subredes, dispositivos y edificios** desde sus apartados.
+- ✅ **Bitácora con reportes PDF** de redes, dispositivos, edificios, incidentes, mantenimientos o toda la infraestructura.
 - ✅ **Validaciones automáticas** de direcciones IPv4 y MAC.
 - ✅ **Buscador integrado** por nombre, IP, MAC, fabricante y ubicación.
 - ✅ **Interfaz moderna e intuitiva** con diseño oscuro profesional.
 - ✅ **Almacenamiento en la nube** con Supabase (PostgreSQL).
+
+---
+
+## 📄 Bitácora y reportes PDF
+
+En la pestaña **Bitácora**, selecciona Gestión de red, Dispositivos, Edificios, Incidentes, Mantenimientos o Bitácora completa y pulsa **Generar PDF**. El reporte se construye con los registros actuales de Supabase. En Android e iOS se abre el menú para guardar o compartir el archivo PDF; en web se abre el diálogo de impresión, donde se puede elegir **Guardar como PDF**.
+
+Para habilitar el historial de cambios, el directorio administrativo y los conteos del reporte, ejecuta también `supabase/migrations/
+20260926120000_audit_users_and_report_summary.sql` desde el SQL Editor de Supabase, después de la migración de solicitudes de cuenta indicada
+abajo. El historial comienza a registrar cambios cuando se instala esta migración; no recupera acciones anteriores. El esquema actual no
+almacena el estado operativo de edificios/equipos ni el número de puertos de los switches, por lo que el PDF indica esos datos como no
+capturados en vez de inventarlos.
+
+### Solicitudes de cuenta
+
+El formulario de registro crea una solicitud **pendiente**; nunca guarda la contraseña de confirmación. Para habilitar la bandeja administrativa
+real, ejecuta primero `supabase/migrations/20260901120000_account_requests.sql` y después la migración de auditoría indicada
+arriba desde el SQL Editor de Supabase. La solicitud se crea mediante un trigger de Auth: solo el solicitante y administradores pueden leerla, y únicamente los
+administradores pueden resolverla. Para mostrar el panel en la app, configura `"role": "admin"` en `app_metadata` de cada administrador desde
+**Supabase > Authentication > Users** y vuelve a iniciar sesión. Los usuarios con solicitud pendiente o rechazada no pueden iniciar sesión; las
+cuentas existentes sin solicitud conservan su acceso. Aprobar una solicitud habilita el inicio de sesión, pero el tipo “Administrador” no
+concede privilegios administrativos automáticamente: ese rol solo lo asigna un operador de confianza en `app_metadata`. El trigger también
+evita que se creen cuentas nuevas mediante OAuth sin pasar por el formulario, pero conserva las cuentas OAuth existentes.
 
 ---
 
