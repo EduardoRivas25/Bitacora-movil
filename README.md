@@ -213,15 +213,6 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <p align="center"><em>Detalle de red con subredes asociadas e información de direccionamiento</em></p>
 
-#### Modificar Red
-
-<!-- Captura de editar red -->
-<p align="center">
-  <img src="./capturas/editar-red.png" alt="Editar Red" width="300"/>
-</p>
-
-<p align="center"><em>Edición de una red existente</em></p>
-
 #### Eliminar Red
 
 <!-- Captura de eliminar red -->
@@ -252,15 +243,6 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 </p>
 
 <p align="center"><em>Subredes asociadas a una red específica</em></p>
-
-#### Modificar Subred
-
-<!-- Captura de editar subred -->
-<p align="center">
-  <img src="./capturas/editar-subred.png" alt="Editar Subred" width="300"/>
-</p>
-
-<p align="center"><em>Edición de una subred existente</em></p>
 
 #### Eliminar Subred
 
@@ -301,15 +283,6 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 </p>
 
 <p align="center"><em>Información completa del dispositivo: nombre, dirección MAC, fabricante, ubicación, IPv4 y red/subred asociada</em></p>
-
-### Modificar Dispositivo
-
-<!-- Captura de editar dispositivo -->
-<p align="center">
-  <img src="./capturas/editar-dispositivo.png" alt="Editar Dispositivo" width="300"/>
-</p>
-
-<p align="center"><em>Edición de datos de un dispositivo registrado</em></p>
 
 ### Eliminar Dispositivo
 
