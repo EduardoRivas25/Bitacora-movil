@@ -215,7 +215,7 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 <p align="center"><em>Formulario de creación de una nueva red con validación de dirección IPv4 y CIDR</em></p>
 
 #### Consultar Redes
-### Sugerencias de Red asociadas
+#### Subredes asociadas
 
 <!-- Captura de lista de redes -->
 <p align="center">
