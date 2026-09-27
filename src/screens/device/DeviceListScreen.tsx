@@ -1,5 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, useWindowDimensions, Platform, ActivityIndicator } from 'react-native';
+import { 
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
+  TextInput, useWindowDimensions, Platform, ActivityIndicator 
+} from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
@@ -8,11 +11,8 @@ import GlassModal from '../../components/ui/GlassModal';
 import * as api from '../../services/api';
 import { Device, Building, Subnet } from '../../types';
 import { 
-  validateIPv4, 
-  validateMAC, 
-  formatMACInput, 
-  validateGPS, 
-  validateRequired 
+  validateIPv4, validateMAC, formatMACInput, 
+  validateGPS, validateRequired 
 } from '../../utils/validators';
 
 const CATEGORIES = ['Todos', 'Switches', 'Routers', 'Servidores', 'Access Points', 'Workstations', 'Firewalls'];
@@ -20,6 +20,9 @@ const CATEGORIES = ['Todos', 'Switches', 'Routers', 'Servidores', 'Access Points
 export default function DeviceListScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
+  const isSmallMobile = width < 380;
+  const isDesktop = width >= 1024;
+  const cardWidth = isDesktop ? '31.8%' : isTablet ? '48.5%' : '100%';
 
   const [devices, setDevices] = useState<Device[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -45,7 +48,7 @@ export default function DeviceListScreen() {
   const [modalError, setModalError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
 
-  // Modal para Crear Edificio desde Dispositivos
+  // Modal Nuevo Edificio
   const [showNewBuildingModal, setShowNewBuildingModal] = useState(false);
   const [newBldName, setNewBldName] = useState('');
   const [newBldCode, setNewBldCode] = useState('');
@@ -54,33 +57,36 @@ export default function DeviceListScreen() {
   const [newBldDept, setNewBldDept] = useState('');
   const [newBldError, setNewBldError] = useState('');
 
-  // Control de bloqueo contra múltiples clics
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittingBld, setIsSubmittingBld] = useState(false);
 
   const loadData = useCallback(async (isSilent = false) => {
     try {
       if (!isSilent && devices.length === 0) setLoading(true);
-      const [devs, blds, subs] = await Promise.all([api.fetchDevices(isSilent), api.fetchBuildings(isSilent), api.fetchAllSubnetsFlat(isSilent)]);
-      setDevices(devs); setBuildings(blds); setSubnets(subs);
+      const [devs, blds, subs] = await Promise.all([
+        api.fetchDevices(isSilent), 
+        api.fetchBuildings(isSilent), 
+        api.fetchAllSubnetsFlat(isSilent)
+      ]);
+      setDevices(devs); 
+      setBuildings(blds); 
+      setSubnets(subs);
+      
       if (blds.length > 0 && !devBuilding) setDevBuilding(blds[0].id);
       if (subs.length > 0 && !devSubnet) setDevSubnet(subs[0].id);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+    } catch (err) { 
+      console.error(err); 
+    } finally { 
+      setLoading(false); 
+    }
   }, [devBuilding, devSubnet, devices.length]);
 
   useFocusEffect(useCallback(() => { loadData(true); }, [loadData]));
 
   const handleOpenAddDevice = () => {
     setEditingDeviceId(null);
-    setDevName('');
-    setDevMac('');
-    setDevBrand('');
-    setDevLocation('');
-    setDevIp('');
-    setDevDesc('');
-    setModalError('');
-    setFieldErrors({});
+    setDevName(''); setDevMac(''); setDevBrand(''); setDevLocation('');
+    setDevIp(''); setDevDesc(''); setModalError(''); setFieldErrors({});
     setShowModal(true);
   };
 
@@ -97,37 +103,25 @@ export default function DeviceListScreen() {
     setDevLat(String(device.latitude ?? 19.4326));
     setDevLng(String(device.longitude ?? -99.1332));
     setDevDesc(device.description || '');
-    setModalError('');
-    setFieldErrors({});
+    setModalError(''); setFieldErrors({});
     setShowModal(true);
   };
 
   const handleOpenNewBuildingModal = () => {
-    setNewBldError('');
-    setNewBldName('');
-    setNewBldCode('');
-    setNewBldLat(devLat || '19.4326');
-    setNewBldLng(devLng || '-99.1332');
-    setNewBldDept('');
+    setNewBldError(''); setNewBldName(''); setNewBldCode('');
+    setNewBldLat(devLat || '19.4326'); setNewBldLng(devLng || '-99.1332'); setNewBldDept('');
     setShowNewBuildingModal(true);
   };
 
   const handleSaveNewBuilding = async () => {
     if (isSubmittingBld) return;
     setNewBldError('');
-    if (!newBldName.trim() || newBldName.trim().length < 2) {
-      setNewBldError('Ingresa el nombre del edificio o ubicación.');
-      return;
-    }
-    if (!newBldCode.trim() || newBldCode.trim().length < 2) {
-      setNewBldError('Ingresa un código identificador (ej. EDIF-C).');
-      return;
-    }
+    
+    if (!newBldName.trim() || newBldName.trim().length < 2) return setNewBldError('Ingresa el nombre del edificio.');
+    if (!newBldCode.trim() || newBldCode.trim().length < 2) return setNewBldError('Ingresa un código identificador (ej. EDIF-C).');
+    
     const gpsVal = validateGPS(newBldLat, newBldLng);
-    if (!gpsVal.valid) {
-      setNewBldError(gpsVal.error!);
-      return;
-    }
+    if (!gpsVal.valid) return setNewBldError(gpsVal.error!);
 
     try {
       setIsSubmittingBld(true);
@@ -147,7 +141,6 @@ export default function DeviceListScreen() {
       setDevLocation(`${newBldName.trim()}${newBldDept.trim() ? ' - ' + newBldDept.trim() : ''}`);
       setShowNewBuildingModal(false);
     } catch (err: any) {
-      console.error(err);
       setNewBldError(err?.message || 'Error al guardar el edificio');
     } finally {
       setIsSubmittingBld(false);
@@ -160,18 +153,13 @@ export default function DeviceListScreen() {
     if (bld) { 
       setDevLat(bld.latitude.toString()); 
       setDevLng(bld.longitude.toString()); 
-      if (bld.departments.length > 0) { 
-        setDevDept(bld.departments[0].id); 
-        setDevLocation(`${bld.name} - ${bld.departments[0].name}`); 
-      } else {
-        setDevLocation(bld.name);
-      }
+      setDevDept(bld.departments.length > 0 ? bld.departments[0].id : '');
+      setDevLocation(bld.departments.length > 0 ? `${bld.name} - ${bld.departments[0].name}` : bld.name);
     }
   };
 
   const handleMacChange = (text: string) => {
-    const formatted = formatMACInput(text);
-    setDevMac(formatted);
+    setDevMac(formatMACInput(text));
     if (fieldErrors.mac) setFieldErrors(prev => ({ ...prev, mac: '' }));
   };
 
@@ -181,8 +169,7 @@ export default function DeviceListScreen() {
       (dev.name || '').toLowerCase().includes(q) ||
       (dev.ipv4_address || '').includes(q) ||
       (dev.mac_address || '').toLowerCase().includes(q) ||
-      (dev.manufacturer || '').toLowerCase().includes(q) ||
-      (dev.location || '').toLowerCase().includes(q)
+      (dev.manufacturer || '').toLowerCase().includes(q)
     );
 
     if (!matchesSearch) return false;
@@ -201,7 +188,7 @@ export default function DeviceListScreen() {
     setModalError('');
     const errors: { [key: string]: string } = {};
 
-    const nameVal = validateRequired(devName, 2, 'El nombre del dispositivo');
+    const nameVal = validateRequired(devName, 2, 'El nombre');
     if (!nameVal.valid) errors.name = nameVal.error!;
 
     const ipVal = validateIPv4(devIp);
@@ -210,21 +197,17 @@ export default function DeviceListScreen() {
     const macVal = validateMAC(devMac);
     if (!macVal.valid) errors.mac = macVal.error!;
 
-    if (!devSubnet) {
-      errors.subnet = 'Debes seleccionar una subred de destino.';
-    }
+    if (!devSubnet) errors.subnet = 'Selecciona una subred destino.';
 
     const gpsVal = validateGPS(devLat, devLng);
     if (!gpsVal.valid) errors.gps = gpsVal.error!;
 
     setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) {
-      setModalError(Object.values(errors)[0]);
-      return;
-    }
+    if (Object.keys(errors).length > 0) return setModalError(Object.values(errors)[0]);
 
     const bld = buildings.find(b => b.id === devBuilding);
     const dept = bld?.departments.find(d => d.id === devDept);
+
     try {
       setIsSubmitting(true);
       const deviceData = {
@@ -234,68 +217,65 @@ export default function DeviceListScreen() {
         location: devLocation.trim() || `${bld?.name || 'Edificio'} - ${dept?.name || 'General'}`,
         ipv4_address: devIp.trim(), 
         subnet_id: devSubnet, 
-        description: devDesc.trim() || 'Dispositivo registrado en inventario.',
+        description: devDesc.trim() || 'Equipo registrado en inventario.',
         latitude: parseFloat(devLat) || bld?.latitude || 19.4326, 
         longitude: parseFloat(devLng) || bld?.longitude || -99.1332,
         building_id: devBuilding || undefined, 
         department_id: devDept || undefined,
       };
+
       if (editingDeviceId) {
         await api.updateDevice(editingDeviceId, deviceData);
       } else {
         await api.createDevice(deviceData);
       }
+
       setShowModal(false); 
       setEditingDeviceId(null);
-      setDevName(''); 
-      setDevMac(''); 
-      setDevBrand(''); 
-      setDevLocation(''); 
-      setDevIp(''); 
-      setDevDesc('');
-      setModalError('');
-      setFieldErrors({});
       loadData(true);
     } catch (err: any) { 
       setModalError(err?.message || 'Error al guardar el dispositivo');
-      console.error(err); 
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleDeleteDevice = async (id: string) => {
-    // Actualización optimista instantánea (0ms)
     const prevDevices = [...devices];
     setDevices(prev => prev.filter(d => d.id !== id));
     try {
       await api.deleteDevice(id);
     } catch (err) {
-      console.error(err);
       setDevices(prevDevices);
     }
   };
 
   const getDeviceIcon = (name: string): keyof typeof Feather.glyphMap => {
     const lower = name.toLowerCase();
-    if (lower.includes('switch')) return 'server'; if (lower.includes('router')) return 'radio';
-    if (lower.includes('servidor')) return 'hard-drive'; if (lower.includes('point') || lower.includes('unifi')) return 'wifi';
-    if (lower.includes('firewall')) return 'shield'; if (lower.includes('imac') || lower.includes('pc')) return 'monitor';
+    if (lower.includes('switch')) return 'server'; 
+    if (lower.includes('router')) return 'radio';
+    if (lower.includes('servidor')) return 'hard-drive'; 
+    if (lower.includes('point') || lower.includes('unifi')) return 'wifi';
+    if (lower.includes('firewall')) return 'shield'; 
+    if (lower.includes('imac') || lower.includes('pc')) return 'monitor';
     return 'cpu';
   };
 
-  const isSmallMobile = width < 380;
-  const isDesktop = width >= 1024;
-  const cardWidth = isDesktop ? '31.8%' : isTablet ? '48.5%' : '100%';
-
   if (loading && devices.length === 0) {
-    return (<LinearGradient colors={['#050505', '#121212']} style={styles.container}><View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#0A84FF" /></View></LinearGradient>);
+    return (
+      <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#0A84FF" />
+        </View>
+      </LinearGradient>
+    );
   }
 
   return (
     <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isDesktop ? '6%' : isTablet ? '4%' : 16 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.innerWrapper}>
+          
           <View style={styles.header}>
             <View style={{ flex: 1, minWidth: 200 }}>
               <Text style={styles.headerBadge}>INVENTARIO DE EQUIPOS</Text>
@@ -310,39 +290,76 @@ export default function DeviceListScreen() {
 
           <View style={styles.searchBar}>
             <Feather name="search" size={16} color="rgba(255, 255, 255, 0.4)" />
-            <TextInput placeholder="Buscar por IP, MAC, nombre, ubicación..." placeholderTextColor="rgba(255, 255, 255, 0.3)" style={styles.searchInput} value={searchQuery} onChangeText={setSearchQuery} />
-            {searchQuery.length > 0 && (<TouchableOpacity onPress={() => setSearchQuery('')}><Feather name="x" size={14} color="rgba(255, 255, 255, 0.4)" /></TouchableOpacity>)}
+            <TextInput 
+              placeholder="Buscar por IP, MAC, nombre, ubicación..." 
+              placeholderTextColor="rgba(255, 255, 255, 0.3)" 
+              style={styles.searchInput} 
+              value={searchQuery} 
+              onChangeText={setSearchQuery} 
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <Feather name="x" size={14} color="rgba(255, 255, 255, 0.4)" />
+              </TouchableOpacity>
+            )}
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoriesContainer}>
-            {CATEGORIES.map((cat) => { const isActive = selectedCategory === cat; return (<TouchableOpacity key={cat} style={[styles.categoryChip, isActive && styles.categoryChipActive]} activeOpacity={0.7} onPress={() => setSelectedCategory(cat)}><Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>{cat}</Text></TouchableOpacity>); })}
+            {CATEGORIES.map((cat) => { 
+              const isActive = selectedCategory === cat; 
+              return (
+                <TouchableOpacity key={cat} style={[styles.categoryChip, isActive && styles.categoryChipActive]} activeOpacity={0.7} onPress={() => setSelectedCategory(cat)}>
+                  <Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>{cat}</Text>
+                </TouchableOpacity>
+              ); 
+            })}
           </ScrollView>
 
           <View style={styles.deviceList}>
-            {filteredDevices.map((dev) => { const icon = getDeviceIcon(dev.name); return (
-              <BlurView key={dev.id} intensity={30} tint="dark" style={[styles.deviceCard, { width: cardWidth }]}>
-                <View style={styles.cardHeaderRow}>
-                  <View style={styles.deviceIconWrapper}><Feather name={icon} size={19} color="#0A84FF" /></View>
-                  <View style={styles.deviceTitleBlock}>
-                    <View style={styles.titleWithStatus}><Text style={styles.deviceName} numberOfLines={1}>{dev.name}</Text><View style={styles.statusDot} /></View>
-                    <Text style={styles.manufacturerText} numberOfLines={1}>{dev.manufacturer} • {dev.location}</Text>
+            {filteredDevices.map((dev) => { 
+              const icon = getDeviceIcon(dev.name); 
+              return (
+                <BlurView key={dev.id} intensity={40} tint="dark" style={[styles.deviceCard, { width: cardWidth }]}>
+                  <View style={styles.cardHeaderRow}>
+                    <View style={styles.deviceIconWrapper}>
+                      <Feather name={icon} size={19} color="#0A84FF" />
+                    </View>
+                    <View style={styles.deviceTitleBlock}>
+                      <View style={styles.titleWithStatus}>
+                        <Text style={styles.deviceName} numberOfLines={1}>{dev.name}</Text>
+                        <View style={styles.statusDot} />
+                      </View>
+                      <Text style={styles.manufacturerText} numberOfLines={1}>{dev.manufacturer} • {dev.location}</Text>
+                    </View>
+                    <TouchableOpacity style={styles.actionButton} activeOpacity={0.7} onPress={() => handleOpenEditDevice(dev)}>
+                      <Feather name="edit-2" size={15} color="#FFD60A" />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.actionButton} activeOpacity={0.7} onPress={() => handleDeleteDevice(dev.id)}>
+                      <Feather name="trash-2" size={15} color="#FF453A" />
+                    </TouchableOpacity>
                   </View>
-                  <TouchableOpacity style={styles.deleteButton} activeOpacity={0.7} accessibilityLabel={`Editar ${dev.name}`} onPress={() => handleOpenEditDevice(dev)}>
-                    <Feather name="edit-2" size={15} color="#FFD60A" />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.deleteButton} activeOpacity={0.7} accessibilityLabel={`Eliminar ${dev.name}`} onPress={() => handleDeleteDevice(dev.id)}>
-                    <Feather name="trash-2" size={15} color="rgba(255, 69, 58, 0.7)" />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.specsContainer}>
-                  <View style={styles.specBadge}><Text style={styles.specLabel}>IPv4</Text><Text style={styles.specValueIp} numberOfLines={1}>{dev.ipv4_address}</Text></View>
-                  <View style={styles.specBadge}><Text style={styles.specLabel}>MAC</Text><Text style={styles.specValueMac} numberOfLines={1}>{dev.mac_address}</Text></View>
-                </View>
-                <View style={styles.subnetFooter}>
-                  <View style={styles.subnetTag}><Feather name="layers" size={12} color="#BF5AF2" /><Text style={styles.subnetTagText} numberOfLines={1}>{dev.subnet_name || 'VLAN Asignada'}</Text></View>
-                  <Text style={styles.networkSubtag} numberOfLines={1}>{dev.network_name || 'Red Central'}</Text>
-                </View>
-              </BlurView>); })}
+                  
+                  <View style={styles.specsContainer}>
+                    <View style={styles.specBadge}>
+                      <Text style={styles.specLabel}>IPv4</Text>
+                      <Text style={styles.specValueIp} numberOfLines={1}>{dev.ipv4_address}</Text>
+                    </View>
+                    <View style={styles.specBadge}>
+                      <Text style={styles.specLabel}>MAC</Text>
+                      <Text style={styles.specValueMac} numberOfLines={1}>{dev.mac_address}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.subnetFooter}>
+                    <View style={styles.subnetTag}>
+                      <Feather name="layers" size={12} color="#BF5AF2" />
+                      <Text style={styles.subnetTagText} numberOfLines={1}>{dev.subnet_name || 'VLAN Asignada'}</Text>
+                    </View>
+                    <Text style={styles.networkSubtag} numberOfLines={1}>{dev.network_name || 'Red Central'}</Text>
+                  </View>
+                </BlurView>
+              ); 
+            })}
             {filteredDevices.length === 0 && <Text style={styles.emptyText}>No se encontraron dispositivos con ese criterio.</Text>}
           </View>
         </View>
@@ -362,10 +379,7 @@ export default function DeviceListScreen() {
             placeholderTextColor="rgba(255, 255, 255, 0.25)" 
             style={[styles.input, fieldErrors.name && styles.inputError]} 
             value={devName} 
-            onChangeText={(val) => {
-              setDevName(val);
-              if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: '' }));
-            }} 
+            onChangeText={(val) => { setDevName(val); if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: '' })); }} 
           />
           {fieldErrors.name && <Text style={styles.fieldErrorText}>{fieldErrors.name}</Text>}
           
@@ -377,12 +391,8 @@ export default function DeviceListScreen() {
                 placeholderTextColor="rgba(255, 255, 255, 0.25)" 
                 style={[styles.input, fieldErrors.ip && styles.inputError]} 
                 value={devIp} 
-                onChangeText={(val) => {
-                  setDevIp(val);
-                  if (fieldErrors.ip) setFieldErrors(prev => ({ ...prev, ip: '' }));
-                }} 
+                onChangeText={(val) => { setDevIp(val); if (fieldErrors.ip) setFieldErrors(prev => ({ ...prev, ip: '' })); }} 
               />
-              {fieldErrors.ip && <Text style={styles.fieldErrorText}>{fieldErrors.ip}</Text>}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.inputLabel}>Dirección MAC *</Text>
@@ -395,9 +405,10 @@ export default function DeviceListScreen() {
                 value={devMac} 
                 onChangeText={handleMacChange} 
               />
-              {fieldErrors.mac && <Text style={styles.fieldErrorText}>{fieldErrors.mac}</Text>}
             </View>
           </View>
+          {fieldErrors.ip && <Text style={styles.fieldErrorText}>{fieldErrors.ip}</Text>}
+          {fieldErrors.mac && <Text style={styles.fieldErrorText}>{fieldErrors.mac}</Text>}
 
           <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
             <View style={{ flex: 1 }}>
@@ -425,36 +436,6 @@ export default function DeviceListScreen() {
             ))}
           </View>
 
-          <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Latitud GPS</Text>
-              <TextInput 
-                placeholder="19.4326" 
-                placeholderTextColor="rgba(255, 255, 255, 0.25)" 
-                style={[styles.input, fieldErrors.gps && styles.inputError]} 
-                value={devLat} 
-                onChangeText={(val) => {
-                  setDevLat(val);
-                  if (fieldErrors.gps) setFieldErrors(prev => ({ ...prev, gps: '' }));
-                }} 
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Longitud GPS</Text>
-              <TextInput 
-                placeholder="-99.1332" 
-                placeholderTextColor="rgba(255, 255, 255, 0.25)" 
-                style={[styles.input, fieldErrors.gps && styles.inputError]} 
-                value={devLng} 
-                onChangeText={(val) => {
-                  setDevLng(val);
-                  if (fieldErrors.gps) setFieldErrors(prev => ({ ...prev, gps: '' }));
-                }} 
-              />
-            </View>
-          </View>
-          {fieldErrors.gps && <Text style={styles.fieldErrorText}>{fieldErrors.gps}</Text>}
-
           <Text style={styles.inputLabel}>Subred de Destino *</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
             {subnets.map((sub) => (
@@ -467,27 +448,13 @@ export default function DeviceListScreen() {
           <Text style={styles.inputLabel}>Descripción u Observaciones</Text>
           <TextInput placeholder="Rol del equipo en la red..." placeholderTextColor="rgba(255, 255, 255, 0.25)" multiline numberOfLines={2} style={[styles.input, styles.textArea]} value={devDesc} onChangeText={setDevDesc} />
 
-          <TouchableOpacity 
-            style={[styles.modalSubmitButton, isSubmitting && { opacity: 0.6 }]} 
-            disabled={isSubmitting} 
-            activeOpacity={0.8} 
-            onPress={handleSaveDevice}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color="#000000" />
-            ) : (
-              <Text style={styles.modalSubmitButtonText}>{editingDeviceId ? 'Actualizar Dispositivo' : 'Guardar en Inventario'}</Text>
-            )}
+          <TouchableOpacity style={[styles.modalSubmitButton, isSubmitting && { opacity: 0.6 }]} disabled={isSubmitting} activeOpacity={0.8} onPress={handleSaveDevice}>
+            {isSubmitting ? <ActivityIndicator size="small" color="#000000" /> : <Text style={styles.modalSubmitButtonText}>{editingDeviceId ? 'Actualizar Dispositivo' : 'Guardar en Inventario'}</Text>}
           </TouchableOpacity>
         </GlassModal>
 
-        {/* Modal Rápido para Crear Edificio desde Dispositivos */}
-        <GlassModal 
-          visible={showNewBuildingModal} 
-          onClose={() => setShowNewBuildingModal(false)} 
-          title="Nueva Ubicación Física" 
-          subtitle="Registra un edificio con coordenadas GPS"
-        >
+        {/* Modal Nuevo Edificio */}
+        <GlassModal visible={showNewBuildingModal} onClose={() => setShowNewBuildingModal(false)} title="Nueva Ubicación Física" subtitle="Registra un edificio con coordenadas GPS">
           {newBldError !== '' && (
             <View style={styles.modalErrorContainer}>
               <Feather name="alert-circle" size={15} color="#FF453A" />
@@ -499,32 +466,9 @@ export default function DeviceListScreen() {
           
           <Text style={styles.inputLabel}>Código Corto *</Text>
           <TextInput placeholder="ej. EDIF-D" placeholderTextColor="rgba(255, 255, 255, 0.25)" autoCapitalize="characters" style={styles.input} value={newBldCode} onChangeText={setNewBldCode} />
-          
-          <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Latitud *</Text>
-              <TextInput placeholder="19.4326" placeholderTextColor="rgba(255, 255, 255, 0.25)" style={styles.input} value={newBldLat} onChangeText={setNewBldLat} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Longitud *</Text>
-              <TextInput placeholder="-99.1332" placeholderTextColor="rgba(255, 255, 255, 0.25)" style={styles.input} value={newBldLng} onChangeText={setNewBldLng} />
-            </View>
-          </View>
 
-          <Text style={styles.inputLabel}>Departamento / Área Inicial</Text>
-          <TextInput placeholder="ej. Sala de Racks" placeholderTextColor="rgba(255, 255, 255, 0.25)" style={styles.input} value={newBldDept} onChangeText={setNewBldDept} />
-
-          <TouchableOpacity 
-            style={[styles.modalSubmitButton, isSubmittingBld && { opacity: 0.6 }]} 
-            disabled={isSubmittingBld} 
-            activeOpacity={0.8} 
-            onPress={handleSaveNewBuilding}
-          >
-            {isSubmittingBld ? (
-              <ActivityIndicator size="small" color="#000000" />
-            ) : (
-              <Text style={styles.modalSubmitButtonText}>Guardar Ubicación</Text>
-            )}
+          <TouchableOpacity style={[styles.modalSubmitButton, isSubmittingBld && { opacity: 0.6 }]} disabled={isSubmittingBld} activeOpacity={0.8} onPress={handleSaveNewBuilding}>
+            {isSubmittingBld ? <ActivityIndicator size="small" color="#000000" /> : <Text style={styles.modalSubmitButtonText}>Guardar Ubicación</Text>}
           </TouchableOpacity>
         </GlassModal>
       </ScrollView>
@@ -559,7 +503,7 @@ const styles = StyleSheet.create({
   deviceName: { fontFamily: 'Poppins_700Bold', fontSize: 14.5, color: '#FFFFFF' },
   statusDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#30D158' },
   manufacturerText: { fontFamily: 'Poppins_400Regular', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.45)', marginTop: 1 },
-  deleteButton: { padding: 5 },
+  actionButton: { padding: 5, marginLeft: 2 },
   specsContainer: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   specBadge: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, gap: 6 },
   specLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 9.5, color: 'rgba(255, 255, 255, 0.4)' },

@@ -12,11 +12,9 @@ import MapScreen from '../screens/map/MapScreen';
 import IncidentScreen from '../screens/incident/IncidentScreen';
 import ConfigScreen from '../screens/config/ConfigScreen';
 import SearchScreen from '../screens/search/SearchScreen';
-import LogbookScreen from '../screens/logbook/LogbookScreen';
 
 const Tab = createBottomTabNavigator();
-
-const TAB_COUNT = 8;
+const TAB_COUNT = 7;
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const { width } = useWindowDimensions();
@@ -31,10 +29,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
   const iconSize = TAB_WIDTH < 48 ? 16 : 19;
   const bottomInset = Platform.OS === 'ios' ? insets.bottom + 8 : 18;
 
-  // Inicializamos el valor animado en el índice de la pantalla actual
   const animatedValue = useRef(new Animated.Value(state.index)).current;
 
-  // Cada vez que cambias de pestaña, se dispara la animación hacia la posición exacta
   useEffect(() => {
     Animated.spring(animatedValue, {
       toValue: state.index,
@@ -44,19 +40,16 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
     }).start();
   }, [state.index]);
 
-  // Convertimos el índice (0..7) en posición de píxeles (X) exacta
   const indicatorPosition = animatedValue.interpolate({
-    inputRange: [0, 1, 2, 3, 4, 5, 6, 7],
-    outputRange: [0, TAB_WIDTH, TAB_WIDTH * 2, TAB_WIDTH * 3, TAB_WIDTH * 4, TAB_WIDTH * 5, TAB_WIDTH * 6, TAB_WIDTH * 7],
+    inputRange: [0, 1, 2, 3, 4, 5, 6],
+    outputRange: [0, TAB_WIDTH, TAB_WIDTH * 2, TAB_WIDTH * 3, TAB_WIDTH * 4, TAB_WIDTH * 5, TAB_WIDTH * 6],
   });
 
   return (
     <View style={[styles.tabBarContainer, { width: effectiveWidth, left: (width - effectiveWidth) / 2, bottom: bottomInset }]}>
-      {/* Fondo de cristal oscuro */}
       <BlurView intensity={50} tint="dark" style={styles.blurBackground} />
       
       <View style={styles.contentContainer}>
-        {/* Círculo blanco animado exactamente centrado */}
         <Animated.View
           style={[
             styles.indicatorWrapper,
@@ -66,7 +59,6 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           <View style={[styles.circularIndicator, { width: indicatorSize, height: indicatorSize, borderRadius: indicatorSize / 2 }]} />
         </Animated.View>
 
-        {/* Botones interactivos */}
         {state.routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key];
           const isFocused = state.index === index;
@@ -83,7 +75,6 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             }
           };
 
-          // Íconos según la pantalla
           let iconName: keyof typeof Feather.glyphMap = 'home';
           if (route.name === 'Inicio') iconName = 'home';
           else if (route.name === 'Dispositivos') iconName = 'cpu';
@@ -92,7 +83,6 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           else if (route.name === 'Incidentes') iconName = 'alert-triangle';
           else if (route.name === 'Configuraciones') iconName = 'terminal';
           else if (route.name === 'Buscar') iconName = 'search';
-          else if (route.name === 'Bitácora') iconName = 'book-open';
 
           return (
             <TouchableOpacity
@@ -130,7 +120,6 @@ export default function BottomTabNavigator() {
       <Tab.Screen name="Incidentes" component={IncidentScreen} />
       <Tab.Screen name="Configuraciones" component={ConfigScreen} />
       <Tab.Screen name="Buscar" component={SearchScreen} />
-      <Tab.Screen name="Bitácora" component={LogbookScreen} />
     </Tab.Navigator>
   );
 }
