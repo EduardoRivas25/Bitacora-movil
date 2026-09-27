@@ -225,7 +225,8 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <p align="center"><em>Listado completo de redes registradas con información resumida</em></p>
 
-#### Detalle de Red
+### Detalle de Red
+#### Conexion de Subredes
 
 <!-- Captura del detalle de red -->
 <p align="center">
@@ -234,7 +235,7 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <p align="center"><em>Detalle de red con subredes asociadas e información de direccionamiento</em></p>
 
-#### Eliminar Red
+### Eliminar Red
 
 <!-- Captura de eliminar red -->
 <p align="center">
