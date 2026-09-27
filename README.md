@@ -206,15 +206,6 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <p align="center"><em>Detalle de red con subredes asociadas e información de direccionamiento</em></p>
 
-#### Modificar Red
-
-<!-- Captura de editar red -->
-<p align="center">
-  <img src="./capturas/editar-red.png" alt="Editar Red" width="300"/>
-</p>
-
-<p align="center"><em>Edición de una red existente</em></p>
-
 #### Eliminar Red
 
 <!-- Captura de eliminar red -->
@@ -232,7 +223,7 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <!-- Captura de crear subred -->
 <p align="center">
-  <img src="./capturas/crear-subred.png" alt="Crear Subred" width="300"/>
+  <img src="./capturas/Crear_Subred.png" alt="Crear Subred" width="300"/>
 </p>
 
 <p align="center"><em>Creación de subred con validación de que pertenezca a la red padre</em></p>
@@ -241,25 +232,16 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <!-- Captura de lista de subredes -->
 <p align="center">
-  <img src="./capturas/listar-subredes.png" alt="Lista de Subredes" width="300"/>
+  <img src="./capturas/Lista_Subredes.png" alt="Lista de Subredes" width="300"/>
 </p>
 
 <p align="center"><em>Subredes asociadas a una red específica</em></p>
-
-#### Modificar Subred
-
-<!-- Captura de editar subred -->
-<p align="center">
-  <img src="./capturas/editar-subred.png" alt="Editar Subred" width="300"/>
-</p>
-
-<p align="center"><em>Edición de una subred existente</em></p>
 
 #### Eliminar Subred
 
 <!-- Captura de eliminar subred -->
 <p align="center">
-  <img src="./capturas/eliminar-subred.png" alt="Eliminar Subred" width="300"/>
+  <img src="./capturas/Eliminar_Subred.png" alt="Eliminar Subred" width="300"/>
 </p>
 
 <p align="center"><em>Confirmación de eliminación de subred</em></p>
@@ -272,7 +254,7 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <!-- Captura de crear dispositivo -->
 <p align="center">
-  <img src="./capturas/crear-dispositivo.png" alt="Crear Dispositivo" width="300"/>
+  <img src="./capturas/Crear_Dispositivo.png" alt="Crear Dispositivo" width="300"/>
 </p>
 
 <p align="center"><em>Registro de nuevo dispositivo con validación de IPv4 y MAC (XX:XX:XX:XX:XX:XX)</em></p>
@@ -281,7 +263,7 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <!-- Captura de lista de dispositivos -->
 <p align="center">
-  <img src="./capturas/listar-dispositivos.png" alt="Lista de Dispositivos" width="300"/>
+  <img src="./capturas/Lista_Dispositivos.png" alt="Lista de Dispositivos" width="300"/>
 </p>
 
 <p align="center"><em>Inventario completo de dispositivos con nombre, IP, MAC, fabricante y ubicación</em></p>
@@ -290,19 +272,10 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 
 <!-- Captura del detalle de dispositivo -->
 <p align="center">
-  <img src="./capturas/detalle-dispositivo.png" alt="Detalle Dispositivo" width="300"/>
+  <img src="./capturas/Detalle_Dispositivos.png" alt="Detalle Dispositivo" width="300"/>
 </p>
 
 <p align="center"><em>Información completa del dispositivo: nombre, dirección MAC, fabricante, ubicación, IPv4 y red/subred asociada</em></p>
-
-### Modificar Dispositivo
-
-<!-- Captura de editar dispositivo -->
-<p align="center">
-  <img src="./capturas/editar-dispositivo.png" alt="Editar Dispositivo" width="300"/>
-</p>
-
-<p align="center"><em>Edición de datos de un dispositivo registrado</em></p>
 
 ### Eliminar Dispositivo
 
@@ -312,6 +285,78 @@ Para acceder a la aplicación, utiliza las siguientes credenciales proporcionada
 </p>
 
 <p align="center"><em>Confirmación de eliminación de dispositivo del inventario</em></p>
+
+---
+
+## 📍 Evidencias del Mapa de Red y Localización GPS
+
+### Mapa de Red en Tiempo Real
+
+<!-- Captura del mapa de red -->
+<p align="center"> 
+  <img src="./capturas/mapa-red.png" alt="Mapa de Red" width="300"/> 
+</p> 
+
+<p align="center"><em>Visualización geográfica de edificios y equipos con localización GPS en tiempo real</em></p>
+
+### Registrar Edificio
+
+<!-- Captura de registrar edificio --> 
+<p align="center">
+  <img src="./capturas/registrar-edificio.png" alt="Registrar Edificio" width="300"/>
+</p> 
+
+<p align="center"><em>Registro de una nueva ubicación física con coordenadas GPS (latitud, longitud), código corto, departamento/área y piso/nivel</em></p>
+
+---
+## 🚨 Evidencias del Centro de Control (Incidentes & Mantenimiento)
+
+### Panel de Incidentes y Mantenimientos
+
+<!-- Captura del centro de control --> 
+<p align="center"> 
+  <img src="./capturas/centro-control.png" alt="Centro de Control" width="300"/>
+</p> 
+
+<p align="center"><em>Panel con incidentes activos y tareas programadas, filtrable por severidad (Crítico, Alto, Medio, Bajo, Resuelto)</em></p>
+
+### Reportar Incidente
+
+<!-- Captura de reportar incidente --> 
+<p align="center">
+  <img src="./capturas/reportar-incidente.png" alt="Reportar Incidente" width="300"/>
+</p> 
+
+<p align="center"><em>Formulario para registrar una falla o evento crítico, con selección de severidad y de los equipos afectados agrupados por edificio</em></p>
+
+### Agendar Mantenimiento
+<!-- Captura de agendar mantenimiento --> 
+<p align="center"> 
+  <img src="./capturas/agendar-mantenimiento.png" alt="Agendar Mantenimiento" width="300"/>
+</p>
+
+<p align="center"><em>Programación de tareas de mantenimiento preventivo o correctivo, con tipo, equipos afectados, ubicación, fecha y ventana horaria</em></p>
+
+---
+## 🗄️ Evidencias de Configuraciones (Historial & Backups de Equipos)
+
+### Cargar o Crear Configuración
+
+<!-- Captura de configuraciones --> 
+<p align="center">
+  <img src="./capturas/configuraciones.png" alt="Configuraciones" width="300"/>
+</p> 
+
+<p align="center"><em>Almacenamiento, visualización y edición de scripts de configuración en tiempo real, con carga de archivos (.txt, .cfg, .bak, .conf, .rsc, .sh) asociados a un dispositivo de la base de datos</em></p>
+
+### Backups Guardados
+
+<!-- Captura de backups --> 
+<p align="center"> 
+  <img src="./capturas/backups-guardados.png" alt="Backups Guardados" width="300"/> 
+</p> 
+
+<p align="center"><em>Historial de backups guardados en la base de datos, disponibles para consulta y restauración</em></p>
 
 ---
 
@@ -418,6 +463,25 @@ bitacora-redes/
 Este proyecto fue desarrollado con fines académicos para la asignatura de Administración de Redes.
 
 ---
+## Conclusiones
+### Juan Eduardo Rojas
+
+Este proyecto fue una buena oportunidad para poner en práctica lo aprendido durante el curso. Con la aplicación logramos facilitar la administración y organización de redes, subredes y dispositivos, integrando herramientas como búsquedas, validaciones, mapas y un centro de control. También aprendimos la importancia del trabajo en equipo y de resolver los problemas que surgieron durante el desarrollo. Al final, conseguimos una aplicación funcional y útil para la gestión de redes.
+
+### German Jafet Orozco Ríos 
+
+Este proyecto nos permitió poner en práctica lo aprendido en clase. Creamos una aplicación móvil funcional que facilita la gestión de redes, subredes y dispositivos. Logramos integrar validaciones, búsquedas, mapas y un centro de control en una sola herramienta. El trabajo en equipo fue clave para cumplir los objetivos. Al final, obtuvimos una solución útil y escalable para la administración de redes.
+
+### Salvador Alejandro Lopez Duarte
+En el proyecto de la App movil y web permitio ver como se distribuyen las diferentes redes dentro de un area local mediante mascaras, switch y demas por lo que podemos decir que nos ayuda a una gran gestion y mejor control con las validaciones y busquedas de las redes
+
+### Guadalupe jazmin Becerra Morales
+
+Trabajar en esta aplicación fue una gran experiencia. Aunque debo admitir que al principio me trabé bastante y varias veces sentí que no le hallaba la forma correcta de moverle al proyecto, superar ese reto hizo que valiera la pena. Lo que más disfruté fue aprender a dominar GitHub para coordinarnos. Al final, pasar de no saber bien por dónde empezar a ver una herramienta funcional de administración de redes con mapas y centro de control fue grato y el apoyo de mis compañeros.
+
+### Moreno Garcia Juan Manuel
+
+Estuvo muy bien y me gusto darle diseño minimalista y base al proyecto, ojala les guste el liquid glass, vamos por más retos y desarrollo en proyecto, mas que nada en diseños minimalistas y practicar más armanado redes y moviendo el trafico en las redes.
 
 <p align="center">
   Hecho con ❤️ por el equipo de desarrollo — Agosto 2026
