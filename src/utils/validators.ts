@@ -3,6 +3,15 @@
 // MÓDULO CENTRAL DE VALIDACIONES DE RED Y DATOS DE ENTRADA
 // ============================================================
 
+/**
+ * Representa el resultado unificado de una operación de validación.
+ *
+ * @property valid - Indica si la validación fue exitosa (`true`) o falló (`false`).
+ * @property error - Mensaje descriptivo del error en caso de que la validación falle.
+ * @property formatted - Valor resultante procesado o estandarizado (ej. en minúsculas, con `trim` o formato con dos puntos).
+ * @property numericValue - Valor numérico procesado (ej. para máscaras CIDR, octetos o coordenadas GPS).
+ */
+
 export interface ValidationResult {
   valid: boolean;
   error?: string;
@@ -11,12 +20,19 @@ export interface ValidationResult {
 }
 
 /**
- * Valida formato de correo electrónico
- * Requiere presencia de @, usuario válido y dominio con extensión.
+ * Valida la estructura y formato de un correo electrónico.
+ *
+ * @param email - Correo electrónico a validar.
+ * 
+ * @returns Objeto {@link ValidationResult} con el estado y el correo estandarizado en minúsculas (`toLowerCase`).
+ *
+ * @example
+ * validateEmail('Usuario@Dominio.COM'); 
+ * // { valid: true, formatted: 'usuario@dominio.com' }
  */
 export function validateEmail(email: string): ValidationResult {
   if (!email || !email.trim()) {
-    return { valid: false, error: 'El campo de correo no puede estar vacío.' };
+    return { valid: false, error: 'Ingresa tu correo electrónico.' };
   }
 
   const clean = email.trim();
@@ -24,7 +40,7 @@ export function validateEmail(email: string): ValidationResult {
   if (!clean.includes('@')) {
     return {
       valid: false,
-      error: 'Falta el arroba (@) en la dirección introducida (ej. usuario@dominio.com).',
+      error: 'Incluye un "@" en la dirección (ej. usuario@dominio.com).',
     };
   }
 
@@ -32,7 +48,7 @@ export function validateEmail(email: string): ValidationResult {
   if (parts.length !== 2 || !parts[0] || !parts[1]) {
     return {
       valid: false,
-      error: 'Asegúrate de incluir un usuario y un dominio válidos (ej. usuario@dominio.com).',
+      error: 'Ingresa un usuario y un dominio válidos (ej. usuario@dominio.com).',
     };
   }
 
@@ -40,7 +56,7 @@ export function validateEmail(email: string): ValidationResult {
   if (!domain.includes('.') || domain.startsWith('.') || domain.endsWith('.')) {
     return {
       valid: false,
-      error: 'El formato de la extensión (.com, .org, etc.) es incorrecto.',
+      error: 'El dominio debe incluir una extensión válida (ej. .com, .org).',
     };
   }
 
@@ -49,7 +65,7 @@ export function validateEmail(email: string): ValidationResult {
   if (!emailRegex.test(clean)) {
     return {
       valid: false,
-      error: 'Dirección de correo no válida. Revisa los caracteres ingresados.',
+      error: 'El correo contiene caracteres no válidos o un formato incorrecto.',
     };
   }
 
@@ -57,28 +73,44 @@ export function validateEmail(email: string): ValidationResult {
 }
 
 /**
- * Valida longitud mínima de contraseña
+ * Valida que la contraseña cumpla con la longitud mínima requerida.
+ *
+ * @param password - Contraseña a evaluar.
+ * @param minLength - Cantidad mínima de caracteres exigida (por defecto: 6).
+ * 
+ * @returns Objeto {@link ValidationResult} con el estado de la validación.
+ *
+ * @example
+ * validatePassword('secret123', 8); 
+ * // { valid: true }
  */
 export function validatePassword(password: string, minLength = 6): ValidationResult {
   if (!password) {
-    return { valid: false, error: 'La contraseña es obligatoria.' };
+    return { valid: false, error: 'Ingresa una contraseña para continuar.' };
   }
   if (password.length < minLength) {
     return {
       valid: false,
-      error: `La contraseña debe tener al menos ${minLength} caracteres.`,
+      error: `La contraseña es demasiado corta. Debe incluir al menos ${minLength} caracteres.`,
     };
   }
   return { valid: true };
 }
 
 /**
- * Valida dirección IPv4
- * Debe tener exactamente 4 octetos numéricos entre 0 y 255.
+ * Valida que una cadena coincida con el formato de una dirección IPv4 legítima (4 bloques de 0 a 255).
+ *
+ * @param ip - Cadena de texto a evaluar como dirección IPv4.
+ * 
+ * @returns Objeto {@link ValidationResult} con el estado y la IP limpia sin espacios.
+ *
+ * @example
+ * validateIPv4('192.168.1.1'); 
+ * // { valid: true, formatted: '192.168.1.1' }
  */
 export function validateIPv4(ip: string): ValidationResult {
   if (!ip || !ip.trim()) {
-    return { valid: false, error: 'La dirección IPv4 es obligatoria.' };
+    return { valid: false, error: 'Ingresa una dirección IPv4 (ej. 192.168.1.1).' };
   }
 
   const clean = ip.trim();
@@ -88,7 +120,7 @@ export function validateIPv4(ip: string): ValidationResult {
   if (octets.length !== 4) {
     return {
       valid: false,
-      error: `Estructura IPv4 inválida. Se requieren 4 segmentos separados por puntos (tiene ${octets.length}). Ej: 192.168.1.1`,
+      error: `Formato IPv4 incorrecto. Debe tener 4 bloques separados por puntos (ej. 192.168.1.1).`,
     };
   }
 
@@ -97,7 +129,7 @@ export function validateIPv4(ip: string): ValidationResult {
     if (octet === '') {
       return {
         valid: false,
-        error: `El octeto #${i + 1} está vacío.`,
+        error: `El bloque #${i + 1} está vacío.`,
       };
     }
 
@@ -105,7 +137,7 @@ export function validateIPv4(ip: string): ValidationResult {
     if (!/^\d+$/.test(octet)) {
       return {
         valid: false,
-        error: `El octeto #${i + 1} ("${octet}") contiene caracteres no numéricos.`,
+        error: `El bloque #${i + 1} ("${octet}") debe contener solo números.`,
       };
     }
 
@@ -113,7 +145,7 @@ export function validateIPv4(ip: string): ValidationResult {
     if (octet.length > 1 && octet.startsWith('0')) {
       return {
         valid: false,
-        error: `El octeto #${i + 1} ("${octet}") no debe tener ceros a la izquierda.`,
+        error: `El bloque #${i + 1} ("${octet}") no debe incluir ceros a la izquierda.`,
       };
     }
 
@@ -121,7 +153,7 @@ export function validateIPv4(ip: string): ValidationResult {
     if (num < 0 || num > 255) {
       return {
         valid: false,
-        error: `El octeto #${i + 1} (${num}) es un valor fuera de límite permitido (0-255) en segmento.`,
+        error: `El bloque #${i + 1} (${num}) está fuera del rango permitido (0 a 255).`,
       };
     }
   }
@@ -130,7 +162,17 @@ export function validateIPv4(ip: string): ValidationResult {
 }
 
 /**
- * Valida valor CIDR (prefijo de máscara de red)
+ * Valida un prefijo de máscara de red CIDR dentro de un rango numérico.
+ *
+ * @param cidr - Valor numérico o texto que representa el prefijo CIDR.
+ * @param min - Límite mínimo permitido (por defecto: 1).
+ * @param max - Límite máximo permitido (por defecto: 32).
+ * 
+ * @returns Objeto {@link ValidationResult} con el estado y el valor entero parsed.
+ *
+ * @example
+ * validateCIDR(24); 
+ * // { valid: true, numericValue: 24 }
  */
 export function validateCIDR(
   cidr: string | number,
@@ -138,19 +180,19 @@ export function validateCIDR(
   max = 32
 ): ValidationResult {
   if (cidr === undefined || cidr === null || cidr === '') {
-    return { valid: false, error: 'El parámetro CIDR no puede estar vacío.' };
+    return { valid: false, error: 'Ingresa un valor para la máscara CIDR (ej. 24).' };
   }
 
   const str = String(cidr).trim();
   if (!/^\d+$/.test(str)) {
-    return { valid: false, error: 'La máscara CIDR debe contener solo números enteros (ej. /24).' };
+    return { valid: false, error: 'La máscara CIDR debe ser un número entero sin símbolos ni decimales (ej. 24).' };
   }
 
   const num = parseInt(str, 10);
   if (num < min || num > max) {
     return {
       valid: false,
-      error: `El CIDR /${num} está fuera de rango. Debe ser entre /${min} y /${max}.`,
+      error: `La máscara /${num} es inválida. Debe estar en el rango de /${min} a /${max}.`,
     };
   }
 
@@ -167,7 +209,14 @@ function ipToLong(ip: string): number {
 }
 
 /**
- * Convierte un número entero de 32 bits a string IPv4
+ * Convierte un entero numérico de 32 bits sin signo a su representación de cadena IPv4.
+ *
+ * @param long - Entero de 32 bits que representa la IP.
+ * 
+ * @returns Dirección IPv4 en notación decimal punteada.
+ *
+ * @example
+ * longToIp(3232235777); // '192.168.1.1'
  */
 function longToIp(long: number): string {
   return [
@@ -179,7 +228,16 @@ function longToIp(long: number): string {
 }
 
 /**
- * Valida y calcula la coherencia de una dirección IP de red con su máscara CIDR
+ * Valida la coherencia de una dirección IP de red con su máscara CIDR y calcula su dirección base canónica.
+ *
+ * @param ip - Dirección IPv4 de la red.
+ * @param cidr - Prefijo CIDR de la red (rango permitido: 1 a 30).
+ * 
+ * @returns Objeto {@link ValidationResult} con el estado, la IP base de red calculada y advertencia si aplica.
+ *
+ * @example
+ * validateNetworkAndCidr('192.168.1.50', 24); 
+ * // { valid: true, formatted: '192.168.1.0', error: 'Nota: La dirección base de red para 192.168.1.50/24 es 192.168.1.0.' }
  */
 export function validateNetworkAndCidr(ip: string, cidr: number | string): ValidationResult {
   const ipVal = validateIPv4(ip);
@@ -207,7 +265,18 @@ export function validateNetworkAndCidr(ip: string, cidr: number | string): Valid
 }
 
 /**
- * Valida si una subred pertenece jerárquicamente a la red principal padre
+ * Valida si una subred dada pertenece jerárquicamente al rango de una red principal (padre).
+ *
+ * @param parentIp - Dirección IP de la red principal.
+ * @param parentCidr - Máscara CIDR de la red principal.
+ * @param subnetIp - Dirección IP de la subred a evaluar.
+ * @param subnetCidr - Máscara CIDR de la subred a evaluar.
+ * 
+ * @returns Objeto {@link ValidationResult} indicando si la subred está contenida en la red padre.
+ *
+ * @example
+ * validateSubnetAgainstParent('10.0.0.0', 16, '10.0.1.0', 24);
+ * // { valid: true }
  */
 export function validateSubnetAgainstParent(
   parentIp: string,
@@ -246,9 +315,16 @@ export function validateSubnetAgainstParent(
 }
 
 /**
- * Valida dirección física MAC (6 pares hexadecimales)
- * Formatos aceptados: XX:XX:XX:XX:XX:XX, XX-XX-XX-XX-XX-XX o XXXXXXXXXXXX
- * Retorna la versión estandarizada XX:XX:XX:XX:XX:XX en mayúsculas
+ * Valida y estandariza una dirección física MAC.
+ * Soporta formatos con `:`, `-` o de 12 caracteres continuos.
+ *
+ * @param mac - Dirección MAC a validar (ej. 'AA:BB:CC:DD:EE:FF', 'AA-BB...', 'AABBCCDDEEFF').
+ * 
+ * @returns Objeto {@link ValidationResult} con el estado y la MAC formateada en mayúsculas (XX:XX:XX:XX:XX:XX).
+ *
+ * @example
+ * validateMAC('aabbccddeeff'); 
+ * // { valid: true, formatted: 'AA:BB:CC:DD:EE:FF' }
  */
 export function validateMAC(mac: string): ValidationResult {
   if (!mac || !mac.trim()) {
@@ -306,7 +382,16 @@ export function formatMACInput(text: string): string {
 }
 
 /**
- * Valida coordenadas GPS
+ * Valida un par de coordenadas geográficas (latitud y longitud).
+ *
+ * @param lat - Latitud en grados (-90 a 90).
+ * @param lng - Longitud en grados (-180 a 180).
+ * 
+ * @returns Objeto {@link ValidationResult} indicando si las coordenadas son válidas.
+ *
+ * @example
+ * validateGPS(19.4326, -99.1332); 
+ * // { valid: true, numericValue: 19.4326 }
  */
 export function validateGPS(lat: string | number, lng: string | number): ValidationResult {
   const latStr = String(lat ?? '').trim();
@@ -375,7 +460,14 @@ export function validateDate(dateStr: string): ValidationResult {
 }
 
 /**
- * Valida campo de texto obligatorio no vacío
+ * Valida que un campo de texto no esté vacío y cumpla con una longitud mínima.
+ *
+ * @param val - Texto a validar.
+ * @param minLength - Longitud mínima requerida (por defecto: 1).
+ * @param fieldName - Nombre del campo para el mensaje de error (por defecto: 'Este campo').
+ * 
+ * @returns Objeto {@link ValidationResult} con el estado de la validación o el texto formateado (`trim`).
+ *
  */
 export function validateRequired(
   val: string,

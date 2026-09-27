@@ -23,6 +23,14 @@ import {
 // ============================================================
 // SISTEMA DE CACHÉ EN MEMORIA
 // ============================================================
+
+/**
+ * Representa un elemento almacenado dentro de la caché junto con su marca de tiempo.
+ *
+ * @template T - Tipo de datos guardado en la caché.
+ * @property data - Información almacenada.
+ * @property timestamp - Momento exacto en milisegundos (`Date.now()`) en el que se guardó o actualizó el registro.
+ */
 interface CacheEntry<T> {
   data: T;
   timestamp: number;
@@ -62,6 +70,17 @@ export function invalidateCache(...keys: string[]): void {
 // ============================================================
 // HELPERS DE SANITIZACIÓN Y MANEJO DE ERRORES
 // ============================================================
+
+/**
+ * Elimina espacios innecesarios y caracteres potencialmente peligrosos (`<`, `>`).
+ *
+ * @param input - Texto a limpiar.
+ * 
+ * @returns Cadena sanitizada sin etiquetas ni espacios en los extremos.
+ *
+ * @example
+ * sanitize(' <script> '); // ''
+ */
 function sanitize(input: string): string {
   if (!input) return '';
   return input.trim().replace(/[<>]/g, '');
@@ -70,21 +89,21 @@ function sanitize(input: string): string {
 export function translateAuthError(errorMsg: string): string {
   const msg = (errorMsg || '').toLowerCase();
   if (msg.includes('invalid login credentials') || msg.includes('invalid_grant')) {
-    return 'Correo o contraseña incorrectos. Verifica tus credenciales.';
+    return 'Correo o contraseña incorrectos. Revisa tus datos e inténtalo de nuevo.';
   }
   if (msg.includes('user already registered') || msg.includes('already exists')) {
-    return 'Este correo electrónico ya se encuentra registrado.';
+    return 'Este correo ya está registrado. Intenta iniciar sesión o recuperar tu contraseña.';
   }
   if (msg.includes('password should be at least')) {
-    return 'La contraseña debe tener al menos 6 caracteres.';
+    return 'La contraseña es muy corta. Debe contener al menos 6 caracteres.';
   }
   if (msg.includes('email not confirmed')) {
-    return 'El correo no ha sido confirmado en Supabase.';
+    return 'Tu correo aún no ha sido verificado. Revisa tu bandeja de entrada o spam.';
   }
   if (msg.includes('rate limit')) {
-    return 'Demasiados intentos. Por favor espera unos momentos.';
+    return 'Superaste el límite de intentos. Por favor, espera unos minutos antes de volver a intentar.';
   }
-  return errorMsg || 'Ocurrió un error inesperado al autenticar.';
+  return 'Ocurrió un error inesperado al autenticar. Inténtalo de nuevo más tarde.';
 }
 
 function formatEmail(input: string): string {
@@ -95,6 +114,19 @@ function formatEmail(input: string): string {
 // ============================================================
 // AUTH — Autenticación con Supabase
 // ============================================================
+
+/**
+ * Inicia sesión con correo electrónico y contraseña en Supabase.
+ *
+ * @param emailOrUser - Correo electrónico o identificador de usuario.
+ * @param password - Contraseña de la cuenta.
+ * 
+ * @returns Promesa que resuelve los datos de la sesión/usuario de Supabase.
+ * @throws {Error} Con un mensaje traducido y amigable si la autenticación falla.
+ *
+ * @example
+ * const session = await signInWithEmail('usuario@correo.com', 'miPassword123');
+ */
 
 export async function signInWithEmail(emailOrUser: string, password: string) {
   const formattedEmail = formatEmail(emailOrUser);
@@ -177,6 +209,20 @@ export async function getCurrentSession() {
 // NETWORKS — Redes Principales
 // ============================================================
 
+/**
+ * Obtiene la lista completa de redes principales junto con sus subredes y conteo de dispositivos.
+ * 
+ * Consulta en paralelo las redes, subredes y dispositivos desde Supabase, enriqueciendo
+ * la respuesta con los totales correspondientes. Soporta caché en memoria.
+ *
+ * @param forceRefresh - Si es `true`, ignora la caché en memoria y realiza las peticiones a la base de datos.
+ * 
+ * @returns Promesa que resuelve la lista de redes con sus subredes anidadas y métricas asociadas.
+ * @throws Lanzará el error de base de datos si alguna de las consultas falla.
+ *
+ * @example
+ * const networks = await fetchNetworks();
+ */
 export async function fetchNetworks(forceRefresh = false): Promise<(Network & { subnets: Subnet[] })[]> {
   if (!forceRefresh) {
     const cached = getCached<(Network & { subnets: Subnet[] })[]>('networks');
@@ -262,6 +308,18 @@ export async function deleteNetwork(id: string) {
 // ============================================================
 // SUBNETS — Subredes
 // ============================================================
+
+/**
+ * Obtiene todas las subredes pertenecientes a una red principal específica.
+ *
+ * @param networkId - ID de la red principal.
+ * 
+ * @returns Promesa que resuelve la lista de subredes ordenadas por fecha de creación.
+ * @throws Lanzará el error de la base de datos si la consulta falla.
+ *
+ * @example
+ * const subnets = await fetchSubnetsByNetwork('net-123');
+ */
 
 export async function fetchSubnetsByNetwork(networkId: string): Promise<Subnet[]> {
   const { data, error } = await supabase
