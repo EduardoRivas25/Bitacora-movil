@@ -16,12 +16,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import { useTheme } from '../../contexts/ThemeContext';
 import * as api from '../../services/api';
 import { DeviceConfig, Device } from '../../types';
 
 const UTILITY_TABS = ['Notificaciones', 'Perfil', 'Seguridad', 'Preferencias', 'Acerca de'];
 
 export default function ConfigScreen() {
+  const { colors, isDark } = useTheme();
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
   const isDesktop = width > 900;
@@ -315,10 +317,10 @@ export default function ConfigScreen() {
 
   if (loading && configs.length === 0 && devices.length === 0) {
     return (
-      <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
+      <LinearGradient colors={colors.gradient} style={styles.container}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#0A84FF" />
-          <Text style={{ color: 'rgba(255,255,255,0.5)', fontFamily: 'Poppins_400Regular', marginTop: 12 }}>
+          <Text style={{ color: colors.textSecondary, fontFamily: 'Poppins_400Regular', marginTop: 12 }}>
             Cargando configuraciones y dispositivos desde base de datos...
           </Text>
         </View>
@@ -351,7 +353,7 @@ export default function ConfigScreen() {
   ];
 
   return (
-    <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
+    <LinearGradient colors={colors.gradient} style={styles.container}>
       {/* Input oculto para carga de archivos en Web */}
       {Platform.OS === 'web' && (
         <input
@@ -375,8 +377,8 @@ export default function ConfigScreen() {
           <View style={styles.header}>
             <View style={{ flex: 1, minWidth: 200 }}>
               <Text style={styles.headerBadge}>HISTORIAL & BACKUPS DE EQUIPOS</Text>
-              <Text style={[styles.headerTitle, isSmallMobile && { fontSize: 22 }]}>Configuraciones</Text>
-              <Text style={styles.headerSubtitle}>
+              <Text style={[styles.headerTitle, { color: colors.textPrimary }, isSmallMobile && { fontSize: 22 }]}>Configuraciones</Text>
+              <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
                 Almacena, visualiza y edita scripts de configuración en tiempo real desde la base de datos
               </Text>
             </View>
@@ -407,9 +409,9 @@ export default function ConfigScreen() {
             </View>
           )}
 
-          <BlurView intensity={30} tint="dark" style={styles.utilityCard}>
+          <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.utilityCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
             <View style={styles.utilityHeader}>
-              <Text style={styles.cardSectionTitle}>Sistema y configuración</Text>
+              <Text style={[styles.cardSectionTitle, { color: colors.textPrimary }]}>Sistema y configuración</Text>
               <View style={styles.editingBadge}>
                 <Text style={styles.editingBadgeText}>Panel administrativo</Text>
               </View>
@@ -421,21 +423,25 @@ export default function ConfigScreen() {
                   key={tab}
                   activeOpacity={0.8}
                   onPress={() => setSelectedUtility(tab)}
-                  style={[styles.utilityTab, selectedUtility === tab && styles.utilityTabActive]}
+                  style={[
+                    styles.utilityTab, 
+                    { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)', borderColor: colors.cardBorder },
+                    selectedUtility === tab && styles.utilityTabActive
+                  ]}
                 >
-                  <Text style={[styles.utilityTabText, selectedUtility === tab && styles.utilityTabTextActive]}>{tab}</Text>
+                  <Text style={[styles.utilityTabText, { color: colors.textSecondary }, selectedUtility === tab && styles.utilityTabTextActive]}>{tab}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
             {selectedUtility === 'Notificaciones' && (
-              <View style={styles.utilityContent}>
+              <View style={[styles.utilityContent, { borderColor: colors.divider }]}>
                 {notificationList.map((item, index) => (
                   <View key={`${item.title}-${index}`} style={styles.utilityItem}>
                     <View style={[styles.utilityMarker, { backgroundColor: item.type === 'success' ? '#30D158' : item.type === 'danger' ? '#FF453A' : '#0A84FF' }]} />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.utilityItemTitle}>{item.title}</Text>
-                      <Text style={styles.utilityItemText}>{item.detail}</Text>
+                      <Text style={[styles.utilityItemTitle, { color: colors.textPrimary }]}>{item.title}</Text>
+                      <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>{item.detail}</Text>
                     </View>
                   </View>
                 ))}
@@ -443,38 +449,38 @@ export default function ConfigScreen() {
             )}
 
             {selectedUtility === 'Perfil' && (
-              <View style={styles.utilityContent}>
+              <View style={[styles.utilityContent, { borderColor: colors.divider }]}>
                 {profileSummary.map((item) => (
-                  <View key={item.label} style={styles.profileRow}>
-                    <Text style={styles.profileLabel}>{item.label}</Text>
-                    <Text style={styles.profileValue}>{item.value}</Text>
+                  <View key={item.label} style={[styles.profileRow, { borderColor: colors.divider }]}>
+                    <Text style={[styles.profileLabel, { color: colors.textTertiary }]}>{item.label}</Text>
+                    <Text style={[styles.profileValue, { color: colors.textPrimary }]}>{item.value}</Text>
                   </View>
                 ))}
               </View>
             )}
 
             {selectedUtility === 'Seguridad' && (
-              <View style={styles.utilityContent}>
-                <Text style={styles.utilityItemTitle}>Autenticación y seguridad</Text>
-                <Text style={styles.utilityItemText}>Política activa: autenticación reforzada con MFA, sesiones limitadas y validación por administrador.</Text>
-                <Text style={styles.utilityItemText}>Último escaneo: 2 días atrás • Estado: normal</Text>
+              <View style={[styles.utilityContent, { borderColor: colors.divider }]}>
+                <Text style={[styles.utilityItemTitle, { color: colors.textPrimary }]}>Autenticación y seguridad</Text>
+                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Política activa: autenticación reforzada con MFA, sesiones limitadas y validación por administrador.</Text>
+                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Último escaneo: 2 días atrás • Estado: normal</Text>
               </View>
             )}
 
             {selectedUtility === 'Preferencias' && (
-              <View style={styles.utilityContent}>
-                <Text style={styles.utilityItemText}>Tema visual: Oscuro</Text>
-                <Text style={styles.utilityItemText}>Notificaciones: Activadas</Text>
-                <Text style={styles.utilityItemText}>Idioma: Español</Text>
-                <Text style={styles.utilityItemText}>Área predeterminada: Infraestructura</Text>
+              <View style={[styles.utilityContent, { borderColor: colors.divider }]}>
+                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Tema visual: {isDark ? 'Oscuro' : 'Claro'}</Text>
+                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Notificaciones: Activadas</Text>
+                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Idioma: Español</Text>
+                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Área predeterminada: Infraestructura</Text>
               </View>
             )}
 
             {selectedUtility === 'Acerca de' && (
-              <View style={styles.utilityContent}>
-                <Text style={styles.utilityItemTitle}>Bitácora Digital</Text>
-                <Text style={styles.utilityItemText}>Sistema para registrar cambios, incidentes, infraestructura, usuarios y reportes administrativos.</Text>
-                <Text style={styles.utilityItemText}>Versión: 1.0.0 • Componentes: React Native + Expo + Supabase</Text>
+              <View style={[styles.utilityContent, { borderColor: colors.divider }]}>
+                <Text style={[styles.utilityItemTitle, { color: colors.textPrimary }]}>Bitácora Digital</Text>
+                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Sistema para registrar cambios, incidentes, infraestructura, usuarios y reportes administrativos.</Text>
+                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Versión: 1.0.0 • Componentes: React Native + Expo + Supabase</Text>
               </View>
             )}
           </BlurView>
@@ -486,9 +492,9 @@ export default function ConfigScreen() {
           <View style={[styles.leftColumn, isDesktop && styles.leftColumnDesktop]}>
             
             {/* Tarjeta: Cargar Archivo y Metadatos */}
-            <BlurView intensity={30} tint="dark" style={styles.glassCard}>
+            <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.glassCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
               <View style={styles.cardHeaderRow}>
-                <Text style={styles.cardSectionTitle}>
+                <Text style={[styles.cardSectionTitle, { color: colors.textPrimary }]}>
                   {selectedConfig ? 'Editar Configuración Guardada' : 'Cargar o Crear Configuración'}
                 </Text>
                 {selectedConfig && (
@@ -501,7 +507,7 @@ export default function ConfigScreen() {
               {/* 🎯 SECCIÓN: Selector Completo de Dispositivos en BD */}
               <View style={styles.deviceSectionWrapper}>
                 <View style={styles.deviceSectionHeader}>
-                  <Text style={styles.inputLabel}>Dispositivo asociado en BD ({devices.length} disponibles) *</Text>
+                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Dispositivo asociado en BD ({devices.length} disponibles) *</Text>
                   <TouchableOpacity 
                     style={styles.toggleDropdownBtn}
                     onPress={() => setShowDeviceDropdown(!showDeviceDropdown)}
@@ -516,23 +522,29 @@ export default function ConfigScreen() {
 
                 {/* Tarjeta Resumen del Dispositivo Seleccionado */}
                 {currentDevice ? (
-                  <View style={styles.selectedDeviceCard}>
+                  <View style={[
+                    styles.selectedDeviceCard, 
+                    { 
+                      backgroundColor: isDark ? 'rgba(10, 132, 255, 0.08)' : 'rgba(10, 132, 255, 0.06)',
+                      borderColor: isDark ? 'rgba(10, 132, 255, 0.25)' : 'rgba(10, 132, 255, 0.2)' 
+                    }
+                  ]}>
                     <View style={styles.selectedDeviceIconBadge}>
                       <Feather name={getDeviceIcon(currentDevice.name)} size={18} color="#0A84FF" />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.selectedDeviceName}>{currentDevice.name}</Text>
-                      <Text style={styles.selectedDeviceMeta}>
+                      <Text style={[styles.selectedDeviceName, { color: colors.textPrimary }]}>{currentDevice.name}</Text>
+                      <Text style={[styles.selectedDeviceMeta, { color: colors.textSecondary }]}>
                         IPv4: <Text style={{ color: '#0A84FF', fontWeight: '600' }}>{currentDevice.ipv4_address}</Text> • {currentDevice.location || 'Sin ubicación'}
                       </Text>
                     </View>
-                    <View style={styles.deviceTypeBadge}>
-                      <Text style={styles.deviceTypeBadgeText}>{currentDevice.manufacturer || 'Red'}</Text>
+                    <View style={[styles.deviceTypeBadge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)' }]}>
+                      <Text style={[styles.deviceTypeBadgeText, { color: colors.textSecondary }]}>{currentDevice.manufacturer || 'Red'}</Text>
                     </View>
                   </View>
                 ) : (
                   <View style={styles.noDeviceBanner}>
-                    <Text style={styles.noDeviceText}>No hay dispositivos en la base de datos.</Text>
+                    <Text style={[styles.noDeviceText, { color: colors.textSecondary }]}>No hay dispositivos en la base de datos.</Text>
                     <TouchableOpacity onPress={() => navigation.navigate('Dispositivos')}>
                       <Text style={styles.addDeviceLink}>+ Registrar Dispositivo</Text>
                     </TouchableOpacity>
@@ -541,19 +553,19 @@ export default function ConfigScreen() {
 
                 {/* Lista Expandible de Dispositivos en BD */}
                 {showDeviceDropdown && (
-                  <View style={styles.deviceDropdownContainer}>
-                    <View style={styles.deviceSearchBox}>
-                      <Feather name="search" size={14} color="rgba(255,255,255,0.4)" style={{ marginRight: 8 }} />
+                  <View style={[styles.deviceDropdownContainer, { backgroundColor: isDark ? 'rgba(20, 20, 26, 0.98)' : 'rgba(245, 245, 247, 0.98)', borderColor: colors.cardBorder }]}>
+                    <View style={[styles.deviceSearchBox, { backgroundColor: colors.searchBg, borderColor: colors.searchBorder }]}>
+                      <Feather name="search" size={14} color={colors.textTertiary} style={{ marginRight: 8 }} />
                       <TextInput
                         placeholder="Buscar por nombre, IP o ubicación..."
-                        placeholderTextColor="rgba(255,255,255,0.25)"
-                        style={styles.deviceSearchInput}
+                        placeholderTextColor={colors.placeholder}
+                        style={[styles.deviceSearchInput, { color: colors.textPrimary }]}
                         value={deviceSearchQuery}
                         onChangeText={setDeviceSearchQuery}
                       />
                       {deviceSearchQuery.length > 0 && (
                         <TouchableOpacity onPress={() => setDeviceSearchQuery('')}>
-                          <Feather name="x" size={14} color="rgba(255,255,255,0.5)" />
+                          <Feather name="x" size={14} color={colors.textSecondary} />
                         </TouchableOpacity>
                       )}
                     </View>
@@ -573,14 +585,14 @@ export default function ConfigScreen() {
                             <Feather 
                               name={getDeviceIcon(dev.name)} 
                               size={14} 
-                              color={isSelected ? '#0A84FF' : 'rgba(255,255,255,0.5)'} 
+                              color={isSelected ? '#0A84FF' : colors.textTertiary} 
                               style={{ marginRight: 10 }}
                             />
                             <View style={{ flex: 1 }}>
-                              <Text style={[styles.deviceDropdownName, isSelected && styles.deviceDropdownNameActive]}>
+                              <Text style={[styles.deviceDropdownName, { color: colors.textPrimary }, isSelected && styles.deviceDropdownNameActive]}>
                                 {dev.name}
                               </Text>
-                              <Text style={styles.deviceDropdownSub}>
+                              <Text style={[styles.deviceDropdownSub, { color: colors.textSecondary }]}>
                                 {dev.ipv4_address} • {dev.location}
                               </Text>
                             </View>
@@ -589,7 +601,7 @@ export default function ConfigScreen() {
                         );
                       })}
                       {filteredDevices.length === 0 && (
-                        <Text style={styles.noDeviceFound}>No se encontraron dispositivos con "{deviceSearchQuery}"</Text>
+                        <Text style={[styles.noDeviceFound, { color: colors.textTertiary }]}>No se encontraron dispositivos con "{deviceSearchQuery}"</Text>
                       )}
                     </ScrollView>
                   </View>
@@ -603,15 +615,23 @@ export default function ConfigScreen() {
                       return (
                         <TouchableOpacity
                           key={dev.id}
-                          style={[styles.deviceChip, isSelected && styles.deviceChipActive]}
+                          style={[
+                            styles.deviceChip, 
+                            { backgroundColor: colors.chipBg, borderColor: colors.chipBorder },
+                            isSelected && { backgroundColor: colors.chipActiveBg, borderColor: colors.chipActiveBg }
+                          ]}
                           onPress={() => setSelectedDeviceId(dev.id)}
                         >
                           <Feather 
                             name={getDeviceIcon(dev.name)} 
                             size={12} 
-                            color={isSelected ? '#000000' : '#0A84FF'} 
+                            color={isSelected ? colors.chipActiveText : '#0A84FF'} 
                           />
-                          <Text style={[styles.deviceChipText, isSelected && styles.deviceChipTextActive]}>
+                          <Text style={[
+                            styles.deviceChipText, 
+                            { color: colors.textSecondary },
+                            isSelected && { color: colors.chipActiveText }
+                          ]}>
                             {dev.name}
                           </Text>
                         </TouchableOpacity>
@@ -624,21 +644,21 @@ export default function ConfigScreen() {
               {/* Nombre y Descripción */}
               <View style={styles.formRow}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>Nombre de la configuración *</Text>
+                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Nombre de la configuración *</Text>
                   <TextInput
                     placeholder="ej. Backup VLANs & Ruteo"
-                    placeholderTextColor="rgba(255, 255, 255, 0.25)"
-                    style={styles.input}
+                    placeholderTextColor={colors.placeholder}
+                    style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
                     value={configName}
                     onChangeText={setConfigName}
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>Descripción</Text>
+                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Descripción</Text>
                   <TextInput
                     placeholder="ej. Backup de enlaces troncales"
-                    placeholderTextColor="rgba(255, 255, 255, 0.25)"
-                    style={styles.input}
+                    placeholderTextColor={colors.placeholder}
+                    style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
                     value={configDesc}
                     onChangeText={setConfigDesc}
                   />
@@ -649,6 +669,7 @@ export default function ConfigScreen() {
               <TouchableOpacity 
                 style={[
                   styles.dropzone, 
+                  { borderColor: colors.cardBorder, backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)' },
                   uploadedFileName && styles.dropzoneActive,
                   isDragging && styles.dropzoneDragging
                 ]}
@@ -665,10 +686,10 @@ export default function ConfigScreen() {
                   size={26} 
                   color={uploadedFileName ? "#30D158" : "#0A84FF"} 
                 />
-                <Text style={styles.dropzoneTitle}>
+                <Text style={[styles.dropzoneTitle, { color: colors.textPrimary }]}>
                   {uploadedFileName ? `Archivo: ${uploadedFileName}` : 'Subir archivo o arrastrar aquí'}
                 </Text>
-                <Text style={styles.dropzoneSubtitle}>
+                <Text style={[styles.dropzoneSubtitle, { color: colors.textSecondary }]}>
                   Archivos soportados: .txt, .cfg, .bak, .conf, .rsc, .sh (Se cargará en la consola lateral)
                 </Text>
               </TouchableOpacity>
@@ -716,10 +737,10 @@ export default function ConfigScreen() {
             </BlurView>
 
             {/* Tarjeta: Backups Guardados en BD */}
-            <BlurView intensity={30} tint="dark" style={[styles.glassCard, { marginTop: 20 }]}>
+            <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.glassCard, { marginTop: 20, backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
               <View style={styles.cardHeaderRow}>
-                <Text style={styles.cardSectionTitle}>Backups en Base de Datos</Text>
-                <Text style={styles.badgeCount}>{configs.length} guardados</Text>
+                <Text style={[styles.cardSectionTitle, { color: colors.textPrimary }]}>Backups en Base de Datos</Text>
+                <Text style={[styles.badgeCount, { color: colors.textTertiary }]}>{configs.length} guardados</Text>
               </View>
 
               <View style={styles.backupList}>
@@ -729,21 +750,25 @@ export default function ConfigScreen() {
                   return (
                     <TouchableOpacity 
                       key={cfg.id} 
-                      style={[styles.backupItem, isViewing && styles.backupItemActive]}
+                      style={[
+                        styles.backupItem, 
+                        { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.cardBorder },
+                        isViewing && styles.backupItemActive
+                      ]}
                       activeOpacity={0.7}
                       onPress={() => handleSelectSavedBackup(cfg)}
                     >
                       <View style={styles.backupItemLeft}>
-                        <View style={[styles.cfgIconBadge, isViewing && styles.cfgIconBadgeActive]}>
+                        <View style={[styles.cfgIconBadge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }, isViewing && styles.cfgIconBadgeActive]}>
                           <Feather 
                             name="file-text" 
                             size={16} 
-                            color={isViewing ? '#0A84FF' : 'rgba(255,255,255,0.6)'} 
+                            color={isViewing ? '#0A84FF' : colors.textSecondary} 
                           />
                         </View>
                         <View style={{ flex: 1, paddingRight: 8 }}>
-                          <Text style={styles.backupName} numberOfLines={1}>{cfg.name}</Text>
-                          <Text style={styles.backupMeta}>
+                          <Text style={[styles.backupName, { color: colors.textPrimary }]} numberOfLines={1}>{cfg.name}</Text>
+                          <Text style={[styles.backupMeta, { color: colors.textSecondary }]}>
                             {cfg.device_name} • {cfg.file_name} ({cfg.file_size || 'N/A'})
                           </Text>
                         </View>
@@ -774,8 +799,8 @@ export default function ConfigScreen() {
 
                 {configs.length === 0 && (
                   <View style={styles.emptyBackups}>
-                    <Feather name="folder" size={32} color="rgba(255,255,255,0.2)" />
-                    <Text style={styles.emptyBackupsText}>
+                    <Feather name="folder" size={32} color={colors.textTertiary} />
+                    <Text style={[styles.emptyBackupsText, { color: colors.textTertiary }]}>
                       No hay configuraciones guardadas en la base de datos.
                     </Text>
                   </View>
@@ -786,7 +811,7 @@ export default function ConfigScreen() {
 
           {/* COLUMNA DERECHA: Consola Terminal y Editor Interactivo */}
           <View style={[styles.rightColumn, isDesktop && styles.rightColumnDesktop]}>
-            <View style={styles.terminalWindow}>
+            <View style={[styles.terminalWindow, { borderColor: colors.cardBorder }]}>
               
               {/* Barra Superior estilo Terminal macOS */}
               <View style={styles.terminalHeader}>

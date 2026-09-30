@@ -5,12 +5,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import GlassModal from '../../components/ui/GlassModal';
+import { useTheme } from '../../contexts/ThemeContext';
 import * as api from '../../services/api';
 import { Incident, Maintenance, Device, Building } from '../../types';
 
 const SEVERITY_FILTERS = ['Todos', 'Crítico', 'Alto', 'Medio', 'Bajo', 'Resueltos'];
 
 export default function IncidentScreen() {
+  const { colors, isDark } = useTheme();
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
 
@@ -261,18 +263,24 @@ export default function IncidentScreen() {
   const isDesktop = width >= 1024;
 
   if (loading && incidents.length === 0 && maintenances.length === 0) {
-    return (<LinearGradient colors={['#050505', '#121212']} style={styles.container}><View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#FF453A" /></View></LinearGradient>);
+    return (
+      <LinearGradient colors={colors.gradient} style={styles.container}>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color="#FF453A" />
+        </View>
+      </LinearGradient>
+    );
   }
 
   return (
-    <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
+    <LinearGradient colors={colors.gradient} style={styles.container}>
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isDesktop ? '6%' : isTablet ? '4%' : 16 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.innerWrapper}>
           <View style={styles.header}>
             <View style={{ flex: 1, minWidth: 200 }}>
               <Text style={styles.headerBadge}>CENTRO DE CONTROL</Text>
-              <Text style={[styles.headerTitle, isSmallMobile && { fontSize: 22 }]}>Incidentes & Mantenimiento</Text>
-              <Text style={styles.headerSubtitle}>{incidents.filter(i => i.status !== 'resolved').length} incidentes activos • {maintenances.length} tareas programadas</Text>
+              <Text style={[styles.headerTitle, { color: colors.textPrimary }, isSmallMobile && { fontSize: 22 }]}>Incidentes & Mantenimiento</Text>
+              <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]}>{incidents.filter(i => i.status !== 'resolved').length} incidentes activos • {maintenances.length} tareas programadas</Text>
             </View>
             <View style={styles.headerButtons}>
               <TouchableOpacity style={styles.reportButton} activeOpacity={0.8} onPress={handleOpenIncidentModal}>
@@ -288,7 +296,27 @@ export default function IncidentScreen() {
 
           {/* Filtros de Severidad */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersRow}>
-            {SEVERITY_FILTERS.map(f => { const isActive = activeSeverityFilter === f; return (<TouchableOpacity key={f} style={[styles.filterChip, isActive && styles.filterChipActive]} activeOpacity={0.7} onPress={() => setActiveSeverityFilter(f)}><Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>{f}</Text></TouchableOpacity>); })}
+            {SEVERITY_FILTERS.map(f => { 
+              const isActive = activeSeverityFilter === f; 
+              return (
+                <TouchableOpacity 
+                  key={f} 
+                  style={[
+                    styles.filterChip, 
+                    { backgroundColor: colors.chipBg, borderColor: colors.chipBorder },
+                    isActive && { backgroundColor: colors.chipActiveBg, borderColor: colors.chipActiveBg }
+                  ]} 
+                  activeOpacity={0.7} 
+                  onPress={() => setActiveSeverityFilter(f)}
+                >
+                  <Text style={[
+                    styles.filterChipText, 
+                    { color: colors.textSecondary },
+                    isActive && { color: colors.chipActiveText }
+                  ]}>{f}</Text>
+                </TouchableOpacity>
+              ); 
+            })}
           </ScrollView>
 
           {/* Layout Principal: 2 columnas en Desktop, Stack en Mobile/Tablet */}
@@ -296,61 +324,82 @@ export default function IncidentScreen() {
             {/* Columna / Sección Incidentes */}
             <View style={[styles.columnWrapper, isDesktop && { flex: 1 }]}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Incidentes Reportados</Text>
-                <Text style={styles.sectionCount}>{filteredIncidents.length}</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Incidentes Reportados</Text>
+                <Text style={[styles.sectionCount, { backgroundColor: colors.chipBg, color: colors.textSecondary }]}>{filteredIncidents.length}</Text>
               </View>
               <View style={styles.cardList}>
                 {filteredIncidents.map(inc => {
                   const sev = severityConfig[inc.severity]; const stat = statusConfig[inc.status];
                   return (
-                    <BlurView key={inc.id} intensity={30} tint="dark" style={styles.incidentCard}>
+                    <BlurView 
+                      key={inc.id} 
+                      intensity={colors.blurIntensity} 
+                      tint={colors.blurTint} 
+                      style={[styles.incidentCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}
+                    >
                       <View style={styles.incTopRow}>
                         <View style={[styles.sevBadge, { backgroundColor: sev.bg }]}><Feather name={sev.icon} size={13} color={sev.color} /><Text style={[styles.sevText, { color: sev.color }]}>{sev.label}</Text></View>
                         <View style={[styles.statBadge, { borderColor: stat.color }]}><View style={[styles.statDot, { backgroundColor: stat.color }]} /><Text style={[styles.statText, { color: stat.color }]}>{stat.label}</Text></View>
                       </View>
-                      <Text style={styles.incTitle}>{inc.title}</Text>
-                      <Text style={styles.incDesc}>{inc.description}</Text>
+                      <Text style={[styles.incTitle, { color: colors.textPrimary }]}>{inc.title}</Text>
+                      <Text style={[styles.incDesc, { color: colors.textSecondary }]}>{inc.description}</Text>
                       <View style={styles.incMeta}>
-                        <View style={styles.metaItem}><Feather name="cpu" size={12} color="rgba(255,255,255,0.4)" /><Text style={styles.metaText}>{inc.device_name}</Text></View>
-                        <View style={styles.metaItem}><Feather name="map-pin" size={12} color="rgba(255,255,255,0.4)" /><Text style={styles.metaText}>{inc.location}</Text></View>
+                        <View style={styles.metaItem}><Feather name="cpu" size={12} color={colors.textTertiary} /><Text style={[styles.metaText, { color: colors.textTertiary }]}>{inc.device_name}</Text></View>
+                        <View style={styles.metaItem}><Feather name="map-pin" size={12} color={colors.textTertiary} /><Text style={[styles.metaText, { color: colors.textTertiary }]}>{inc.location}</Text></View>
                       </View>
                       <View style={styles.incActions}>
-                        {inc.status !== 'resolved' && (<TouchableOpacity style={styles.resolveBtn} activeOpacity={0.7} onPress={() => handleResolve(inc.id)}><Feather name="check-circle" size={13} color="#30D158" /><Text style={styles.resolveBtnText}>Resolver</Text></TouchableOpacity>)}
-                        <TouchableOpacity style={styles.deleteBtn} activeOpacity={0.7} onPress={() => handleDeleteIncident(inc.id)}><Feather name="trash-2" size={14} color="#FF453A" /></TouchableOpacity>
+                        {inc.status !== 'resolved' && (
+                          <TouchableOpacity 
+                            style={[styles.resolveBtn, { backgroundColor: isDark ? 'rgba(48, 209, 88, 0.12)' : 'rgba(48, 209, 88, 0.1)', borderColor: 'rgba(48, 209, 88, 0.3)' }]} 
+                            activeOpacity={0.7} 
+                            onPress={() => handleResolve(inc.id)}
+                          >
+                            <Feather name="check-circle" size={13} color="#30D158" />
+                            <Text style={styles.resolveBtnText}>Resolver</Text>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity style={[styles.deleteBtn, { backgroundColor: colors.chipBg }]} activeOpacity={0.7} onPress={() => handleDeleteIncident(inc.id)}>
+                          <Feather name="trash-2" size={14} color="#FF453A" />
+                        </TouchableOpacity>
                       </View>
                     </BlurView>
                   );
                 })}
-                {filteredIncidents.length === 0 && <Text style={styles.emptyText}>No hay incidentes con este filtro.</Text>}
+                {filteredIncidents.length === 0 && <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No hay incidentes con este filtro.</Text>}
               </View>
             </View>
 
             {/* Columna / Sección Mantenimientos */}
             <View style={[styles.columnWrapper, isDesktop && { flex: 1 }, !isDesktop && { marginTop: 24 }]}>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Mantenimientos Programados</Text>
-                <Text style={styles.sectionCount}>{maintenances.length}</Text>
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Mantenimientos Programados</Text>
+                <Text style={[styles.sectionCount, { backgroundColor: colors.chipBg, color: colors.textSecondary }]}>{maintenances.length}</Text>
               </View>
               <View style={styles.cardList}>
                 {maintenances.map(mnt => {
                   const tc = maintTypeConfig[mnt.type] || maintTypeConfig.preventive;
                   return (
-                    <BlurView key={mnt.id} intensity={30} tint="dark" style={styles.maintCard}>
+                    <BlurView 
+                      key={mnt.id} 
+                      intensity={colors.blurIntensity} 
+                      tint={colors.blurTint} 
+                      style={[styles.maintCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}
+                    >
                       <View style={styles.maintTopRow}>
                         <View style={[styles.maintTypeBadge, { backgroundColor: `${tc.color}20`, borderColor: `${tc.color}40` }]}><Feather name={tc.icon} size={13} color={tc.color} /><Text style={[styles.maintTypeText, { color: tc.color }]}>{tc.label}</Text></View>
-                        <Text style={styles.maintDate}>{mnt.scheduled_date}</Text>
+                        <Text style={[styles.maintDate, { color: colors.textTertiary }]}>{mnt.scheduled_date}</Text>
                       </View>
-                      <Text style={styles.maintTitle}>{mnt.title}</Text>
+                      <Text style={[styles.maintTitle, { color: colors.textPrimary }]}>{mnt.title}</Text>
                       <View style={styles.maintMeta}>
-                        <View style={styles.metaItem}><Feather name="cpu" size={12} color="rgba(255,255,255,0.4)" /><Text style={styles.metaText}>{mnt.device_name}</Text></View>
-                        <View style={styles.metaItem}><Feather name="map-pin" size={12} color="rgba(255,255,255,0.4)" /><Text style={styles.metaText}>{mnt.location}</Text></View>
-                        {mnt.technician ? <View style={styles.metaItem}><Feather name="user" size={12} color="rgba(255,255,255,0.4)" /><Text style={styles.metaText}>{mnt.technician}</Text></View> : null}
+                        <View style={styles.metaItem}><Feather name="cpu" size={12} color={colors.textTertiary} /><Text style={[styles.metaText, { color: colors.textTertiary }]}>{mnt.device_name}</Text></View>
+                        <View style={styles.metaItem}><Feather name="map-pin" size={12} color={colors.textTertiary} /><Text style={[styles.metaText, { color: colors.textTertiary }]}>{mnt.location}</Text></View>
+                        {mnt.technician ? <View style={styles.metaItem}><Feather name="user" size={12} color={colors.textTertiary} /><Text style={[styles.metaText, { color: colors.textTertiary }]}>{mnt.technician}</Text></View> : null}
                       </View>
-                      {mnt.notes ? <Text style={styles.maintNotes}>{mnt.notes}</Text> : null}
+                      {mnt.notes ? <Text style={[styles.maintNotes, { color: colors.textSecondary }]}>{mnt.notes}</Text> : null}
                     </BlurView>
                   );
                 })}
-                {maintenances.length === 0 && <Text style={styles.emptyText}>No hay mantenimientos programados.</Text>}
+                {maintenances.length === 0 && <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No hay mantenimientos programados.</Text>}
               </View>
             </View>
           </View>
@@ -365,11 +414,11 @@ export default function IncidentScreen() {
             </View>
           )}
 
-          <Text style={styles.inputLabel}>Título del Incidente *</Text>
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Título del Incidente *</Text>
           <TextInput 
             placeholder="ej. Pérdida de conectividad en Enlace Fibra" 
-            placeholderTextColor="rgba(255,255,255,0.25)" 
-            style={[styles.input, incFieldErrors.title && styles.inputError]} 
+            placeholderTextColor={colors.placeholder} 
+            style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, incFieldErrors.title && styles.inputError]} 
             value={incTitle} 
             onChangeText={(val) => {
               setIncTitle(val);
@@ -378,43 +427,76 @@ export default function IncidentScreen() {
           />
           {incFieldErrors.title && <Text style={styles.fieldErrorText}>{incFieldErrors.title}</Text>}
 
-          <Text style={styles.inputLabel}>Severidad *</Text>
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Severidad *</Text>
           <View style={styles.severityRow}>
-            {(['critical', 'high', 'medium', 'low'] as const).map(s => { const cfg = severityConfig[s]; return (<TouchableOpacity key={s} style={[styles.severityOption, incSeverity === s && { backgroundColor: cfg.bg, borderColor: cfg.color }]} activeOpacity={0.7} onPress={() => setIncSeverity(s)}><Feather name={cfg.icon} size={13} color={incSeverity === s ? cfg.color : 'rgba(255,255,255,0.4)'} /><Text style={[styles.severityOptionText, incSeverity === s && { color: cfg.color }]}>{cfg.label}</Text></TouchableOpacity>); })}
+            {(['critical', 'high', 'medium', 'low'] as const).map(s => { 
+              const cfg = severityConfig[s]; 
+              return (
+                <TouchableOpacity 
+                  key={s} 
+                  style={[
+                    styles.severityOption, 
+                    { backgroundColor: colors.chipBg, borderColor: colors.chipBorder },
+                    incSeverity === s && { backgroundColor: cfg.bg, borderColor: cfg.color }
+                  ]} 
+                  activeOpacity={0.7} 
+                  onPress={() => setIncSeverity(s)}
+                >
+                  <Feather name={cfg.icon} size={13} color={incSeverity === s ? cfg.color : colors.textTertiary} />
+                  <Text style={[styles.severityOptionText, { color: colors.textSecondary }, incSeverity === s && { color: cfg.color }]}>{cfg.label}</Text>
+                </TouchableOpacity>
+              ); 
+            })}
           </View>
 
-          <Text style={styles.inputLabel}>Equipos Afectados *</Text>
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Equipos Afectados *</Text>
           {incFieldErrors.devices && <Text style={styles.fieldErrorText}>{incFieldErrors.devices}</Text>}
           <ScrollView style={{ maxHeight: 200, marginBottom: 12 }}>
             {groupedHierarchy.map(({ building: bld, categories, totalDevices }) => (
               <View key={bld.id}>
-                <TouchableOpacity style={styles.buildingHeader} activeOpacity={0.7} onPress={() => setExpandedBuildingId(expandedBuildingId === bld.id ? null : bld.id)}>
-                  <Feather name={expandedBuildingId === bld.id ? 'chevron-down' : 'chevron-right'} size={13} color="#FFFFFF" />
-                  <Text style={styles.buildingName}>{bld.name}</Text>
-                  <Text style={styles.buildingCount}>{totalDevices}</Text>
+                <TouchableOpacity 
+                  style={[styles.buildingHeader, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} 
+                  activeOpacity={0.7} 
+                  onPress={() => setExpandedBuildingId(expandedBuildingId === bld.id ? null : bld.id)}
+                >
+                  <Feather name={expandedBuildingId === bld.id ? 'chevron-down' : 'chevron-right'} size={13} color={colors.textPrimary} />
+                  <Text style={[styles.buildingName, { color: colors.textPrimary }]}>{bld.name}</Text>
+                  <Text style={[styles.buildingCount, { backgroundColor: colors.inputBg, color: colors.textSecondary }]}>{totalDevices}</Text>
                 </TouchableOpacity>
                 {expandedBuildingId === bld.id && Object.entries(categories).map(([cat, devs]) => (
                   <View key={cat} style={styles.categoryGroup}>
-                    <View style={styles.categoryHeader}><Feather name={getDeviceIcon(cat)} size={11} color="#0A84FF" /><Text style={styles.categoryName}>{cat}</Text></View>
-                    {devs.map(dev => { const isChecked = selectedDeviceIds.includes(dev.id); return (
-                      <TouchableOpacity key={dev.id} style={[styles.deviceOption, isChecked && styles.deviceOptionActive]} activeOpacity={0.7} onPress={() => toggleDevice(dev.id)}>
-                        <Feather name={isChecked ? 'check-square' : 'square'} size={13} color={isChecked ? '#0A84FF' : 'rgba(255,255,255,0.3)'} />
-                        <View style={styles.deviceOptionText}><Text style={styles.deviceOptionName}>{dev.name}</Text><Text style={styles.deviceOptionIp}>{dev.ipv4_address}</Text></View>
-                      </TouchableOpacity>
-                    ); })}
+                    <View style={styles.categoryHeader}><Feather name={getDeviceIcon(cat)} size={11} color="#0A84FF" /><Text style={[styles.categoryName, { color: colors.textSecondary }]}>{cat}</Text></View>
+                    {devs.map(dev => { 
+                      const isChecked = selectedDeviceIds.includes(dev.id); 
+                      return (
+                        <TouchableOpacity 
+                          key={dev.id} 
+                          style={[
+                            styles.deviceOption, 
+                            { backgroundColor: colors.chipBg, borderColor: colors.chipBorder },
+                            isChecked && styles.deviceOptionActive
+                          ]} 
+                          activeOpacity={0.7} 
+                          onPress={() => toggleDevice(dev.id)}
+                        >
+                          <Feather name={isChecked ? 'check-square' : 'square'} size={13} color={isChecked ? '#0A84FF' : colors.textTertiary} />
+                          <View style={styles.deviceOptionText}><Text style={[styles.deviceOptionName, { color: colors.textPrimary }]}>{dev.name}</Text><Text style={[styles.deviceOptionIp, { color: colors.textTertiary }]}>{dev.ipv4_address}</Text></View>
+                        </TouchableOpacity>
+                      ); 
+                    })}
                   </View>
                 ))}
               </View>
             ))}
           </ScrollView>
 
-          <Text style={styles.inputLabel}>Descripción del Incidente *</Text>
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Descripción del Incidente *</Text>
           <TextInput 
             placeholder="Describe el incidente en detalle..." 
-            placeholderTextColor="rgba(255,255,255,0.25)" 
+            placeholderTextColor={colors.placeholder} 
             multiline 
             numberOfLines={3} 
-            style={[styles.input, styles.textArea, incFieldErrors.desc && styles.inputError]} 
+            style={[styles.input, styles.textArea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, incFieldErrors.desc && styles.inputError]} 
             value={incDesc} 
             onChangeText={(val) => {
               setIncDesc(val);
@@ -446,11 +528,11 @@ export default function IncidentScreen() {
             </View>
           )}
 
-          <Text style={styles.inputLabel}>Título *</Text>
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Título *</Text>
           <TextInput 
             placeholder="ej. Actualización de firmware IOS-XE" 
-            placeholderTextColor="rgba(255,255,255,0.25)" 
-            style={[styles.input, mntFieldErrors.title && styles.inputError]} 
+            placeholderTextColor={colors.placeholder} 
+            style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, mntFieldErrors.title && styles.inputError]} 
             value={mntTitle} 
             onChangeText={(val) => {
               setMntTitle(val);
@@ -459,18 +541,32 @@ export default function IncidentScreen() {
           />
           {mntFieldErrors.title && <Text style={styles.fieldErrorText}>{mntFieldErrors.title}</Text>}
 
-          <Text style={styles.inputLabel}>Tipo de Mantenimiento *</Text>
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Tipo de Mantenimiento *</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-            {Object.entries(maintTypeConfig).map(([key, cfg]) => (<TouchableOpacity key={key} style={[styles.typeOption, mntType === key && { backgroundColor: `${cfg.color}20`, borderColor: cfg.color }]} activeOpacity={0.7} onPress={() => setMntType(key as any)}><Feather name={cfg.icon} size={12} color={mntType === key ? cfg.color : 'rgba(255,255,255,0.4)'} /><Text style={[styles.typeOptionText, mntType === key && { color: cfg.color }]}>{cfg.label}</Text></TouchableOpacity>))}
+            {Object.entries(maintTypeConfig).map(([key, cfg]) => (
+              <TouchableOpacity 
+                key={key} 
+                style={[
+                  styles.typeOption, 
+                  { backgroundColor: colors.chipBg, borderColor: colors.chipBorder },
+                  mntType === key && { backgroundColor: `${cfg.color}20`, borderColor: cfg.color }
+                ]} 
+                activeOpacity={0.7} 
+                onPress={() => setMntType(key as any)}
+              >
+                <Feather name={cfg.icon} size={12} color={mntType === key ? cfg.color : colors.textTertiary} />
+                <Text style={[styles.typeOptionText, { color: colors.textSecondary }, mntType === key && { color: cfg.color }]}>{cfg.label}</Text>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
 
           <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Equipo(s) Afectados *</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Equipo(s) Afectados *</Text>
               <TextInput 
                 placeholder="ej. Switch Core" 
-                placeholderTextColor="rgba(255,255,255,0.25)" 
-                style={[styles.input, mntFieldErrors.device && styles.inputError]} 
+                placeholderTextColor={colors.placeholder} 
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, mntFieldErrors.device && styles.inputError]} 
                 value={mntDevice} 
                 onChangeText={(val) => {
                   setMntDevice(val);
@@ -480,18 +576,18 @@ export default function IncidentScreen() {
               {mntFieldErrors.device && <Text style={styles.fieldErrorText}>{mntFieldErrors.device}</Text>}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Ubicación</Text>
-              <TextInput placeholder="ej. Edificio A" placeholderTextColor="rgba(255,255,255,0.25)" style={styles.input} value={mntLocation} onChangeText={setMntLocation} />
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Ubicación</Text>
+              <TextInput placeholder="ej. Edificio A" placeholderTextColor={colors.placeholder} style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]} value={mntLocation} onChangeText={setMntLocation} />
             </View>
           </View>
 
           <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Fecha Programada (YYYY-MM-DD) *</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Fecha Programada (YYYY-MM-DD) *</Text>
               <TextInput 
                 placeholder="YYYY-MM-DD" 
-                placeholderTextColor="rgba(255,255,255,0.25)" 
-                style={[styles.input, mntFieldErrors.date && styles.inputError]} 
+                placeholderTextColor={colors.placeholder} 
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, mntFieldErrors.date && styles.inputError]} 
                 value={mntDate} 
                 onChangeText={(val) => {
                   setMntDate(val);
@@ -501,15 +597,15 @@ export default function IncidentScreen() {
               {mntFieldErrors.date && <Text style={styles.fieldErrorText}>{mntFieldErrors.date}</Text>}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Ventana Horaria</Text>
-              <TextInput placeholder="02:00 - 05:00 hrs" placeholderTextColor="rgba(255,255,255,0.25)" style={styles.input} value={mntWindow} onChangeText={setMntWindow} />
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Ventana Horaria</Text>
+              <TextInput placeholder="02:00 - 05:00 hrs" placeholderTextColor={colors.placeholder} style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]} value={mntWindow} onChangeText={setMntWindow} />
             </View>
           </View>
 
-          <Text style={styles.inputLabel}>Técnico Responsable</Text>
-          <TextInput placeholder="Nombre del técnico o equipo" placeholderTextColor="rgba(255,255,255,0.25)" style={styles.input} value={mntTech} onChangeText={setMntTech} />
-          <Text style={styles.inputLabel}>Notas Adicionales</Text>
-          <TextInput placeholder="Observaciones..." placeholderTextColor="rgba(255,255,255,0.25)" multiline numberOfLines={2} style={[styles.input, styles.textArea]} value={mntNotes} onChangeText={setMntNotes} />
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Técnico Responsable</Text>
+          <TextInput placeholder="Nombre del técnico o equipo" placeholderTextColor={colors.placeholder} style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]} value={mntTech} onChangeText={setMntTech} />
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Notas Adicionales</Text>
+          <TextInput placeholder="Observaciones..." placeholderTextColor={colors.placeholder} multiline numberOfLines={2} style={[styles.input, styles.textArea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]} value={mntNotes} onChangeText={setMntNotes} />
           <TouchableOpacity 
             style={[styles.submitMaint, isSubmittingMaint && { opacity: 0.6 }]} 
             disabled={isSubmittingMaint} 

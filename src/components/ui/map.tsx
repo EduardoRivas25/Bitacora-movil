@@ -11,6 +11,7 @@ interface MapProps {
   selectedDeviceId?: string | null;
   onSelectDevice?: (device: Device) => void;
   height?: DimensionValue;
+  isDark?: boolean;
 }
 
 export function Map({
@@ -20,6 +21,7 @@ export function Map({
   buildings = [],
   onSelectDevice,
   height = 420,
+  isDark = true,
 }: MapProps) {
   // Determinar centro por defecto basado en los edificios registrados
   const computedCenter = useMemo((): [number, number] => {
@@ -52,7 +54,26 @@ export function Map({
   const serializedDevices = useMemo(() => JSON.stringify(devices), [devices]);
   const serializedBuildings = useMemo(() => JSON.stringify(buildings), [buildings]);
 
-  const mapHtml = useMemo(() => `
+  const mapHtml = useMemo(() => {
+    const defaultBaseUrl = isDark 
+      ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+      : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+    const bgColor = isDark ? '#0b0b0e' : '#f5f5f7';
+    const barBg = isDark ? 'rgba(18, 18, 24, 0.92)' : 'rgba(255, 255, 255, 0.94)';
+    const barColor = isDark ? '#FFFFFF' : '#1C1C1E';
+    const barBorder = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const switcherBg = isDark ? 'rgba(14, 14, 20, 0.88)' : 'rgba(255, 255, 255, 0.92)';
+    const switcherBorder = isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.12)';
+    const pinBg = isDark ? 'rgba(12, 12, 18, 0.94)' : 'rgba(255, 255, 255, 0.96)';
+    const pinBorder = isDark ? 'rgba(255, 255, 255, 0.22)' : 'rgba(0, 0, 0, 0.12)';
+    const pinNameColor = isDark ? '#FFFFFF' : '#1C1C1E';
+    const bldBg = isDark ? 'rgba(10, 12, 18, 0.95)' : 'rgba(255, 255, 255, 0.96)';
+    const bldColor = isDark ? '#FFFFFF' : '#1C1C1E';
+    const popupBg = isDark ? '#121218' : '#FFFFFF';
+    const popupColor = isDark ? '#FFFFFF' : '#1C1C1E';
+    const popupBorder = isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.12)';
+
+    return `
     <!DOCTYPE html>
     <html>
     <head>
@@ -62,20 +83,20 @@ export function Map({
       <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body, #map { width: 100%; height: 100%; background: #0b0b0e; }
-        .leaflet-container { background: #0b0b0e !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        html, body, #map { width: 100%; height: 100%; background: ${bgColor}; }
+        .leaflet-container { background: ${bgColor} !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
 
         /* Controles de Zoom */
         .leaflet-bar {
           border: none !important;
-          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.7) !important;
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25) !important;
           border-radius: 12px !important;
           overflow: hidden;
         }
         .leaflet-bar a {
-          background-color: rgba(18, 18, 24, 0.92) !important;
-          color: #FFFFFF !important;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+          background-color: ${barBg} !important;
+          color: ${barColor} !important;
+          border-bottom: 1px solid ${barBorder} !important;
           width: 36px !important;
           height: 36px !important;
           line-height: 36px !important;
@@ -95,11 +116,11 @@ export function Map({
           z-index: 1000;
           display: flex;
           gap: 6px;
-          background: rgba(14, 14, 20, 0.88);
+          background: ${switcherBg};
           padding: 5px;
           border-radius: 14px;
-          border: 1px solid rgba(255, 255, 255, 0.16);
-          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+          border: 1px solid ${switcherBorder};
+          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
           backdrop-filter: blur(16px);
         }
         .layer-btn {
@@ -129,10 +150,10 @@ export function Map({
           align-items: center;
           gap: 7px;
           padding: 4px 10px 4px 5px;
-          background: rgba(12, 12, 18, 0.94);
-          border: 1.5px solid rgba(255, 255, 255, 0.22);
+          background: ${pinBg};
+          border: 1.5px solid ${pinBorder};
           border-radius: 20px;
-          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8), 0 0 10px rgba(10, 132, 255, 0.25);
+          box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2), 0 0 10px rgba(10, 132, 255, 0.25);
           cursor: pointer;
           transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
           white-space: nowrap;
@@ -170,9 +191,9 @@ export function Map({
         .pin-name {
           font-size: 11px;
           font-weight: 700;
-          color: #FFFFFF;
+          color: ${pinNameColor};
           line-height: 13px;
-          text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+          text-shadow: 0 1px 3px rgba(0,0,0,0.4);
         }
         .pin-ip {
           font-size: 9.5px;
@@ -191,17 +212,17 @@ export function Map({
 
         /* 🏢 Etiquetas de Edificios Ultra-Visibles */
         .building-label {
-          background: rgba(10, 12, 18, 0.95);
+          background: ${bldBg};
           border: 1.8px solid #0A84FF;
           border-radius: 12px;
           padding: 6px 14px;
-          color: #FFFFFF;
+          color: ${bldColor};
           font-size: 12px;
           font-weight: 800;
-          box-shadow: 0 6px 24px rgba(0, 0, 0, 0.85), 0 0 14px rgba(10, 132, 255, 0.5);
+          box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3), 0 0 14px rgba(10, 132, 255, 0.4);
           letter-spacing: 0.5px;
           white-space: nowrap;
-          text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+          text-shadow: 0 1px 2px rgba(0,0,0,0.3);
           backdrop-filter: blur(10px);
           display: flex;
           align-items: center;
@@ -210,21 +231,21 @@ export function Map({
         }
         .building-label:hover {
           border-color: #30D158;
-          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.9), 0 0 18px rgba(48, 209, 88, 0.6);
+          box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 0 18px rgba(48, 209, 88, 0.6);
         }
 
         /* 💬 Popups Informativos */
         .leaflet-popup-content-wrapper {
-          background: #121218 !important;
-          border: 1.5px solid rgba(255, 255, 255, 0.2) !important;
+          background: ${popupBg} !important;
+          border: 1.5px solid ${popupBorder} !important;
           border-radius: 18px !important;
-          color: #FFFFFF !important;
-          box-shadow: 0 16px 45px rgba(0, 0, 0, 0.9) !important;
+          color: ${popupColor} !important;
+          box-shadow: 0 16px 45px rgba(0, 0, 0, 0.4) !important;
           padding: 8px !important;
         }
         .leaflet-popup-tip {
-          background: #121218 !important;
-          border: 1px solid rgba(255, 255, 255, 0.2) !important;
+          background: ${popupBg} !important;
+          border: 1px solid ${popupBorder} !important;
         }
         .popup-header-row {
           display: flex;
@@ -232,36 +253,36 @@ export function Map({
           gap: 8px;
           margin-bottom: 8px;
           padding-bottom: 6px;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          border-bottom: 1px solid rgba(120, 120, 120, 0.15);
         }
-        .popup-dev-name { font-size: 14px; font-weight: 700; color: #FFFFFF; }
+        .popup-dev-name { font-size: 14px; font-weight: 700; color: ${popupColor}; }
         .popup-ip-chip {
           display: inline-block;
           font-family: monospace;
           background: rgba(10, 132, 255, 0.2);
           border: 1px solid rgba(10, 132, 255, 0.4);
-          color: #60A5FA;
+          color: #0A84FF;
           font-size: 11px;
           font-weight: 700;
           padding: 2px 8px;
           border-radius: 6px;
           margin-bottom: 8px;
         }
-        .popup-data-row { font-size: 12px; color: #94A3B8; margin-bottom: 4px; }
-        .popup-val-bold { color: #FFFFFF; font-weight: 600; }
+        .popup-data-row { font-size: 12px; color: ${isDark ? '#94A3B8' : '#64748B'}; margin-bottom: 4px; }
+        .popup-val-bold { color: ${popupColor}; font-weight: 600; }
         .leaflet-control-attribution {
-          background: rgba(10, 10, 14, 0.85) !important;
+          background: ${isDark ? 'rgba(10, 10, 14, 0.85)' : 'rgba(255, 255, 255, 0.85)'} !important;
           color: #64748B !important;
           font-size: 10px !important;
           border-radius: 6px 0 0 0;
         }
-        .leaflet-control-attribution a { color: #94A3B8 !important; }
+        .leaflet-control-attribution a { color: #0A84FF !important; }
       </style>
     </head>
     <body>
       <div id="map"></div>
       <div class="layer-switcher">
-        <button id="btnDark" class="layer-btn active" onclick="switchLayer('dark')">🌙 Oscuro</button>
+        <button id="btnDefault" class="layer-btn active" onclick="switchLayer('default')">${isDark ? '🌙 Oscuro' : '☀️ Claro'}</button>
         <button id="btnSat" class="layer-btn" onclick="switchLayer('sat')">🛰️ Satélite HD</button>
         <button id="btnHybrid" class="layer-btn" onclick="switchLayer('hybrid')">🌐 Híbrido</button>
       </div>
@@ -282,7 +303,7 @@ export function Map({
         });
 
         // 2. Capas de alta definición
-        const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        const baseLayer = L.tileLayer('${defaultBaseUrl}', {
           maxZoom: 21,
           maxNativeZoom: 20,
           subdomains: 'abcd',
@@ -304,19 +325,19 @@ export function Map({
         });
 
         function clearLayers() {
-          map.removeLayer(darkLayer);
+          map.removeLayer(baseLayer);
           map.removeLayer(googleSatLayer);
           map.removeLayer(googleHybridLayer);
-          document.getElementById('btnDark').classList.remove('active');
+          document.getElementById('btnDefault').classList.remove('active');
           document.getElementById('btnSat').classList.remove('active');
           document.getElementById('btnHybrid').classList.remove('active');
         }
 
         function switchLayer(type) {
           clearLayers();
-          if (type === 'dark') {
-            map.addLayer(darkLayer);
-            document.getElementById('btnDark').classList.add('active');
+          if (type === 'default') {
+            map.addLayer(baseLayer);
+            document.getElementById('btnDefault').classList.add('active');
           } else if (type === 'sat') {
             map.addLayer(googleSatLayer);
             document.getElementById('btnSat').classList.add('active');
@@ -448,11 +469,14 @@ export function Map({
       </script>
     </body>
     </html>
-  `, [lat, lng, zoom, hasExplicitCenter, serializedDevices, serializedBuildings]);
+  `, [lat, lng, zoom, hasExplicitCenter, serializedDevices, serializedBuildings, isDark]);
+
+  const containerBg = isDark ? '#0b0b0e' : '#f5f5f7';
+  const containerBorder = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
 
   if (Platform.OS === 'web') {
     return (
-      <View style={[styles.container, { height }]}>
+      <View style={[styles.container, { height, backgroundColor: containerBg, borderColor: containerBorder }]}>
         <iframe
           srcDoc={mapHtml}
           style={{
@@ -460,7 +484,7 @@ export function Map({
             height: '100%',
             border: 'none',
             borderRadius: 24,
-            backgroundColor: '#0b0b0e',
+            backgroundColor: containerBg,
           } as any}
           title="Mapa de Red Alta Definición"
         />
@@ -469,11 +493,11 @@ export function Map({
   }
 
   return (
-    <View style={[styles.container, { height }]}>
+    <View style={[styles.container, { height, backgroundColor: containerBg, borderColor: containerBorder }]}>
       <WebView
         originWhitelist={['*']}
         source={{ html: mapHtml }}
-        style={styles.webView}
+        style={[styles.webView, { backgroundColor: containerBg }]}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         scalesPageToFit={true}
@@ -491,11 +515,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: '#0b0b0e',
   },
   webView: {
     flex: 1,
-    backgroundColor: '#0b0b0e',
   },
 });

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, ViewStyle, StyleProp, TouchableOpacity, View } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface GlassCardProps {
   children: React.ReactNode;
@@ -13,18 +14,30 @@ interface GlassCardProps {
 export default function GlassCard({
   children,
   style,
-  intensity = 30,
+  intensity,
   onPress,
   activeOpacity = 0.8,
 }: GlassCardProps) {
+  const { colors, isDark } = useTheme();
+  const blurIntensity = intensity !== undefined ? intensity : colors.blurIntensity;
+
+  const containerStyle = [
+    styles.container,
+    {
+      borderColor: colors.cardBorder,
+      backgroundColor: colors.cardBg,
+    },
+    style,
+  ];
+
   if (onPress) {
     return (
       <TouchableOpacity 
         activeOpacity={activeOpacity} 
         onPress={onPress}
-        style={[styles.container, style]}
+        style={containerStyle}
       >
-        <BlurView intensity={intensity} tint="dark" style={styles.blur}>
+        <BlurView intensity={blurIntensity} tint={colors.blurTint} style={styles.blur}>
           {children}
         </BlurView>
       </TouchableOpacity>
@@ -32,8 +45,8 @@ export default function GlassCard({
   }
 
   return (
-    <View style={[styles.container, style]}>
-      <BlurView intensity={intensity} tint="dark" style={styles.blur}>
+    <View style={containerStyle}>
+      <BlurView intensity={blurIntensity} tint={colors.blurTint} style={styles.blur}>
         {children}
       </BlurView>
     </View>
@@ -45,8 +58,6 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   blur: {
     padding: 20,

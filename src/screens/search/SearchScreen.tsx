@@ -15,6 +15,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useTheme } from '../../contexts/ThemeContext';
 import * as api from '../../services/api';
 import { AccountRequest, AuditLogEntry, Device, NotificationItem, PdfDocumentLink, UserAccessRecord } from '../../types';
 
@@ -54,6 +55,7 @@ const INITIAL_PDF_LINKS: PdfDocumentLink[] = [
 ];
 
 export default function SearchScreen() {
+  const { colors, isDark } = useTheme();
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
   const isSmallMobile = width < 380;
@@ -113,45 +115,77 @@ export default function SearchScreen() {
   };
 
   if (loading && allDevices.length === 0) {
-    return (<LinearGradient colors={['#050505', '#121212']} style={styles.container}><View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#FF9F0A" /></View></LinearGradient>);
+    return (<LinearGradient colors={colors.gradient} style={styles.container}><View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#FF9F0A" /></View></LinearGradient>);
   }
 
   return (
-    <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
+    <LinearGradient colors={colors.gradient} style={styles.container}>
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isDesktop ? '6%' : isTablet ? '4%' : 16 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.innerWrapper}>
           <View style={styles.header}>
             <Text style={styles.headerBadge}>BÚSQUEDA GLOBAL</Text>
-            <Text style={[styles.headerTitle, isSmallMobile && { fontSize: 22 }]}>Buscador de Red</Text>
-            <Text style={styles.headerSubtitle}>Localiza equipos por IP, MAC, nombre o ubicación ({allDevices.length} equipos en BD)</Text>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }, isSmallMobile && { fontSize: 22 }]}>Buscador de Red</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Localiza equipos por IP, MAC, nombre o ubicación ({allDevices.length} equipos en BD)</Text>
           </View>
-          <BlurView intensity={30} tint="dark" style={styles.searchBarWrapper}>
-            <Feather name="search" size={18} color="rgba(255, 255, 255, 0.4)" style={styles.searchIcon} />
-            <TextInput placeholder="Buscar dispositivo, IP, MAC o rack..." placeholderTextColor="rgba(255, 255, 255, 0.25)" style={styles.searchInput} value={query} onChangeText={setQuery} autoCapitalize="none" />
-            {query.length > 0 && (<TouchableOpacity style={styles.clearBtn} onPress={() => setQuery('')} activeOpacity={0.7}><Feather name="x" size={15} color="rgba(255, 255, 255, 0.6)" /></TouchableOpacity>)}
+          <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.searchBarWrapper, { backgroundColor: colors.searchBg, borderColor: colors.searchBorder }]}>
+            <Feather name="search" size={18} color={colors.textTertiary} style={styles.searchIcon} />
+            <TextInput placeholder="Buscar dispositivo, IP, MAC o rack..." placeholderTextColor={colors.placeholder} style={[styles.searchInput, { color: colors.textPrimary }]} value={query} onChangeText={setQuery} autoCapitalize="none" />
+            {query.length > 0 && (<TouchableOpacity style={[styles.clearBtn, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)' }]} onPress={() => setQuery('')} activeOpacity={0.7}><Feather name="x" size={15} color={colors.textSecondary} /></TouchableOpacity>)}
           </BlurView>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-            {SEARCH_FILTERS.map((filter) => { const isActive = activeFilter === filter; return (<TouchableOpacity key={filter} style={[styles.filterChip, isActive && styles.filterChipActive]} activeOpacity={0.7} onPress={() => setActiveFilter(filter)}><Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>{filter}</Text></TouchableOpacity>); })}
+            {SEARCH_FILTERS.map((filter) => { 
+              const isActive = activeFilter === filter; 
+              return (
+                <TouchableOpacity 
+                  key={filter} 
+                  style={[
+                    styles.filterChip, 
+                    { backgroundColor: colors.chipBg, borderColor: colors.chipBorder },
+                    isActive && { backgroundColor: colors.chipActiveBg, borderColor: colors.chipActiveBg }
+                  ]} 
+                  activeOpacity={0.7} 
+                  onPress={() => setActiveFilter(filter)}
+                >
+                  <Text style={[
+                    styles.filterChipText, 
+                    { color: colors.textSecondary },
+                    isActive && { color: colors.chipActiveText }
+                  ]}>{filter}</Text>
+                </TouchableOpacity>
+              ); 
+            })}
           </ScrollView>
           {!query.trim() && (<View style={styles.suggestionsContainer}>
-            <Text style={styles.suggestionTitle}>BÚSQUEDAS FRECUENTES</Text>
-            <View style={styles.suggestionChips}>{POPULAR_QUERIES.map((item) => (<TouchableOpacity key={item} style={styles.suggestionChip} activeOpacity={0.7} onPress={() => setQuery(item)}><Feather name="clock" size={12} color="rgba(255, 255, 255, 0.4)" /><Text style={styles.suggestionChipText}>{item}</Text></TouchableOpacity>))}</View>
-            <BlurView intensity={20} tint="dark" style={styles.hintCard}><Feather name="info" size={18} color="#0A84FF" style={{ marginRight: 10 }} /><View style={{ flex: 1 }}><Text style={styles.hintTitle}>Búsqueda inteligente</Text><Text style={styles.hintText}>Los datos provienen directamente de la base de datos Supabase. Puedes buscar por cualquier campo del dispositivo.</Text></View></BlurView>
+            <Text style={[styles.suggestionTitle, { color: colors.textTertiary }]}>BÚSQUEDAS FRECUENTES</Text>
+            <View style={styles.suggestionChips}>
+              {POPULAR_QUERIES.map((item) => (
+                <TouchableOpacity 
+                  key={item} 
+                  style={[styles.suggestionChip, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} 
+                  activeOpacity={0.7} 
+                  onPress={() => setQuery(item)}
+                >
+                  <Feather name="clock" size={12} color={colors.textTertiary} />
+                  <Text style={[styles.suggestionChipText, { color: colors.textSecondary }]}>{item}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.hintCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}><Feather name="info" size={18} color="#0A84FF" style={{ marginRight: 10 }} /><View style={{ flex: 1 }}><Text style={[styles.hintTitle, { color: colors.textPrimary }]}>Búsqueda inteligente</Text><Text style={[styles.hintText, { color: colors.textSecondary }]}>Los datos provienen directamente de la base de datos Supabase. Puedes buscar por cualquier campo del dispositivo.</Text></View></BlurView>
           </View>)}
           {query.trim().length > 0 && (<View style={styles.resultsContainer}>
-            <View style={styles.resultsHeader}><Text style={styles.resultsCount}>{filteredResults.length} {filteredResults.length === 1 ? 'resultado encontrado' : 'resultados encontrados'}</Text></View>
-            {filteredResults.length === 0 ? (<BlurView intensity={20} tint="dark" style={styles.emptyCard}><Feather name="alert-circle" size={32} color="rgba(255, 255, 255, 0.3)" /><Text style={styles.emptyTitle}>Sin coincidencias</Text><Text style={styles.emptySubtitle}>No se encontró ningún equipo que coincida con "{query}".</Text></BlurView>
+            <View style={styles.resultsHeader}><Text style={[styles.resultsCount, { color: colors.textSecondary }]}>{filteredResults.length} {filteredResults.length === 1 ? 'resultado encontrado' : 'resultados encontrados'}</Text></View>
+            {filteredResults.length === 0 ? (<BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.emptyCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}><Feather name="alert-circle" size={32} color={colors.textTertiary} /><Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>Sin coincidencias</Text><Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>No se encontró ningún equipo que coincida con "{query}".</Text></BlurView>
             ) : (<View style={styles.resultsList}>{filteredResults.map((dev) => (
-              <BlurView key={dev.id} intensity={30} tint="dark" style={[styles.resultCard, { width: cardWidth }]}>
-                <View style={styles.resultTop}><View style={styles.deviceIconBadge}><Feather name="cpu" size={16} color="#0A84FF" /></View><View style={{ flex: 1 }}><Text style={styles.resultName} numberOfLines={1}>{dev.name}</Text><Text style={styles.resultBrand} numberOfLines={1}>{dev.manufacturer} • {dev.location}</Text></View></View>
-                <View style={styles.resultSpecs}><View style={styles.specBox}><Text style={styles.specKey}>IPv4</Text><Text style={styles.specIp} numberOfLines={1}>{dev.ipv4_address}</Text></View><View style={styles.specBox}><Text style={styles.specKey}>MAC</Text><Text style={styles.specMac} numberOfLines={1}>{dev.mac_address}</Text></View></View>
-                <View style={styles.resultSubnet}><Feather name="layers" size={11} color="#BF5AF2" /><Text style={styles.resultSubnetText} numberOfLines={1}>{dev.subnet_name || 'Sin VLAN asignada'}</Text></View>
+              <BlurView key={dev.id} intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.resultCard, { width: cardWidth, backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+                <View style={styles.resultTop}><View style={styles.deviceIconBadge}><Feather name="cpu" size={16} color="#0A84FF" /></View><View style={{ flex: 1 }}><Text style={[styles.resultName, { color: colors.textPrimary }]} numberOfLines={1}>{dev.name}</Text><Text style={[styles.resultBrand, { color: colors.textSecondary }]} numberOfLines={1}>{dev.manufacturer} • {dev.location}</Text></View></View>
+                <View style={styles.resultSpecs}><View style={[styles.specBox, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)' }]}><Text style={[styles.specKey, { color: colors.textTertiary }]}>IPv4</Text><Text style={styles.specIp} numberOfLines={1}>{dev.ipv4_address}</Text></View><View style={[styles.specBox, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)' }]}><Text style={[styles.specKey, { color: colors.textTertiary }]}>MAC</Text><Text style={[styles.specMac, { color: colors.textPrimary }]} numberOfLines={1}>{dev.mac_address}</Text></View></View>
+                <View style={[styles.resultSubnet, { borderColor: colors.divider }]}><Feather name="layers" size={11} color="#BF5AF2" /><Text style={styles.resultSubnetText} numberOfLines={1}>{dev.subnet_name || 'Sin VLAN asignada'}</Text></View>
               </BlurView>))}</View>)}
           </View>)}
 
-          <BlurView intensity={30} tint="dark" style={styles.adminPanel}>
+          <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.adminPanel, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
             <View style={styles.adminHeader}>
-              <Text style={styles.adminTitle}>Administración de usuarios y acceso</Text>
+              <Text style={[styles.adminTitle, { color: colors.textPrimary }]}>Administración de usuarios y acceso</Text>
               <Text style={styles.adminMeta}>{accountRequests.filter((item) => item.status === 'pendiente').length} pendientes</Text>
             </View>
 
@@ -161,19 +195,27 @@ export default function SearchScreen() {
                   key={tab}
                   activeOpacity={0.8}
                   onPress={() => setActiveAdminTab(tab as any)}
-                  style={[styles.adminTab, activeAdminTab === tab && styles.adminTabActive]}
+                  style={[
+                    styles.adminTab, 
+                    { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)', borderColor: colors.cardBorder },
+                    activeAdminTab === tab && { backgroundColor: colors.chipActiveBg, borderColor: colors.chipActiveBg }
+                  ]}
                 >
-                  <Text style={[styles.adminTabText, activeAdminTab === tab && styles.adminTabTextActive]}>{tab}</Text>
+                  <Text style={[
+                    styles.adminTabText, 
+                    { color: colors.textSecondary },
+                    activeAdminTab === tab && { color: colors.chipActiveText }
+                  ]}>{tab}</Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <View style={styles.adminSearchRow}>
-              <Feather name="search" size={15} color="rgba(255,255,255,0.45)" />
+            <View style={[styles.adminSearchRow, { backgroundColor: colors.searchBg, borderColor: colors.searchBorder }]}>
+              <Feather name="search" size={15} color={colors.textTertiary} />
               <TextInput
                 placeholder="Buscar por nombre, correo o área..."
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                style={styles.adminSearchInput}
+                placeholderTextColor={colors.placeholder}
+                style={[styles.adminSearchInput, { color: colors.textPrimary }]}
                 value={adminSearch}
                 onChangeText={setAdminSearch}
               />
@@ -182,23 +224,23 @@ export default function SearchScreen() {
             {activeAdminTab === 'Solicitudes' && (
               <View style={styles.adminList}>
                 {filteredRequests.map((req) => (
-                  <View key={req.id} style={styles.userCard}>
+                  <View key={req.id} style={[styles.userCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.cardBorder }]}>
                     <View style={styles.userCardHeader}>
                       <View>
-                        <Text style={styles.userName}>{req.name}</Text>
-                        <Text style={styles.userEmail}>{req.email}</Text>
+                        <Text style={[styles.userName, { color: colors.textPrimary }]}>{req.name}</Text>
+                        <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{req.email}</Text>
                       </View>
                       <View style={[styles.statusPill, req.status === 'activo' ? styles.statusActive : req.status === 'rechazado' ? styles.statusRejected : styles.statusPending]}>
                         <Text style={styles.statusText}>{req.status}</Text>
                       </View>
                     </View>
-                    <Text style={styles.userMeta}>Área: {req.area}</Text>
-                    <Text style={styles.userMeta}>Tipo: {req.requestType === 'tecnico_red' ? 'Técnico de red' : 'Administrador'}</Text>
-                    <Text style={styles.userDetail}>{req.workInfo}</Text>
-                    <Text style={styles.userDetail}>{req.activities}</Text>
+                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Área: {req.area}</Text>
+                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Tipo: {req.requestType === 'tecnico_red' ? 'Técnico de red' : 'Administrador'}</Text>
+                    <Text style={[styles.userDetail, { color: colors.textSecondary }]}>{req.workInfo}</Text>
+                    <Text style={[styles.userDetail, { color: colors.textSecondary }]}>{req.activities}</Text>
                     <View style={styles.cardActions}>
-                      <TouchableOpacity style={styles.primaryAction} onPress={() => handleRequestDecision(req.id, 'activo')}>
-                        <Text style={styles.primaryActionText}>Aceptar</Text>
+                      <TouchableOpacity style={[styles.primaryAction, { backgroundColor: colors.buttonBg }]} onPress={() => handleRequestDecision(req.id, 'activo')}>
+                        <Text style={[styles.primaryActionText, { color: colors.buttonText }]}>Aceptar</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.secondaryAction} onPress={() => handleRequestDecision(req.id, 'rechazado')}>
                         <Text style={styles.secondaryActionText}>Rechazar</Text>
@@ -206,7 +248,7 @@ export default function SearchScreen() {
                     </View>
                   </View>
                 ))}
-                {filteredRequests.length === 0 && <Text style={styles.emptyState}>No hay solicitudes que coincidan con la búsqueda.</Text>}
+                {filteredRequests.length === 0 && <Text style={[styles.emptyState, { color: colors.textTertiary }]}>No hay solicitudes que coincidan con la búsqueda.</Text>}
               </View>
             )}
 
@@ -217,19 +259,19 @@ export default function SearchScreen() {
                   if (!q) return true;
                   return user.name.toLowerCase().includes(q) || user.email.toLowerCase().includes(q) || user.area.toLowerCase().includes(q);
                 }).map((user) => (
-                  <View key={user.id} style={styles.userCard}>
+                  <View key={user.id} style={[styles.userCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.cardBorder }]}>
                     <View style={styles.userCardHeader}>
                       <View>
-                        <Text style={styles.userName}>{user.name}</Text>
-                        <Text style={styles.userEmail}>{user.email}</Text>
+                        <Text style={[styles.userName, { color: colors.textPrimary }]}>{user.name}</Text>
+                        <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user.email}</Text>
                       </View>
                       <View style={[styles.statusPill, user.status === 'activo' ? styles.statusActive : styles.statusPending]}>
                         <Text style={styles.statusText}>{user.status}</Text>
                       </View>
                     </View>
-                    <Text style={styles.userMeta}>Área: {user.area}</Text>
-                    <Text style={styles.userMeta}>Rol: {user.role}</Text>
-                    <Text style={styles.userMeta}>Último acceso: {user.lastLogin}</Text>
+                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Área: {user.area}</Text>
+                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Rol: {user.role}</Text>
+                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Último acceso: {user.lastLogin}</Text>
                   </View>
                 ))}
               </View>
@@ -242,19 +284,19 @@ export default function SearchScreen() {
                   if (!q) return true;
                   return item.user.toLowerCase().includes(q) || item.module.toLowerCase().includes(q) || item.action.toLowerCase().includes(q) || item.area.toLowerCase().includes(q);
                 }).map((item) => (
-                  <View key={item.id} style={styles.auditCard}>
+                  <View key={item.id} style={[styles.auditCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.cardBorder }]}>
                     <View style={styles.userCardHeader}>
                       <View>
-                        <Text style={styles.userName}>{item.user}</Text>
-                        <Text style={styles.userEmail}>{item.module}</Text>
+                        <Text style={[styles.userName, { color: colors.textPrimary }]}>{item.user}</Text>
+                        <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{item.module}</Text>
                       </View>
                       <View style={[styles.statusPill, item.status === 'ok' ? styles.statusActive : item.status === 'warning' ? styles.statusPending : styles.statusRejected]}>
                         <Text style={styles.statusText}>{item.status}</Text>
                       </View>
                     </View>
-                    <Text style={styles.userMeta}>Acción: {item.action}</Text>
-                    <Text style={styles.userDetail}>{item.description}</Text>
-                    <Text style={styles.userMeta}>Fecha: {item.date} • Área: {item.area}</Text>
+                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Acción: {item.action}</Text>
+                    <Text style={[styles.userDetail, { color: colors.textSecondary }]}>{item.description}</Text>
+                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Fecha: {item.date} • Área: {item.area}</Text>
                   </View>
                 ))}
               </View>
@@ -263,13 +305,13 @@ export default function SearchScreen() {
             {activeAdminTab === 'Documentos' && (
               <View style={styles.adminList}>
                 {INITIAL_PDF_LINKS.map((doc) => (
-                  <View key={doc.id} style={styles.docCard}>
+                  <View key={doc.id} style={[styles.docCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.cardBorder }]}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.userName}>{doc.title}</Text>
-                      <Text style={styles.userMeta}>Generado: {doc.generatedAt}</Text>
+                      <Text style={[styles.userName, { color: colors.textPrimary }]}>{doc.title}</Text>
+                      <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Generado: {doc.generatedAt}</Text>
                     </View>
-                    <TouchableOpacity style={styles.primaryAction} onPress={() => Alert.alert('Documento', `Se está generando el PDF de ${doc.title}.`)}>
-                      <Text style={styles.primaryActionText}>Generar PDF</Text>
+                    <TouchableOpacity style={[styles.primaryAction, { backgroundColor: colors.buttonBg, paddingHorizontal: 16 }]} onPress={() => Alert.alert('Documento', `Se está generando el PDF de ${doc.title}.`)}>
+                      <Text style={[styles.primaryActionText, { color: colors.buttonText }]}>Generar PDF</Text>
                     </TouchableOpacity>
                   </View>
                 ))}

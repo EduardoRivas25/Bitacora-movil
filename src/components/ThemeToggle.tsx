@@ -1,9 +1,14 @@
 import React, { useRef, useEffect } from 'react';
-import { Animated, TouchableOpacity } from 'react-native';
+import { Animated, TouchableOpacity, StyleProp, ViewStyle } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
-export default function ThemeToggle() {
+interface ThemeToggleProps {
+  style?: StyleProp<ViewStyle>;
+  size?: number;
+}
+
+export default function ThemeToggle({ style, size = 20 }: ThemeToggleProps) {
   const { theme, toggleTheme, colors } = useTheme();
   const isDark = theme === 'dark';
   const animValue = useRef(new Animated.Value(isDark ? 1 : 0)).current;
@@ -28,12 +33,18 @@ export default function ThemeToggle() {
   });
 
   return (
-    <TouchableOpacity onPress={toggleTheme} style={{ marginLeft: 15 }}>
+    <TouchableOpacity 
+      onPress={toggleTheme} 
+      style={style || { marginLeft: 15 }}
+      activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Cambiar a modo ${isDark ? 'claro' : 'oscuro'}`}
+    >
       <Animated.View style={{ transform: [{ rotate: spin }, { scale: scale }] }}>
         <Feather 
           name={isDark ? 'moon' : 'sun'} 
-          size={24} 
-          color={colors.text} 
+          size={size} 
+          color={isDark ? '#FFD60A' : colors.text} 
         />
       </Animated.View>
     </TouchableOpacity>

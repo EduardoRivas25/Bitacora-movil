@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import GlassModal from '../../components/ui/GlassModal';
+import { useTheme } from '../../contexts/ThemeContext';
 import * as api from '../../services/api';
 import { Device, Building, Subnet } from '../../types';
 import { 
@@ -18,6 +19,7 @@ import {
 const CATEGORIES = ['Todos', 'Switches', 'Routers', 'Servidores', 'Access Points', 'Workstations', 'Firewalls'];
 
 export default function DeviceListScreen() {
+  const { colors, isDark } = useTheme();
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
   const isSmallMobile = width < 380;
@@ -263,7 +265,7 @@ export default function DeviceListScreen() {
 
   if (loading && devices.length === 0) {
     return (
-      <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
+      <LinearGradient colors={colors.gradient} style={styles.container}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#0A84FF" />
         </View>
@@ -272,34 +274,34 @@ export default function DeviceListScreen() {
   }
 
   return (
-    <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
+    <LinearGradient colors={colors.gradient} style={styles.container}>
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isDesktop ? '6%' : isTablet ? '4%' : 16 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.innerWrapper}>
           
           <View style={styles.header}>
             <View style={{ flex: 1, minWidth: 200 }}>
               <Text style={styles.headerBadge}>INVENTARIO DE EQUIPOS</Text>
-              <Text style={[styles.headerTitle, isSmallMobile && { fontSize: 22 }]}>Dispositivos</Text>
-              <Text style={styles.headerSubtitle}>{devices.length} Equipos registrados en la infraestructura</Text>
+              <Text style={[styles.headerTitle, { color: colors.textPrimary }, isSmallMobile && { fontSize: 22 }]}>Dispositivos</Text>
+              <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]}>{devices.length} Equipos registrados en la infraestructura</Text>
             </View>
-            <TouchableOpacity style={styles.addButton} activeOpacity={0.8} onPress={handleOpenAddDevice}>
-              <Feather name="plus" size={17} color="#000000" />
-              <Text style={styles.addButtonText}>Nuevo Equipo</Text>
+            <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.buttonBg }]} activeOpacity={0.8} onPress={handleOpenAddDevice}>
+              <Feather name="plus" size={17} color={colors.buttonText} />
+              <Text style={[styles.addButtonText, { color: colors.buttonText }]}>Nuevo Equipo</Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.searchBar}>
-            <Feather name="search" size={16} color="rgba(255, 255, 255, 0.4)" />
+          <View style={[styles.searchBar, { backgroundColor: colors.searchBg, borderColor: colors.searchBorder }]}>
+            <Feather name="search" size={16} color={colors.textTertiary} />
             <TextInput 
               placeholder="Buscar por IP, MAC, nombre, ubicación..." 
-              placeholderTextColor="rgba(255, 255, 255, 0.3)" 
-              style={styles.searchInput} 
+              placeholderTextColor={colors.placeholder} 
+              style={[styles.searchInput, { color: colors.textPrimary }]} 
               value={searchQuery} 
               onChangeText={setSearchQuery} 
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <Feather name="x" size={14} color="rgba(255, 255, 255, 0.4)" />
+                <Feather name="x" size={14} color={colors.textTertiary} />
               </TouchableOpacity>
             )}
           </View>
@@ -308,8 +310,21 @@ export default function DeviceListScreen() {
             {CATEGORIES.map((cat) => { 
               const isActive = selectedCategory === cat; 
               return (
-                <TouchableOpacity key={cat} style={[styles.categoryChip, isActive && styles.categoryChipActive]} activeOpacity={0.7} onPress={() => setSelectedCategory(cat)}>
-                  <Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>{cat}</Text>
+                <TouchableOpacity 
+                  key={cat} 
+                  style={[
+                    styles.categoryChip, 
+                    { backgroundColor: colors.chipBg, borderColor: colors.chipBorder },
+                    isActive && { backgroundColor: colors.chipActiveBg, borderColor: colors.chipActiveBg }
+                  ]} 
+                  activeOpacity={0.7} 
+                  onPress={() => setSelectedCategory(cat)}
+                >
+                  <Text style={[
+                    styles.categoryChipText, 
+                    { color: colors.textSecondary },
+                    isActive && { color: colors.chipActiveText }
+                  ]}>{cat}</Text>
                 </TouchableOpacity>
               ); 
             })}
@@ -319,17 +334,22 @@ export default function DeviceListScreen() {
             {filteredDevices.map((dev) => { 
               const icon = getDeviceIcon(dev.name); 
               return (
-                <BlurView key={dev.id} intensity={40} tint="dark" style={[styles.deviceCard, { width: cardWidth }]}>
+                <BlurView 
+                  key={dev.id} 
+                  intensity={colors.blurIntensity} 
+                  tint={colors.blurTint} 
+                  style={[styles.deviceCard, { width: cardWidth, backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}
+                >
                   <View style={styles.cardHeaderRow}>
                     <View style={styles.deviceIconWrapper}>
                       <Feather name={icon} size={19} color="#0A84FF" />
                     </View>
                     <View style={styles.deviceTitleBlock}>
                       <View style={styles.titleWithStatus}>
-                        <Text style={styles.deviceName} numberOfLines={1}>{dev.name}</Text>
+                        <Text style={[styles.deviceName, { color: colors.textPrimary }]} numberOfLines={1}>{dev.name}</Text>
                         <View style={styles.statusDot} />
                       </View>
-                      <Text style={styles.manufacturerText} numberOfLines={1}>{dev.manufacturer} • {dev.location}</Text>
+                      <Text style={[styles.manufacturerText, { color: colors.textTertiary }]} numberOfLines={1}>{dev.manufacturer} • {dev.location}</Text>
                     </View>
                     <TouchableOpacity style={styles.actionButton} activeOpacity={0.7} onPress={() => handleOpenEditDevice(dev)}>
                       <Feather name="edit-2" size={15} color="#FFD60A" />
@@ -340,27 +360,27 @@ export default function DeviceListScreen() {
                   </View>
                   
                   <View style={styles.specsContainer}>
-                    <View style={styles.specBadge}>
-                      <Text style={styles.specLabel}>IPv4</Text>
+                    <View style={[styles.specBadge, { backgroundColor: colors.inputBg, borderColor: colors.cardBorder }]}>
+                      <Text style={[styles.specLabel, { color: colors.textTertiary }]}>IPv4</Text>
                       <Text style={styles.specValueIp} numberOfLines={1}>{dev.ipv4_address}</Text>
                     </View>
-                    <View style={styles.specBadge}>
-                      <Text style={styles.specLabel}>MAC</Text>
-                      <Text style={styles.specValueMac} numberOfLines={1}>{dev.mac_address}</Text>
+                    <View style={[styles.specBadge, { backgroundColor: colors.inputBg, borderColor: colors.cardBorder }]}>
+                      <Text style={[styles.specLabel, { color: colors.textTertiary }]}>MAC</Text>
+                      <Text style={[styles.specValueMac, { color: colors.textPrimary }]} numberOfLines={1}>{dev.mac_address}</Text>
                     </View>
                   </View>
                   
-                  <View style={styles.subnetFooter}>
+                  <View style={[styles.subnetFooter, { borderColor: colors.divider }]}>
                     <View style={styles.subnetTag}>
                       <Feather name="layers" size={12} color="#BF5AF2" />
                       <Text style={styles.subnetTagText} numberOfLines={1}>{dev.subnet_name || 'VLAN Asignada'}</Text>
                     </View>
-                    <Text style={styles.networkSubtag} numberOfLines={1}>{dev.network_name || 'Red Central'}</Text>
+                    <Text style={[styles.networkSubtag, { color: colors.textTertiary }]} numberOfLines={1}>{dev.network_name || 'Red Central'}</Text>
                   </View>
                 </BlurView>
               ); 
             })}
-            {filteredDevices.length === 0 && <Text style={styles.emptyText}>No se encontraron dispositivos con ese criterio.</Text>}
+            {filteredDevices.length === 0 && <Text style={[styles.emptyText, { color: colors.textTertiary }]}>No se encontraron dispositivos con ese criterio.</Text>}
           </View>
         </View>
 
@@ -373,11 +393,11 @@ export default function DeviceListScreen() {
             </View>
           )}
 
-          <Text style={styles.inputLabel}>Nombre del Dispositivo *</Text>
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Nombre del Dispositivo *</Text>
           <TextInput 
             placeholder="ej. Switch Distribución Edificio B" 
-            placeholderTextColor="rgba(255, 255, 255, 0.25)" 
-            style={[styles.input, fieldErrors.name && styles.inputError]} 
+            placeholderTextColor={colors.placeholder} 
+            style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, fieldErrors.name && styles.inputError]} 
             value={devName} 
             onChangeText={(val) => { setDevName(val); if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: '' })); }} 
           />
@@ -385,23 +405,23 @@ export default function DeviceListScreen() {
           
           <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Dirección IPv4 *</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Dirección IPv4 *</Text>
               <TextInput 
                 placeholder="ej. 10.0.10.20" 
-                placeholderTextColor="rgba(255, 255, 255, 0.25)" 
-                style={[styles.input, fieldErrors.ip && styles.inputError]} 
+                placeholderTextColor={colors.placeholder} 
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, fieldErrors.ip && styles.inputError]} 
                 value={devIp} 
                 onChangeText={(val) => { setDevIp(val); if (fieldErrors.ip) setFieldErrors(prev => ({ ...prev, ip: '' })); }} 
               />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Dirección MAC *</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Dirección MAC *</Text>
               <TextInput 
                 placeholder="AA:BB:CC:DD:EE:FF" 
-                placeholderTextColor="rgba(255, 255, 255, 0.25)" 
+                placeholderTextColor={colors.placeholder} 
                 autoCapitalize="characters"
                 maxLength={17}
-                style={[styles.input, fieldErrors.mac && styles.inputError]} 
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, fieldErrors.mac && styles.inputError]} 
                 value={devMac} 
                 onChangeText={handleMacChange} 
               />
@@ -412,17 +432,17 @@ export default function DeviceListScreen() {
 
           <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Fabricante / Marca</Text>
-              <TextInput placeholder="ej. Cisco / Ubiquiti" placeholderTextColor="rgba(255, 255, 255, 0.25)" style={styles.input} value={devBrand} onChangeText={setDevBrand} />
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Fabricante / Marca</Text>
+              <TextInput placeholder="ej. Cisco / Ubiquiti" placeholderTextColor={colors.placeholder} style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]} value={devBrand} onChangeText={setDevBrand} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>Ubicación Física</Text>
-              <TextInput placeholder="ej. Rack 02 - Piso 1" placeholderTextColor="rgba(255, 255, 255, 0.25)" style={styles.input} value={devLocation} onChangeText={setDevLocation} />
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Ubicación Física</Text>
+              <TextInput placeholder="ej. Rack 02 - Piso 1" placeholderTextColor={colors.placeholder} style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]} value={devLocation} onChangeText={setDevLocation} />
             </View>
           </View>
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 4 }}>
-            <Text style={styles.inputLabel}>Edificio / Ubicación Física *</Text>
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Edificio / Ubicación Física *</Text>
             <TouchableOpacity onPress={handleOpenNewBuildingModal} activeOpacity={0.7} style={styles.addBldSmallBtn}>
               <Feather name="plus" size={12} color="#0A84FF" />
               <Text style={styles.addBldSmallBtnText}>Añadir Ubicación</Text>
@@ -430,26 +450,26 @@ export default function DeviceListScreen() {
           </View>
           <View style={styles.buildingSelector}>
             {buildings.map((bld) => (
-              <TouchableOpacity key={bld.id} style={[styles.buildingOption, devBuilding === bld.id && styles.buildingOptionActive]} onPress={() => handleSelectBuilding(bld.id)}>
-                <Text style={[styles.buildingOptionText, devBuilding === bld.id && styles.buildingOptionTextActive]}>{bld.code}</Text>
+              <TouchableOpacity key={bld.id} style={[styles.buildingOption, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }, devBuilding === bld.id && styles.buildingOptionActive]} onPress={() => handleSelectBuilding(bld.id)}>
+                <Text style={[styles.buildingOptionText, { color: colors.textSecondary }, devBuilding === bld.id && styles.buildingOptionTextActive]}>{bld.code}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Text style={styles.inputLabel}>Subred de Destino *</Text>
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Subred de Destino *</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
             {subnets.map((sub) => (
-              <TouchableOpacity key={sub.id} style={[styles.subnetOption, devSubnet === sub.id && styles.subnetOptionActive]} onPress={() => setDevSubnet(sub.id)}>
-                <Text style={styles.subnetOptionText} numberOfLines={1}>{sub.name}</Text>
+              <TouchableOpacity key={sub.id} style={[styles.subnetOption, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }, devSubnet === sub.id && styles.subnetOptionActive]} onPress={() => setDevSubnet(sub.id)}>
+                <Text style={[styles.subnetOptionText, { color: colors.textPrimary }]} numberOfLines={1}>{sub.name}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
-          <Text style={styles.inputLabel}>Descripción u Observaciones</Text>
-          <TextInput placeholder="Rol del equipo en la red..." placeholderTextColor="rgba(255, 255, 255, 0.25)" multiline numberOfLines={2} style={[styles.input, styles.textArea]} value={devDesc} onChangeText={setDevDesc} />
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Descripción u Observaciones</Text>
+          <TextInput placeholder="Rol del equipo en la red..." placeholderTextColor={colors.placeholder} multiline numberOfLines={2} style={[styles.input, styles.textArea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]} value={devDesc} onChangeText={setDevDesc} />
 
-          <TouchableOpacity style={[styles.modalSubmitButton, isSubmitting && { opacity: 0.6 }]} disabled={isSubmitting} activeOpacity={0.8} onPress={handleSaveDevice}>
-            {isSubmitting ? <ActivityIndicator size="small" color="#000000" /> : <Text style={styles.modalSubmitButtonText}>{editingDeviceId ? 'Actualizar Dispositivo' : 'Guardar en Inventario'}</Text>}
+          <TouchableOpacity style={[styles.modalSubmitButton, { backgroundColor: colors.buttonBg }, isSubmitting && { opacity: 0.6 }]} disabled={isSubmitting} activeOpacity={0.8} onPress={handleSaveDevice}>
+            {isSubmitting ? <ActivityIndicator size="small" color={colors.buttonText} /> : <Text style={[styles.modalSubmitButtonText, { color: colors.buttonText }]}>{editingDeviceId ? 'Actualizar Dispositivo' : 'Guardar en Inventario'}</Text>}
           </TouchableOpacity>
         </GlassModal>
 
@@ -461,14 +481,14 @@ export default function DeviceListScreen() {
               <Text style={styles.modalErrorText}>{newBldError}</Text>
             </View>
           )}
-          <Text style={styles.inputLabel}>Nombre del Edificio *</Text>
-          <TextInput placeholder="ej. Edificio D" placeholderTextColor="rgba(255, 255, 255, 0.25)" style={styles.input} value={newBldName} onChangeText={setNewBldName} />
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Nombre del Edificio *</Text>
+          <TextInput placeholder="ej. Edificio D" placeholderTextColor={colors.placeholder} style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]} value={newBldName} onChangeText={setNewBldName} />
           
-          <Text style={styles.inputLabel}>Código Corto *</Text>
-          <TextInput placeholder="ej. EDIF-D" placeholderTextColor="rgba(255, 255, 255, 0.25)" autoCapitalize="characters" style={styles.input} value={newBldCode} onChangeText={setNewBldCode} />
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Código Corto *</Text>
+          <TextInput placeholder="ej. EDIF-D" placeholderTextColor={colors.placeholder} autoCapitalize="characters" style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]} value={newBldCode} onChangeText={setNewBldCode} />
 
-          <TouchableOpacity style={[styles.modalSubmitButton, isSubmittingBld && { opacity: 0.6 }]} disabled={isSubmittingBld} activeOpacity={0.8} onPress={handleSaveNewBuilding}>
-            {isSubmittingBld ? <ActivityIndicator size="small" color="#000000" /> : <Text style={styles.modalSubmitButtonText}>Guardar Ubicación</Text>}
+          <TouchableOpacity style={[styles.modalSubmitButton, { backgroundColor: colors.buttonBg }, isSubmittingBld && { opacity: 0.6 }]} disabled={isSubmittingBld} activeOpacity={0.8} onPress={handleSaveNewBuilding}>
+            {isSubmittingBld ? <ActivityIndicator size="small" color={colors.buttonText} /> : <Text style={[styles.modalSubmitButtonText, { color: colors.buttonText }]}>Guardar Ubicación</Text>}
           </TouchableOpacity>
         </GlassModal>
       </ScrollView>

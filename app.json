@@ -14,7 +14,8 @@
         "backgroundColor": "#050505",
         "foregroundImage": "./assets/logobitacoraredes.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.eduardo_rivass.bitacoraredes"
     },
     "web": {
       "favicon": "./assets/logobitacoraredes.png"
@@ -22,6 +23,11 @@
     "plugins": [
       "expo-font",
       "expo-web-browser"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5f881cff-e1e2-47d3-b115-bbab90cd8ff3"
+      }
+    }
   }
 }

@@ -16,13 +16,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { validateEmail, validatePassword, validateRequired } from '../../utils/validators';
+import ThemeToggle from '../../components/ThemeToggle';
 
-const APP_LOGO = require('../../../assets/logobitacoraredes.png');
+const LOGO_DARK = require('../../../assets/logobitacoraredes.png');
+const LOGO_LIGHT = require('../../../assets/logobitacoraredesmodoclaro.png');
 
 export default function LoginScreen() {
   // Extraemos también 'theme' para evaluar si estamos en modo oscuro
   const { colors, theme } = useTheme();
   const isDark = theme === 'dark';
+  const appLogo = isDark ? LOGO_DARK : LOGO_LIGHT;
   
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
@@ -147,6 +150,18 @@ export default function LoginScreen() {
       colors={isDark ? ['#050505', '#121212'] : ['#E8ECEF', '#F8F9FA']} 
       style={styles.container}
     >
+      <View style={styles.topBar}>
+        <ThemeToggle 
+          style={[
+            styles.themeToggleBtn,
+            {
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+              borderColor: inputBorderColor,
+            }
+          ]}
+          size={18}
+        />
+      </View>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -175,7 +190,7 @@ export default function LoginScreen() {
               backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
               borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)' 
             }]}>
-              <Image source={APP_LOGO} style={styles.logoImage} resizeMode="contain" />
+              <Image source={appLogo} style={styles.logoImage} resizeMode="contain" />
             </View>
           </View>
 
@@ -464,6 +479,20 @@ export default function LoginScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  topBar: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 52 : 24,
+    right: 20,
+    zIndex: 10,
+  },
+  themeToggleBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   scrollContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 },
   glassCard: {
     borderRadius: 30,

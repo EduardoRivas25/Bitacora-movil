@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import GlassModal from '../../components/ui/GlassModal';
+import { useTheme } from '../../contexts/ThemeContext';
 import * as api from '../../services/api';
 import { Network, Subnet } from '../../types';
 import { 
@@ -19,6 +20,7 @@ import {
 } from '../../utils/validators';
 
 export default function NetworkListScreen() {
+  const { colors, isDark } = useTheme();
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
 
@@ -264,7 +266,7 @@ export default function NetworkListScreen() {
 
   if (loading && networks.length === 0) {
     return (
-      <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
+      <LinearGradient colors={colors.gradient} style={styles.container}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#0A84FF" />
         </View>
@@ -275,18 +277,18 @@ export default function NetworkListScreen() {
   const selectedParentNetwork = networks.find(n => n.id === selectedNetworkForSubnet);
 
   return (
-    <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
+    <LinearGradient colors={colors.gradient} style={styles.container}>
       <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isDesktop ? '6%' : isTablet ? '4%' : 16 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.innerWrapper}>
           <View style={styles.header}>
             <View style={{ flex: 1, minWidth: 200 }}>
               <Text style={styles.headerBadge}>INFRAESTRUCTURA DE RED</Text>
-              <Text style={[styles.headerTitle, isSmallMobile && { fontSize: 22 }]}>Redes y Subredes</Text>
-              <Text style={styles.headerSubtitle}>{networks.length} Redes Principales • {networks.reduce((acc, n) => acc + n.subnets.length, 0)} Subredes</Text>
+              <Text style={[styles.headerTitle, { color: colors.textPrimary }, isSmallMobile && { fontSize: 22 }]}>Redes y Subredes</Text>
+              <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]}>{networks.length} Redes Principales • {networks.reduce((acc, n) => acc + n.subnets.length, 0)} Subredes</Text>
             </View>
-            <TouchableOpacity style={styles.addButton} activeOpacity={0.8} onPress={handleOpenAddNetwork}>
-              <Feather name="plus" size={17} color="#000000" />
-              <Text style={styles.addButtonText}>Nueva Red</Text>
+            <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.buttonBg }]} activeOpacity={0.8} onPress={handleOpenAddNetwork}>
+              <Feather name="plus" size={17} color={colors.buttonText} />
+              <Text style={[styles.addButtonText, { color: colors.buttonText }]}>Nueva Red</Text>
             </TouchableOpacity>
           </View>
 
@@ -294,51 +296,60 @@ export default function NetworkListScreen() {
             {networks.map((net) => {
               const isExpanded = expandedNetworkId === net.id;
               return (
-                <BlurView key={net.id} intensity={30} tint="dark" style={[styles.networkCard, { width: netCardWidth }]}>
+                <BlurView 
+                  key={net.id} 
+                  intensity={colors.blurIntensity} 
+                  tint={colors.blurTint} 
+                  style={[styles.networkCard, { width: netCardWidth, backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}
+                >
                   <View style={styles.cardTopRow}>
                     <View style={styles.networkInfo}>
                       <View style={styles.networkTitleContainer}>
-                        <Text style={styles.networkName}>{net.name}</Text>
+                        <Text style={[styles.networkName, { color: colors.textPrimary }]}>{net.name}</Text>
                         <View style={styles.cidrBadge}><Text style={styles.cidrText}>{net.address}/{net.cidr}</Text></View>
                       </View>
-                      <Text style={styles.networkDesc}>{net.description}</Text>
+                      <Text style={[styles.networkDesc, { color: colors.textTertiary }]}>{net.description}</Text>
                     </View>
                   </View>
                   <View style={styles.statsRow}>
-                    <View style={styles.statItem}><Feather name="layers" size={13} color="#BF5AF2" /><Text style={styles.statText}>{net.subnets.length} Subredes</Text></View>
-                    <View style={styles.statItem}><Feather name="cpu" size={13} color="#30D158" /><Text style={styles.statText}>{net.device_count || 0} Equipos</Text></View>
-                    <View style={styles.statItem}><Feather name="shield" size={13} color="#0A84FF" /><Text style={styles.statText}>IPv4 Privada</Text></View>
+                    <View style={styles.statItem}><Feather name="layers" size={13} color="#BF5AF2" /><Text style={[styles.statText, { color: colors.textSecondary }]}>{net.subnets.length} Subredes</Text></View>
+                    <View style={styles.statItem}><Feather name="cpu" size={13} color="#30D158" /><Text style={[styles.statText, { color: colors.textSecondary }]}>{net.device_count || 0} Equipos</Text></View>
+                    <View style={styles.statItem}><Feather name="shield" size={13} color="#0A84FF" /><Text style={[styles.statText, { color: colors.textSecondary }]}>IPv4 Privada</Text></View>
                   </View>
                   <View style={styles.actionsRow}>
-                    <TouchableOpacity style={styles.expandButton} activeOpacity={0.7} onPress={() => toggleExpand(net.id)}>
-                      <Text style={styles.expandButtonText}>{isExpanded ? 'Ocultar Subredes' : `Ver Subredes (${net.subnets.length})`}</Text>
-                      <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={15} color="#FFFFFF" />
+                    <TouchableOpacity 
+                      style={[styles.expandButton, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} 
+                      activeOpacity={0.7} 
+                      onPress={() => toggleExpand(net.id)}
+                    >
+                      <Text style={[styles.expandButtonText, { color: colors.textSecondary }]}>{isExpanded ? 'Ocultar Subredes' : `Ver Subredes (${net.subnets.length})`}</Text>
+                      <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={15} color={colors.textSecondary} />
                     </TouchableOpacity>
                     <View style={styles.cardControlButtons}>
-                      <TouchableOpacity style={styles.iconActionButton} activeOpacity={0.7} onPress={() => handleOpenAddSubnet(net.id)}><Feather name="plus-circle" size={15} color="#0A84FF" /></TouchableOpacity>
-                      <TouchableOpacity style={styles.iconActionButton} activeOpacity={0.7} accessibilityLabel={`Editar ${net.name}`} onPress={() => handleOpenEditNetwork(net)}><Feather name="edit-2" size={15} color="#FFD60A" /></TouchableOpacity>
-                      <TouchableOpacity style={styles.iconActionButton} activeOpacity={0.7} onPress={() => handleDeleteNetwork(net.id)}><Feather name="trash-2" size={15} color="#FF453A" /></TouchableOpacity>
+                      <TouchableOpacity style={[styles.iconActionButton, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} activeOpacity={0.7} onPress={() => handleOpenAddSubnet(net.id)}><Feather name="plus-circle" size={15} color="#0A84FF" /></TouchableOpacity>
+                      <TouchableOpacity style={[styles.iconActionButton, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} activeOpacity={0.7} accessibilityLabel={`Editar ${net.name}`} onPress={() => handleOpenEditNetwork(net)}><Feather name="edit-2" size={15} color="#FFD60A" /></TouchableOpacity>
+                      <TouchableOpacity style={[styles.iconActionButton, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} activeOpacity={0.7} onPress={() => handleDeleteNetwork(net.id)}><Feather name="trash-2" size={15} color="#FF453A" /></TouchableOpacity>
                     </View>
                   </View>
                   {isExpanded && (
-                    <View style={styles.subnetsContainer}>
+                    <View style={[styles.subnetsContainer, { backgroundColor: colors.inputBg, borderColor: colors.cardBorder }]}>
                       <View style={styles.subnetHeaderRow}>
-                        <Text style={styles.subnetSectionTitle}>SUBREDES ASOCIADAS</Text>
+                        <Text style={[styles.subnetSectionTitle, { color: colors.textTertiary }]}>SUBREDES ASOCIADAS</Text>
                         <TouchableOpacity style={styles.addSubnetSmallBtn} activeOpacity={0.7} onPress={() => handleOpenAddSubnet(net.id)}>
                           <Feather name="plus" size={12} color="#0A84FF" /><Text style={styles.addSubnetSmallText}>Añadir Subred</Text>
                         </TouchableOpacity>
                       </View>
                       {net.subnets.length === 0 ? (
-                        <Text style={styles.emptySubnetText}>No hay subredes registradas en esta red.</Text>
+                        <Text style={[styles.emptySubnetText, { color: colors.textTertiary }]}>No hay subredes registradas en esta red.</Text>
                       ) : (
                         net.subnets.map((sub) => (
-                          <View key={sub.id} style={styles.subnetItem}>
+                          <View key={sub.id} style={[styles.subnetItem, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
                             <View style={styles.subnetMain}>
                               <View style={styles.subnetTitleRow}>
-                                <Text style={styles.subnetName}>{sub.name}</Text>
+                                <Text style={[styles.subnetName, { color: colors.textPrimary }]}>{sub.name}</Text>
                                 <View style={styles.subnetCidrBadge}><Text style={styles.subnetCidrText}>{sub.address}/{sub.cidr}</Text></View>
                               </View>
-                              <Text style={styles.subnetDesc}>{sub.description}</Text>
+                              <Text style={[styles.subnetDesc, { color: colors.textTertiary }]}>{sub.description}</Text>
                             </View>
                             <View style={styles.subnetSide}>
                               <View style={styles.deviceCountBadge}><Feather name="cpu" size={11} color="#30D158" /><Text style={styles.deviceCountText}>{(sub as any).device_count || 0}</Text></View>
@@ -365,11 +376,11 @@ export default function NetworkListScreen() {
             </View>
           )}
 
-          <Text style={styles.inputLabel}>Nombre de la Red *</Text>
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Nombre de la Red *</Text>
           <TextInput 
             placeholder="ej. Red Administrativa Campus" 
-            placeholderTextColor="rgba(255, 255, 255, 0.25)" 
-            style={[styles.input, netFieldErrors.name && styles.inputError]} 
+            placeholderTextColor={colors.placeholder} 
+            style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, netFieldErrors.name && styles.inputError]} 
             value={netName} 
             onChangeText={(val) => {
               setNetName(val);
@@ -380,11 +391,11 @@ export default function NetworkListScreen() {
 
           <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
             <View style={{ flex: 2 }}>
-              <Text style={styles.inputLabel}>Dirección IPv4 Base *</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Dirección IPv4 Base *</Text>
               <TextInput 
                 placeholder="ej. 192.168.0.0" 
-                placeholderTextColor="rgba(255, 255, 255, 0.25)" 
-                style={[styles.input, netFieldErrors.ip && styles.inputError]} 
+                placeholderTextColor={colors.placeholder} 
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, netFieldErrors.ip && styles.inputError]} 
                 value={netIp} 
                 onChangeText={(val) => {
                   setNetIp(val);
@@ -394,12 +405,12 @@ export default function NetworkListScreen() {
               {netFieldErrors.ip && <Text style={styles.fieldErrorText}>{netFieldErrors.ip}</Text>}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>CIDR (/)</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>CIDR (/)</Text>
               <TextInput 
                 placeholder="16" 
-                placeholderTextColor="rgba(255, 255, 255, 0.25)" 
+                placeholderTextColor={colors.placeholder} 
                 keyboardType="numeric" 
-                style={[styles.input, netFieldErrors.cidr && styles.inputError]} 
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, netFieldErrors.cidr && styles.inputError]} 
                 value={netCidr} 
                 onChangeText={(val) => {
                   setNetCidr(val);
@@ -409,18 +420,18 @@ export default function NetworkListScreen() {
               {netFieldErrors.cidr && <Text style={styles.fieldErrorText}>{netFieldErrors.cidr}</Text>}
             </View>
           </View>
-          <Text style={styles.inputLabel}>Descripción u Observaciones</Text>
-          <TextInput placeholder="Detalles sobre el uso o alcance de esta red..." placeholderTextColor="rgba(255, 255, 255, 0.25)" multiline numberOfLines={3} style={[styles.input, styles.textArea]} value={netDesc} onChangeText={setNetDesc} />
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Descripción u Observaciones</Text>
+          <TextInput placeholder="Detalles sobre el uso o alcance de esta red..." placeholderTextColor={colors.placeholder} multiline numberOfLines={3} style={[styles.input, styles.textArea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]} value={netDesc} onChangeText={setNetDesc} />
           <TouchableOpacity 
-            style={[styles.modalSubmitButton, isSubmitting && { opacity: 0.6 }]} 
+            style={[styles.modalSubmitButton, { backgroundColor: colors.buttonBg }, isSubmitting && { opacity: 0.6 }]} 
             disabled={isSubmitting} 
             activeOpacity={0.8} 
             onPress={handleSaveNetwork}
           >
             {isSubmitting ? (
-              <ActivityIndicator size="small" color="#000000" />
+              <ActivityIndicator size="small" color={colors.buttonText} />
             ) : (
-              <Text style={styles.modalSubmitButtonText}>{editingNetworkId ? 'Actualizar Red Principal' : 'Guardar Red Principal'}</Text>
+              <Text style={[styles.modalSubmitButtonText, { color: colors.buttonText }]}>{editingNetworkId ? 'Actualizar Red Principal' : 'Guardar Red Principal'}</Text>
             )}
           </TouchableOpacity>
         </GlassModal>
@@ -434,11 +445,11 @@ export default function NetworkListScreen() {
             </View>
           )}
 
-          <Text style={styles.inputLabel}>Nombre de la Subred *</Text>
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Nombre de la Subred *</Text>
           <TextInput 
             placeholder="ej. VLAN 50 - Laboratorio Robótica" 
-            placeholderTextColor="rgba(255, 255, 255, 0.25)" 
-            style={[styles.input, subFieldErrors.name && styles.inputError]} 
+            placeholderTextColor={colors.placeholder} 
+            style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, subFieldErrors.name && styles.inputError]} 
             value={subName} 
             onChangeText={(val) => {
               setSubName(val);
@@ -449,11 +460,11 @@ export default function NetworkListScreen() {
 
           <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
             <View style={{ flex: 2 }}>
-              <Text style={styles.inputLabel}>Dirección IPv4 Subred *</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Dirección IPv4 Subred *</Text>
               <TextInput 
                 placeholder={selectedParentNetwork ? `ej. ${selectedParentNetwork.address}` : 'ej. 10.0.50.0'} 
-                placeholderTextColor="rgba(255, 255, 255, 0.25)" 
-                style={[styles.input, (subFieldErrors.ip || subFieldErrors.relation) && styles.inputError]} 
+                placeholderTextColor={colors.placeholder} 
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, (subFieldErrors.ip || subFieldErrors.relation) && styles.inputError]} 
                 value={subIp} 
                 onChangeText={(val) => {
                   setSubIp(val);
@@ -466,12 +477,12 @@ export default function NetworkListScreen() {
               {subFieldErrors.relation && <Text style={styles.fieldErrorText}>{subFieldErrors.relation}</Text>}
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inputLabel}>CIDR (/)</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>CIDR (/)</Text>
               <TextInput 
                 placeholder="24" 
-                placeholderTextColor="rgba(255, 255, 255, 0.25)" 
+                placeholderTextColor={colors.placeholder} 
                 keyboardType="numeric" 
-                style={[styles.input, subFieldErrors.cidr && styles.inputError]} 
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, subFieldErrors.cidr && styles.inputError]} 
                 value={subCidr} 
                 onChangeText={(val) => {
                   setSubCidr(val);
@@ -481,18 +492,18 @@ export default function NetworkListScreen() {
               {subFieldErrors.cidr && <Text style={styles.fieldErrorText}>{subFieldErrors.cidr}</Text>}
             </View>
           </View>
-          <Text style={styles.inputLabel}>Descripción u Observaciones</Text>
-          <TextInput placeholder="Propósito de la VLAN..." placeholderTextColor="rgba(255, 255, 255, 0.25)" multiline numberOfLines={3} style={[styles.input, styles.textArea]} value={subDesc} onChangeText={setSubDesc} />
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Descripción u Observaciones</Text>
+          <TextInput placeholder="Propósito de la VLAN..." placeholderTextColor={colors.placeholder} multiline numberOfLines={3} style={[styles.input, styles.textArea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]} value={subDesc} onChangeText={setSubDesc} />
           <TouchableOpacity 
-            style={[styles.modalSubmitButton, isSubmitting && { opacity: 0.6 }]} 
+            style={[styles.modalSubmitButton, { backgroundColor: colors.buttonBg }, isSubmitting && { opacity: 0.6 }]} 
             disabled={isSubmitting} 
             activeOpacity={0.8} 
             onPress={handleSaveSubnet}
           >
             {isSubmitting ? (
-              <ActivityIndicator size="small" color="#000000" />
+              <ActivityIndicator size="small" color={colors.buttonText} />
             ) : (
-              <Text style={styles.modalSubmitButtonText}>{editingSubnetId ? 'Actualizar Subred' : 'Guardar Subred'}</Text>
+              <Text style={[styles.modalSubmitButtonText, { color: colors.buttonText }]}>{editingSubnetId ? 'Actualizar Subred' : 'Guardar Subred'}</Text>
             )}
           </TouchableOpacity>
         </GlassModal>

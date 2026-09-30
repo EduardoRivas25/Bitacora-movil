@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
 import DashboardScreen from '../screens/dashboard/DashboardScreen';
 import DeviceListScreen from '../screens/device/DeviceListScreen';
@@ -19,6 +20,7 @@ const TAB_COUNT = 7;
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
   const isSmallMobile = width < 380;
   const isDesktop = width > 1024;
 
@@ -47,7 +49,17 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 
   return (
     <View style={[styles.tabBarContainer, { width: effectiveWidth, left: (width - effectiveWidth) / 2, bottom: bottomInset }]}>
-      <BlurView intensity={50} tint="dark" style={styles.blurBackground} />
+      <BlurView 
+        intensity={isDark ? 50 : 70} 
+        tint={isDark ? 'dark' : 'light'} 
+        style={[
+          styles.blurBackground,
+          {
+            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.85)',
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'
+          }
+        ]} 
+      />
       
       <View style={styles.contentContainer}>
         <Animated.View
@@ -56,7 +68,18 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
             { width: TAB_WIDTH, transform: [{ translateX: indicatorPosition }] }
           ]}
         >
-          <View style={[styles.circularIndicator, { width: indicatorSize, height: indicatorSize, borderRadius: indicatorSize / 2 }]} />
+          <View 
+            style={[
+              styles.circularIndicator, 
+              { 
+                width: indicatorSize, 
+                height: indicatorSize, 
+                borderRadius: indicatorSize / 2,
+                backgroundColor: isDark ? '#FFFFFF' : '#111827',
+                shadowColor: isDark ? '#FFFFFF' : '#000000',
+              }
+            ]} 
+          />
         </Animated.View>
 
         {state.routes.map((route: any, index: number) => {
@@ -84,6 +107,9 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           else if (route.name === 'Configuraciones') iconName = 'terminal';
           else if (route.name === 'Buscar') iconName = 'search';
 
+          const activeColor = isDark ? '#000000' : '#FFFFFF';
+          const inactiveColor = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)';
+
           return (
             <TouchableOpacity
               key={index}
@@ -97,7 +123,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               <Feather 
                 name={iconName} 
                 size={iconSize} 
-                color={isFocused ? '#000000' : 'rgba(255, 255, 255, 0.4)'} 
+                color={isFocused ? activeColor : inactiveColor} 
               />
             </TouchableOpacity>
           );
@@ -132,7 +158,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.25,
     shadowRadius: 20,
     elevation: 10,
   },
@@ -141,8 +167,6 @@ const styles = StyleSheet.create({
     borderRadius: 34,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
   },
   contentContainer: {
     flex: 1,
@@ -164,8 +188,6 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   circularIndicator: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#FFF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
