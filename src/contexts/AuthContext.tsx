@@ -14,6 +14,7 @@ interface AuthContextType {
   signInGoogle: () => Promise<void>;
   signInGitHub: () => Promise<void>;
   signOut: () => Promise<void>;
+  updateProfile: (profile: { name: string; area: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -117,6 +118,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const updateProfile = useCallback(async (profile: { name: string; area: string }) => {
+    await auth.saveProfile(profile);
+    setUser(current => current ? {
+      ...current,
+      profile: { ...current.profile, name: profile.name.trim(), area: profile.area.trim() },
+    } : current);
+  }, []);
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -128,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signInGoogle: () => signInProvider('google'),
       signInGitHub: () => signInProvider('github'),
       signOut,
+      updateProfile,
     }}>
       {children}
     </AuthContext.Provider>

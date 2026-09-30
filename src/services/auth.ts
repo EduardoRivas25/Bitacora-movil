@@ -101,6 +101,17 @@ export async function currentUser(): Promise<UserSchema | null> {
   return data.user;
 }
 
+export async function saveProfile(profile: { name: string; area: string }): Promise<void> {
+  const user = await currentUser();
+  if (!user) throw new Error('Debes iniciar sesión para actualizar tu perfil.');
+  const { error } = await insforge.auth.setProfile({
+    ...user.profile,
+    name: profile.name.trim(),
+    area: profile.area.trim(),
+  });
+  if (error) throw error;
+}
+
 export async function signInWithEmail(email: string, password: string): Promise<UserSchema> {
   const { data, error } = await insforge.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
   if (error) throw error;

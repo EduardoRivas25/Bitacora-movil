@@ -530,7 +530,32 @@ export async function fetchIncidents(forceRefresh = false): Promise<Incident[]> 
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  const result = (data || []).map(row => hydrateIncident(row as Incident));
+  const incidents = (data || []).map(row => hydrateIncident(row as Incident));
+  const actorIds = [...new Set(incidents.flatMap(incident => [
+    incident.reported_by_id,
+    ...(incident.actions || []).map(action => action.by_id),
+  ]).filter((id): id is string => Boolean(id)))];
+  const names = new Map<string, string>();
+  await Promise.all(actorIds.map(async id => {
+    try {
+      const { data: profile, error: profileError } = await insforge.auth.getProfile(id);
+      if (!profileError && profile?.profile?.name) names.set(id, profile.profile.name);
+    } catch {
+      // Keep the name captured when the incident or action was recorded.
+    }
+  }));
+  const actorLabel = (id: string | undefined, email: string | undefined, fallback: string) => {
+    const name = id ? names.get(id) : undefined;
+    return name ? `${name} (${email || id})` : fallback;
+  };
+  const result = incidents.map(incident => ({
+    ...incident,
+    reported_by: actorLabel(incident.reported_by_id, incident.reported_by_email, incident.reported_by || ''),
+    actions: incident.actions?.map(action => ({
+      ...action,
+      by: actorLabel(action.by_id, action.by_email, action.by),
+    })),
+  }));
   setCache('incidents', result);
   return result;
 }
@@ -547,7 +572,9 @@ export async function createIncident(data: {
   const user = await auth.currentUser();
   if (!user) throw new Error('Debes iniciar sesión para registrar un incidente.');
   if (!data.affected_devices.length) throw new Error('Selecciona al menos un equipo afectado.');
-  const reporter = user.email || user.id;
+  const reporter = user.profile?.name?.trim()
+    ? `${user.profile.name.trim()} (${user.email})`
+    : user.email || user.id;
   const primaryDevice = data.affected_devices[0];
   const incidentDescription = packIncident({
     id: '', title: data.title, description: sanitize(data.description),
@@ -559,10 +586,12 @@ export async function createIncident(data: {
     created_at: '',
     event_at: data.event_at,
     reported_by: reporter,
+    reported_by_id: user.id,
+    reported_by_email: user.email,
     affected_devices: data.affected_devices,
     actions: data.initial_action?.trim() ? [{
       text: sanitize(data.initial_action), at: new Date().toISOString(),
-      by: reporter, kind: 'follow_up',
+      by: reporter, by_id: user.id, by_email: user.email, kind: 'follow_up',
     }] : [],
   });
   const { data: result, error } = await insforge.database
@@ -603,7 +632,9 @@ export async function addIncidentAction(id: string, text: string, kind: 'follow_
   const description = packIncident({
     ...incident,
     actions: [...(incident.actions || []), {
-      text: cleanText, at: now, by: user.email || user.id, kind,
+      text: cleanText, at: now,
+      by: user.profile?.name?.trim() ? `${user.profile.name.trim()} (${user.email})` : user.email || user.id,
+      by_id: user.id, by_email: user.email, kind,
     }],
   });
   const changes = kind === 'resolution'

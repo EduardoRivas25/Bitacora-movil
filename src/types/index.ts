@@ -111,6 +111,8 @@ export interface Incident {
   // Datos de bitácora recuperados del campo description existente.
   event_at?: string;
   reported_by?: string;
+  reported_by_id?: string;
+  reported_by_email?: string;
   affected_devices?: IncidentDevice[];
   actions?: IncidentAction[];
 }
@@ -125,6 +127,8 @@ export interface IncidentAction {
   text: string;
   at: string;
   by: string;
+  by_id?: string;
+  by_email?: string;
   kind: 'follow_up' | 'resolution';
 }
 

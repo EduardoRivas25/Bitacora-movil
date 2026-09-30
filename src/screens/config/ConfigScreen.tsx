@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -19,6 +19,9 @@ import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '../../contexts/ThemeContext';
 import * as api from '../../services/api';
 import { DeviceConfig, Device } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import { validateRequired } from '../../utils/validators';
+import PasswordRecoveryScreen from '../auth/PasswordRecoveryScreen';
 
 const UTILITY_TABS = ['Notificaciones', 'Perfil', 'Seguridad', 'Preferencias', 'Acerca de'];
 
@@ -28,6 +31,7 @@ export default function ConfigScreen() {
   const isTablet = width > 768;
   const isDesktop = width > 900;
   const navigation = useNavigation<any>();
+  const { user, updateProfile } = useAuth();
 
   const [configs, setConfigs] = useState<DeviceConfig[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -48,6 +52,30 @@ export default function ConfigScreen() {
   const [copiedSuccess, setCopiedSuccess] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [selectedUtility, setSelectedUtility] = useState('Notificaciones');
+  const [profileName, setProfileName] = useState(user?.profile?.name || '');
+  const [profileArea, setProfileArea] = useState(typeof user?.profile?.area === 'string' ? user.profile.area : '');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [showPasswordRecovery, setShowPasswordRecovery] = useState(false);
+
+  useEffect(() => {
+    setProfileName(user?.profile?.name || '');
+    setProfileArea(typeof user?.profile?.area === 'string' ? user.profile.area : '');
+  }, [user?.id, user?.profile?.name, user?.profile?.area]);
+
+  const handleSaveProfile = async () => {
+    const name = validateRequired(profileName.trim(), 2, 'El nombre');
+    if (!name.valid) { showFeedback(name.error || 'Ingresa tu nombre.', 'error'); return; }
+    try {
+      setSavingProfile(true);
+      await updateProfile({ name: profileName, area: profileArea });
+      api.invalidateCache('incidents');
+      showFeedback('Perfil actualizado');
+    } catch (err: any) {
+      showFeedback(err?.message || 'No se pudo actualizar el perfil.', 'error');
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   // Ref para input de archivo en Web
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -211,7 +239,9 @@ export default function ConfigScreen() {
         file_name: fileName,
         file_size: sizeStr,
         content: configContent,
-        author: 'Administrador',
+        author: user?.profile?.name?.trim()
+          ? `${user.profile.name.trim()} (${user.email})`
+          : user?.email || 'Usuario',
       });
 
       showFeedback('Configuración guardada en la base de datos');
@@ -338,11 +368,12 @@ export default function ConfigScreen() {
   ];
 
   const profileSummary = [
-    { label: 'Nombre', value: 'Administrador Bitácora' },
-    { label: 'Correo', value: 'admin@bitacora.local' },
-    { label: 'Área', value: 'Infraestructura general' },
-    { label: 'Rol', value: 'Administrador' },
+    { label: 'Correo', value: user?.email || 'No disponible' },
   ];
+
+  if (showPasswordRecovery) {
+    return <PasswordRecoveryScreen initialEmail={user?.email || ''} onBack={() => setShowPasswordRecovery(false)} />;
+  }
 
   const documentLinks = [
     'Infraestructura general',
@@ -450,6 +481,29 @@ export default function ConfigScreen() {
 
             {selectedUtility === 'Perfil' && (
               <View style={[styles.utilityContent, { borderColor: colors.divider }]}>
+                <Text style={[styles.utilityItemTitle, { color: colors.textPrimary }]}>Tu perfil</Text>
+                <TextInput
+                  accessibilityLabel="Nombre completo"
+                  placeholder="Nombre completo"
+                  placeholderTextColor={colors.placeholder}
+                  value={profileName}
+                  onChangeText={setProfileName}
+                  style={[styles.profileInput, { color: colors.textPrimary, backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
+                />
+                <TextInput
+                  accessibilityLabel="Área de trabajo"
+                  placeholder="Área de trabajo (opcional)"
+                  placeholderTextColor={colors.placeholder}
+                  value={profileArea}
+                  onChangeText={setProfileArea}
+                  style={[styles.profileInput, { color: colors.textPrimary, backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
+                />
+                <TouchableOpacity style={styles.profileSaveButton} disabled={savingProfile} onPress={handleSaveProfile}>
+                  <Text style={styles.profileSaveText}>{savingProfile ? 'Guardando...' : 'Guardar perfil'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.profileSaveButton, { backgroundColor: colors.chipBg, borderWidth: 1, borderColor: colors.chipBorder }]} onPress={() => setShowPasswordRecovery(true)}>
+                  <Text style={[styles.profileSaveText, { color: colors.textPrimary }]}>Cambiar contraseña</Text>
+                </TouchableOpacity>
                 {profileSummary.map((item) => (
                   <View key={item.label} style={[styles.profileRow, { borderColor: colors.divider }]}>
                     <Text style={[styles.profileLabel, { color: colors.textTertiary }]}>{item.label}</Text>
@@ -462,8 +516,10 @@ export default function ConfigScreen() {
             {selectedUtility === 'Seguridad' && (
               <View style={[styles.utilityContent, { borderColor: colors.divider }]}>
                 <Text style={[styles.utilityItemTitle, { color: colors.textPrimary }]}>Autenticación y seguridad</Text>
-                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Política activa: autenticación reforzada con MFA, sesiones limitadas y validación por administrador.</Text>
-                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Último escaneo: 2 días atrás • Estado: normal</Text>
+                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Para cambiar tu contraseña, enviaremos un código a {user?.email || 'tu correo'}.</Text>
+                <TouchableOpacity style={styles.profileSaveButton} onPress={() => setShowPasswordRecovery(true)}>
+                  <Text style={styles.profileSaveText}>Cambiar contraseña</Text>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -1082,6 +1138,29 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#FFFFFF',
     textAlign: 'right',
+  },
+  profileInput: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 14,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginTop: 12,
+  },
+  profileSaveButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#0A84FF',
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 11,
+    marginTop: 14,
+    marginBottom: 12,
+  },
+  profileSaveText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13,
+    color: '#FFFFFF',
   },
   mainLayout: {
     flexDirection: 'column',

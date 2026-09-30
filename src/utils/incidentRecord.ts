@@ -7,6 +7,8 @@ interface IncidentMetadata {
   version: 1;
   event_at: string;
   reported_by: string;
+  reported_by_id?: string;
+  reported_by_email?: string;
   affected_devices: IncidentDevice[];
   actions: IncidentAction[];
 }
@@ -29,6 +31,8 @@ export function readIncidentDescription(raw: string): {
         version: 1,
         event_at: parsed.event_at,
         reported_by: typeof parsed.reported_by === 'string' ? parsed.reported_by : '',
+        reported_by_id: typeof parsed.reported_by_id === 'string' ? parsed.reported_by_id : '',
+        reported_by_email: typeof parsed.reported_by_email === 'string' ? parsed.reported_by_email : '',
         affected_devices: Array.isArray(parsed.affected_devices) ? parsed.affected_devices : [],
         actions: Array.isArray(parsed.actions) ? parsed.actions : [],
       },
@@ -49,6 +53,8 @@ export function hydrateIncident(raw: Incident): Incident {
     description,
     event_at: metadata.event_at || raw.created_at,
     reported_by: metadata.reported_by || '',
+    reported_by_id: metadata.reported_by_id || '',
+    reported_by_email: metadata.reported_by_email || '',
     affected_devices: metadata.affected_devices?.length
       ? metadata.affected_devices
       : [{ id: raw.device_id || '', name: raw.device_name, ip: raw.device_ip }],
@@ -61,6 +67,8 @@ export function packIncident(incident: Incident): string {
     version: 1,
     event_at: incident.event_at || incident.created_at,
     reported_by: incident.reported_by || '',
+    reported_by_id: incident.reported_by_id || '',
+    reported_by_email: incident.reported_by_email || '',
     affected_devices: incident.affected_devices || [],
     actions: incident.actions || [],
   });
