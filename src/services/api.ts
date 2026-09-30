@@ -4,9 +4,8 @@
 // Con soporte para caché en memoria ultra-rápida,
 // consultas paralelas e invalidación inteligente.
 // ============================================================
-import { supabase } from '../lib/supabaseClient';
-import { Platform } from 'react-native';
-import * as Linking from 'expo-linking';
+import { insforge } from '../lib/insforgeClient';
+import * as auth from './auth';
 import {
   Network,
   Subnet,
@@ -88,125 +87,6 @@ function sanitize(input: string): string {
   return input.trim().replace(/[<>]/g, '');
 }
 
-export function translateAuthError(errorMsg: string): string {
-  const msg = (errorMsg || '').toLowerCase();
-  if (msg.includes('invalid login credentials') || msg.includes('invalid_grant')) {
-    return 'Correo o contraseña incorrectos. Revisa tus datos e inténtalo de nuevo.';
-  }
-  if (msg.includes('user already registered') || msg.includes('already exists')) {
-    return 'Este correo ya está registrado. Intenta iniciar sesión o recuperar tu contraseña.';
-  }
-  if (msg.includes('password should be at least')) {
-    return 'La contraseña es muy corta. Debe contener al menos 6 caracteres.';
-  }
-  if (msg.includes('email not confirmed')) {
-    return 'Tu correo aún no ha sido verificado. Revisa tu bandeja de entrada o spam.';
-  }
-  if (msg.includes('rate limit')) {
-    return 'Superaste el límite de intentos. Por favor, espera unos minutos antes de volver a intentar.';
-  }
-  return 'Ocurrió un error inesperado al autenticar. Inténtalo de nuevo más tarde.';
-}
-
-function formatEmail(input: string): string {
-  const clean = sanitize(input).toLowerCase();
-  return clean;
-}
-
-// ============================================================
-// AUTH — Autenticación con Supabase
-// ============================================================
-
-/**
- * Inicia sesión con correo electrónico y contraseña en Supabase.
- *
- * @param emailOrUser - Correo electrónico o identificador de usuario.
- * @param password - Contraseña de la cuenta.
- * 
- * @returns Promesa que resuelve los datos de la sesión/usuario de Supabase.
- * @throws {Error} Con un mensaje traducido y amigable si la autenticación falla.
- *
- * @example
- * const session = await signInWithEmail('usuario@correo.com', 'miPassword123');
- */
-
-export async function signInWithEmail(emailOrUser: string, password: string) {
-  const formattedEmail = formatEmail(emailOrUser);
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: formattedEmail,
-    password,
-  });
-
-  if (error) {
-    throw new Error(translateAuthError(error.message));
-  }
-  return data;
-}
-
-export async function signUpWithEmail(emailOrUser: string, password: string, name?: string) {
-  const formattedEmail = formatEmail(emailOrUser);
-  const { data, error } = await supabase.auth.signUp({
-    email: formattedEmail,
-    password,
-    options: {
-      data: { full_name: name ? sanitize(name) : '' },
-    },
-  });
-  if (error) {
-    throw new Error(translateAuthError(error.message));
-  }
-  return data;
-}
-
-function getAuthRedirectUri() {
-  if (Platform.OS === 'web') {
-    if (typeof window !== 'undefined' && window.location?.origin) {
-      return window.location.origin;
-    }
-    return 'http://localhost:19006';
-  }
-
-  return Linking.createURL('/');
-}
-
-export async function signInWithGoogle() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: getAuthRedirectUri(),
-    },
-  });
-  if (error) throw error;
-  return data;
-}
-
-export async function signInWithGitHub() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'github',
-    options: {
-      redirectTo: getAuthRedirectUri(),
-    },
-  });
-  if (error) throw error;
-  return data;
-}
-
-export async function signOut() {
-  invalidateCache();
-  const { error } = await supabase.auth.signOut();
-  if (error) throw error;
-}
-
-export async function getCurrentUser() {
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
-}
-
-export async function getCurrentSession() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session;
-}
-
 // ============================================================
 // NETWORKS — Redes Principales
 // ============================================================
@@ -214,7 +94,7 @@ export async function getCurrentSession() {
 /**
  * Obtiene la lista completa de redes principales junto con sus subredes y conteo de dispositivos.
  * 
- * Consulta en paralelo las redes, subredes y dispositivos desde Supabase, enriqueciendo
+ * Consulta en paralelo las redes, subredes y dispositivos desde InsForge, enriqueciendo
  * la respuesta con los totales correspondientes. Soporta caché en memoria.
  *
  * @param forceRefresh - Si es `true`, ignora la caché en memoria y realiza las peticiones a la base de datos.
@@ -237,9 +117,9 @@ export async function fetchNetworks(forceRefresh = false): Promise<(Network & { 
     { data: subnets, error: subError },
     { data: devices, error: devError },
   ] = await Promise.all([
-    supabase.from('networks').select('*').order('created_at', { ascending: false }),
-    supabase.from('subnets').select('*').order('created_at', { ascending: true }),
-    supabase.from('devices').select('id, subnet_id'),
+    insforge.database.from('networks').select('*').order('created_at', { ascending: false }),
+    insforge.database.from('subnets').select('*').order('created_at', { ascending: true }),
+    insforge.database.from('devices').select('id, subnet_id'),
   ]);
 
   if (netError) throw netError;
@@ -267,14 +147,14 @@ export async function fetchNetworks(forceRefresh = false): Promise<(Network & { 
 }
 
 export async function createNetwork(data: { name: string; address: string; cidr: number; description?: string }) {
-  const { data: result, error } = await supabase
+  const { data: result, error } = await insforge.database
     .from('networks')
-    .insert({
+    .insert([{
       name: sanitize(data.name),
       address: sanitize(data.address),
       cidr: data.cidr,
       description: sanitize(data.description || ''),
-    })
+    }])
     .select()
     .single();
 
@@ -284,7 +164,7 @@ export async function createNetwork(data: { name: string; address: string; cidr:
 }
 
 export async function updateNetwork(id: string, data: Partial<Network>) {
-  const { data: result, error } = await supabase
+  const { data: result, error } = await insforge.database
     .from('networks')
     .update({
       ...(data.name && { name: sanitize(data.name) }),
@@ -302,7 +182,7 @@ export async function updateNetwork(id: string, data: Partial<Network>) {
 }
 
 export async function deleteNetwork(id: string) {
-  const { error } = await supabase.from('networks').delete().eq('id', id);
+  const { error } = await insforge.database.from('networks').delete().eq('id', id);
   if (error) throw error;
   invalidateCache('networks', 'subnets', 'devices', 'dashboard_stats');
 }
@@ -324,7 +204,7 @@ export async function deleteNetwork(id: string) {
  */
 
 export async function fetchSubnetsByNetwork(networkId: string): Promise<Subnet[]> {
-  const { data, error } = await supabase
+  const { data, error } = await insforge.database
     .from('subnets')
     .select('*')
     .eq('network_id', networkId)
@@ -335,15 +215,15 @@ export async function fetchSubnetsByNetwork(networkId: string): Promise<Subnet[]
 }
 
 export async function createSubnet(data: { name: string; address: string; cidr: number; description?: string; network_id: string }) {
-  const { data: result, error } = await supabase
+  const { data: result, error } = await insforge.database
     .from('subnets')
-    .insert({
+    .insert([{
       network_id: data.network_id,
       name: sanitize(data.name),
       address: sanitize(data.address),
       cidr: data.cidr,
       description: sanitize(data.description || ''),
-    })
+    }])
     .select()
     .single();
 
@@ -353,7 +233,7 @@ export async function createSubnet(data: { name: string; address: string; cidr: 
 }
 
 export async function updateSubnet(id: string, data: Partial<Pick<Subnet, 'name' | 'address' | 'cidr' | 'description'>>) {
-  const { data: result, error } = await supabase
+  const { data: result, error } = await insforge.database
     .from('subnets')
     .update({
       ...(data.name !== undefined && { name: sanitize(data.name) }),
@@ -371,7 +251,7 @@ export async function updateSubnet(id: string, data: Partial<Pick<Subnet, 'name'
 }
 
 export async function deleteSubnet(id: string) {
-  const { error } = await supabase.from('subnets').delete().eq('id', id);
+  const { error } = await insforge.database.from('subnets').delete().eq('id', id);
   if (error) throw error;
   invalidateCache('networks', 'subnets_flat', 'devices', 'dashboard_stats');
 }
@@ -394,11 +274,11 @@ export async function fetchDevices(forceRefresh = false): Promise<Device[]> {
     { data: buildings },
     { data: departments },
   ] = await Promise.all([
-    supabase.from('devices').select('*').order('created_at', { ascending: false }),
-    supabase.from('subnets').select('id, name, network_id'),
-    supabase.from('networks').select('id, name'),
-    supabase.from('buildings').select('id, name'),
-    supabase.from('departments').select('id, name'),
+    insforge.database.from('devices').select('*').order('created_at', { ascending: false }),
+    insforge.database.from('subnets').select('id, name, network_id'),
+    insforge.database.from('networks').select('id, name'),
+    insforge.database.from('buildings').select('id, name'),
+    insforge.database.from('departments').select('id, name'),
   ]);
 
   if (error) throw error;
@@ -423,7 +303,7 @@ export async function fetchDevices(forceRefresh = false): Promise<Device[]> {
 }
 
 export async function fetchDeviceById(id: string): Promise<Device | null> {
-  const { data, error } = await supabase
+  const { data, error } = await insforge.database
     .from('devices')
     .select('*')
     .eq('id', id)
@@ -446,9 +326,9 @@ export async function createDevice(data: {
   building_id?: string;
   department_id?: string;
 }) {
-  const { data: result, error } = await supabase
+  const { data: result, error } = await insforge.database
     .from('devices')
-    .insert({
+    .insert([{
       name: sanitize(data.name),
       mac_address: sanitize(data.mac_address).toUpperCase(),
       manufacturer: sanitize(data.manufacturer || ''),
@@ -460,7 +340,7 @@ export async function createDevice(data: {
       longitude: data.longitude,
       building_id: data.building_id || null,
       department_id: data.department_id || null,
-    })
+    }])
     .select()
     .single();
 
@@ -470,7 +350,7 @@ export async function createDevice(data: {
 }
 
 export async function updateDevice(id: string, data: Partial<DeviceFormData>) {
-  const { data: result, error } = await supabase
+  const { data: result, error } = await insforge.database
     .from('devices')
     .update({
       ...(data.name !== undefined && { name: sanitize(data.name) }),
@@ -495,7 +375,7 @@ export async function updateDevice(id: string, data: Partial<DeviceFormData>) {
 }
 
 export async function deleteDevice(id: string) {
-  const { error } = await supabase.from('devices').delete().eq('id', id);
+  const { error } = await insforge.database.from('devices').delete().eq('id', id);
   if (error) throw error;
   invalidateCache('devices', 'networks', 'dashboard_stats');
 }
@@ -529,8 +409,8 @@ export async function fetchBuildings(forceRefresh = false): Promise<Building[]> 
     { data: buildings, error },
     { data: departments, error: deptError },
   ] = await Promise.all([
-    supabase.from('buildings').select('*').order('name', { ascending: true }),
-    supabase.from('departments').select('*'),
+    insforge.database.from('buildings').select('*').order('name', { ascending: true }),
+    insforge.database.from('departments').select('*'),
   ]);
 
   if (error) throw error;
@@ -554,26 +434,26 @@ export async function createBuilding(data: {
   department_name?: string;
   department_floor?: string;
 }) {
-  const { data: building, error } = await supabase
+  const { data: building, error } = await insforge.database
     .from('buildings')
-    .insert({
+    .insert([{
       name: sanitize(data.name),
       code: sanitize(data.code).toUpperCase(),
       latitude: data.latitude,
       longitude: data.longitude,
       description: sanitize(data.description || ''),
-    })
+    }])
     .select()
     .single();
 
   if (error) throw error;
 
   if (data.department_name && data.department_name.trim()) {
-    await supabase.from('departments').insert({
+    await insforge.database.from('departments').insert([{
       building_id: building.id,
       name: sanitize(data.department_name),
       floor: sanitize(data.department_floor || 'Planta Baja'),
-    });
+    }]);
   }
 
   invalidateCache('buildings', 'devices');
@@ -581,7 +461,7 @@ export async function createBuilding(data: {
 }
 
 export async function updateBuilding(id: string, data: Partial<Pick<Building, 'name' | 'code' | 'latitude' | 'longitude' | 'description'>>) {
-  const { data: result, error } = await supabase
+  const { data: result, error } = await insforge.database
     .from('buildings')
     .update({
       ...(data.name !== undefined && { name: sanitize(data.name) }),
@@ -600,8 +480,8 @@ export async function updateBuilding(id: string, data: Partial<Pick<Building, 'n
 }
 
 export async function deleteBuilding(id: string) {
-  await supabase.from('departments').delete().eq('building_id', id);
-  const { error } = await supabase.from('buildings').delete().eq('id', id);
+  await insforge.database.from('departments').delete().eq('building_id', id);
+  const { error } = await insforge.database.from('buildings').delete().eq('id', id);
   if (error) throw error;
   invalidateCache('buildings', 'devices');
   return true;
@@ -612,13 +492,13 @@ export async function createDepartment(data: {
   name: string;
   floor?: string;
 }) {
-  const { data: dept, error } = await supabase
+  const { data: dept, error } = await insforge.database
     .from('departments')
-    .insert({
+    .insert([{
       building_id: data.building_id,
       name: sanitize(data.name),
       floor: sanitize(data.floor || 'Planta Baja'),
-    })
+    }])
     .select()
     .single();
 
@@ -628,7 +508,7 @@ export async function createDepartment(data: {
 }
 
 export async function deleteDepartment(id: string) {
-  const { error } = await supabase.from('departments').delete().eq('id', id);
+  const { error } = await insforge.database.from('departments').delete().eq('id', id);
   if (error) throw error;
   invalidateCache('buildings', 'devices');
   return true;
@@ -644,7 +524,7 @@ export async function fetchIncidents(forceRefresh = false): Promise<Incident[]> 
     if (cached) return cached;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await insforge.database
     .from('incidents')
     .select('*')
     .order('created_at', { ascending: false });
@@ -664,8 +544,8 @@ export async function createIncident(data: {
   initial_action?: string;
   location: string;
 }) {
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) throw userError || new Error('Debes iniciar sesión para registrar un incidente.');
+  const user = await auth.currentUser();
+  if (!user) throw new Error('Debes iniciar sesión para registrar un incidente.');
   if (!data.affected_devices.length) throw new Error('Selecciona al menos un equipo afectado.');
   const reporter = user.email || user.id;
   const primaryDevice = data.affected_devices[0];
@@ -685,9 +565,9 @@ export async function createIncident(data: {
       by: reporter, kind: 'follow_up',
     }] : [],
   });
-  const { data: result, error } = await supabase
+  const { data: result, error } = await insforge.database
     .from('incidents')
-    .insert({
+    .insert([{
       title: sanitize(data.title),
       description: incidentDescription,
       severity: data.severity,
@@ -696,7 +576,7 @@ export async function createIncident(data: {
       device_name: sanitize(data.affected_devices.map(device => device.name).join(', ')),
       device_ip: sanitize(data.affected_devices.map(device => device.ip || '').filter(Boolean).join(', ')),
       location: sanitize(data.location),
-    })
+    }])
     .select()
     .single();
 
@@ -708,10 +588,10 @@ export async function createIncident(data: {
 export async function addIncidentAction(id: string, text: string, kind: 'follow_up' | 'resolution') {
   const cleanText = sanitize(text);
   if (!cleanText) throw new Error('Describe la acción realizada.');
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError || !user) throw userError || new Error('Debes iniciar sesión para actualizar un incidente.');
+  const user = await auth.currentUser();
+  if (!user) throw new Error('Debes iniciar sesión para actualizar un incidente.');
 
-  const { data: current, error: readError } = await supabase
+  const { data: current, error: readError } = await insforge.database
     .from('incidents').select('*').eq('id', id).single();
   if (readError) throw readError;
   if (kind === 'resolution' && current.status === 'resolved') {
@@ -729,7 +609,7 @@ export async function addIncidentAction(id: string, text: string, kind: 'follow_
   const changes = kind === 'resolution'
     ? { description, status: 'resolved', resolved_at: now }
     : { description };
-  const { data, error } = await supabase
+  const { data, error } = await insforge.database
     .from('incidents')
     .update(changes)
     .eq('id', id)
@@ -742,7 +622,7 @@ export async function addIncidentAction(id: string, text: string, kind: 'follow_
 }
 
 export async function deleteIncident(id: string) {
-  const { error } = await supabase.from('incidents').delete().eq('id', id);
+  const { error } = await insforge.database.from('incidents').delete().eq('id', id);
   if (error) throw error;
   invalidateCache('incidents', 'dashboard_stats');
 }
@@ -757,7 +637,7 @@ export async function fetchMaintenances(forceRefresh = false): Promise<Maintenan
     if (cached) return cached;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await insforge.database
     .from('maintenances')
     .select('*')
     .order('scheduled_date', { ascending: true });
@@ -780,9 +660,9 @@ export async function createMaintenance(data: {
   technician: string;
   notes?: string;
 }) {
-  const { data: result, error } = await supabase
+  const { data: result, error } = await insforge.database
     .from('maintenances')
-    .insert({
+    .insert([{
       title: sanitize(data.title),
       type: data.type,
       type_label: sanitize(data.type_label),
@@ -794,7 +674,7 @@ export async function createMaintenance(data: {
       technician: sanitize(data.technician),
       status: 'scheduled',
       notes: sanitize(data.notes || ''),
-    })
+    }])
     .select()
     .single();
 
@@ -804,7 +684,7 @@ export async function createMaintenance(data: {
 }
 
 export async function deleteMaintenance(id: string) {
-  const { error } = await supabase.from('maintenances').delete().eq('id', id);
+  const { error } = await insforge.database.from('maintenances').delete().eq('id', id);
   if (error) throw error;
   invalidateCache('maintenances');
 }
@@ -819,7 +699,7 @@ export async function fetchConfigs(forceRefresh = false): Promise<DeviceConfig[]
     if (cached) return cached;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await insforge.database
     .from('device_configs')
     .select('*')
     .order('created_at', { ascending: false });
@@ -841,9 +721,9 @@ export async function createConfig(data: {
   content: string;
   author?: string;
 }) {
-  const { data: result, error } = await supabase
+  const { data: result, error } = await insforge.database
     .from('device_configs')
-    .insert({
+    .insert([{
       name: sanitize(data.name),
       description: sanitize(data.description || ''),
       device_id: data.device_id,
@@ -853,7 +733,7 @@ export async function createConfig(data: {
       file_size: sanitize(data.file_size),
       content: data.content,
       author: sanitize(data.author || ''),
-    })
+    }])
     .select()
     .single();
 
@@ -863,7 +743,7 @@ export async function createConfig(data: {
 }
 
 export async function updateConfig(id: string, data: Partial<DeviceConfig>) {
-  const { data: result, error } = await supabase
+  const { data: result, error } = await insforge.database
     .from('device_configs')
     .update({
       ...(data.name && { name: sanitize(data.name) }),
@@ -882,7 +762,7 @@ export async function updateConfig(id: string, data: Partial<DeviceConfig>) {
 }
 
 export async function deleteConfig(id: string) {
-  const { error } = await supabase.from('device_configs').delete().eq('id', id);
+  const { error } = await insforge.database.from('device_configs').delete().eq('id', id);
   if (error) throw error;
   invalidateCache('configs');
 }
@@ -921,12 +801,12 @@ export async function fetchDashboardStats(forceRefresh = false): Promise<Dashboa
     { data: subnets },
     { data: devices },
   ] = await Promise.all([
-    supabase.from('networks').select('*', { count: 'exact', head: true }),
-    supabase.from('subnets').select('*', { count: 'exact', head: true }),
-    supabase.from('devices').select('*', { count: 'exact', head: true }),
-    supabase.from('incidents').select('*', { count: 'exact', head: true }).neq('status', 'resolved'),
-    supabase.from('subnets').select('id, name, address, cidr'),
-    supabase.from('devices').select('id, subnet_id'),
+    insforge.database.from('networks').select('*', { count: 'exact', head: true }),
+    insforge.database.from('subnets').select('*', { count: 'exact', head: true }),
+    insforge.database.from('devices').select('*', { count: 'exact', head: true }),
+    insforge.database.from('incidents').select('*', { count: 'exact', head: true }).neq('status', 'resolved'),
+    insforge.database.from('subnets').select('id, name, address, cidr'),
+    insforge.database.from('devices').select('id, subnet_id'),
   ]);
 
   const colors = ['#0A84FF', '#30D158', '#FF9F0A', '#BF5AF2', '#FF453A'];
@@ -992,10 +872,10 @@ export async function fetchRecentActivities(forceRefresh = false): Promise<Recen
       { data: cfgData },
       { data: devData },
     ] = await Promise.all([
-      supabase.from('incidents').select('*').order('created_at', { ascending: false }).limit(6),
-      supabase.from('maintenances').select('*').order('created_at', { ascending: false }).limit(4),
-      supabase.from('device_configs').select('*').order('created_at', { ascending: false }).limit(4),
-      supabase.from('devices').select('id, name, ipv4_address, location, created_at').order('created_at', { ascending: false }).limit(4),
+      insforge.database.from('incidents').select('*').order('created_at', { ascending: false }).limit(6),
+      insforge.database.from('maintenances').select('*').order('created_at', { ascending: false }).limit(4),
+      insforge.database.from('device_configs').select('*').order('created_at', { ascending: false }).limit(4),
+      insforge.database.from('devices').select('id, name, ipv4_address, location, created_at').order('created_at', { ascending: false }).limit(4),
     ]);
 
     const events: (RecentActivity & { rawDate: number })[] = [];
@@ -1088,8 +968,8 @@ export async function fetchAllSubnetsFlat(forceRefresh = false): Promise<(Subnet
     { data: subnets },
     { data: networks },
   ] = await Promise.all([
-    supabase.from('subnets').select('*').order('name'),
-    supabase.from('networks').select('id, name'),
+    insforge.database.from('subnets').select('*').order('name'),
+    insforge.database.from('networks').select('id, name'),
   ]);
 
   const result = (subnets || []).map((s: any) => ({

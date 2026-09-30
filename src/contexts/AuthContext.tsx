@@ -1,15 +1,16 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import { Session, User } from '@supabase/supabase-js';
-import * as api from '../services/api';
+import { AppState, Platform } from 'react-native';
+import type { UserSchema } from '@insforge/sdk';
+import { insforge } from '../lib/insforgeClient';
+import * as auth from '../services/auth';
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
+  user: UserSchema | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, name?: string) => Promise<void>;
+  signUp: (email: string, password: string, name?: string) => Promise<{ requireEmailVerification: boolean }>;
+  verifyEmail: (email: string, code: string) => Promise<void>;
   signInGoogle: () => Promise<void>;
   signInGitHub: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -18,49 +19,60 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<UserSchema | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let isMounted = true;
-
-    const hydrateSession = async () => {
+    let mounted = true;
+    const hydrate = async () => {
       try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (!isMounted) return;
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
+        const restored = await auth.restoreUser();
+        if (mounted) setUser(restored);
       } catch (error) {
-        console.warn('Auth session hydration failed', error);
-        if (isMounted) {
-          setSession(null);
-          setUser(null);
-        }
+        console.warn('No se pudo recuperar la sesión de InsForge', error);
+        if (mounted) setUser(null);
       } finally {
-        if (isMounted) setIsLoading(false);
+        if (mounted) setIsLoading(false);
       }
     };
+    void hydrate();
 
-    hydrateSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      if (!isMounted) return;
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-      setIsLoading(false);
+    const unsubscribe = insforge.auth.onAuthStateChange((event) => {
+      if (!mounted) return;
+      if (event === 'signedOut') {
+        setUser(null);
+      } else if (Platform.OS === 'web') {
+        void auth.currentUser().then((current) => {
+          if (mounted) setUser(current);
+        }).catch(() => {});
+      }
     });
 
+    const appState = AppState.addEventListener('change', (state) => {
+      if (Platform.OS !== 'web' && state === 'active') {
+        void auth.refreshMobileSession().then((current) => {
+          if (mounted) setUser(current);
+        }).catch(() => {});
+      }
+    });
+    const refreshTimer = Platform.OS === 'web' ? null : setInterval(() => {
+      void auth.refreshMobileSession().then((current) => {
+        if (mounted) setUser(current);
+      }).catch(() => {});
+    }, 5 * 60 * 1000);
+
     return () => {
-      isMounted = false;
-      subscription.unsubscribe();
+      mounted = false;
+      unsubscribe();
+      appState.remove();
+      if (refreshTimer) clearInterval(refreshTimer);
     };
   }, []);
 
   const signIn = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     try {
-      await api.signInWithEmail(email, password);
+      setUser(await auth.signInWithEmail(email, password));
     } finally {
       setIsLoading(false);
     }
@@ -69,53 +81,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = useCallback(async (email: string, password: string, name?: string) => {
     setIsLoading(true);
     try {
-      await api.signUpWithEmail(email, password, name);
+      const result = await auth.signUpWithEmail(email, password, name);
+      if (result?.accessToken && result.user) setUser(result.user);
+      return { requireEmailVerification: Boolean(result?.requireEmailVerification) };
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const signInGoogle = useCallback(async () => {
+  const verifyEmail = useCallback(async (email: string, code: string) => {
     setIsLoading(true);
     try {
-      await api.signInWithGoogle();
+      setUser(await auth.verifyEmail(email, code));
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const signInGitHub = useCallback(async () => {
+  const signInProvider = useCallback(async (provider: 'google' | 'github') => {
     setIsLoading(true);
     try {
-      await api.signInWithGitHub();
+      const current = await auth.signInWithProvider(provider);
+      if (current) setUser(current);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  const handleSignOut = useCallback(async () => {
+  const signOut = useCallback(async () => {
     try {
-      await api.signOut();
+      await auth.signOut();
     } finally {
       setUser(null);
-      setSession(null);
       setIsLoading(false);
     }
   }, []);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        session,
-        isAuthenticated: user !== null,
-        isLoading,
-        signIn,
-        signUp,
-        signInGoogle,
-        signInGitHub,
-        signOut: handleSignOut,
-      }}>
+    <AuthContext.Provider value={{
+      user,
+      isAuthenticated: user !== null,
+      isLoading,
+      signIn,
+      signUp,
+      verifyEmail,
+      signInGoogle: () => signInProvider('google'),
+      signInGitHub: () => signInProvider('github'),
+      signOut,
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -123,8 +136,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth debe ser usado dentro de un AuthProvider');
-  }
+  if (!context) throw new Error('useAuth debe ser usado dentro de un AuthProvider');
   return context;
 }

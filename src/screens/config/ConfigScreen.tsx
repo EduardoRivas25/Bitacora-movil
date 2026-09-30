@@ -480,7 +480,7 @@ export default function ConfigScreen() {
               <View style={[styles.utilityContent, { borderColor: colors.divider }]}>
                 <Text style={[styles.utilityItemTitle, { color: colors.textPrimary }]}>Bitácora Digital</Text>
                 <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Sistema para registrar cambios, incidentes, infraestructura, usuarios y reportes administrativos.</Text>
-                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Versión: 1.0.0 • Componentes: React Native + Expo + Supabase</Text>
+                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Versión: 1.0.0 • Componentes: React Native + Expo + InsForge</Text>
               </View>
             )}
           </BlurView>

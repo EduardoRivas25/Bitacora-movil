@@ -170,7 +170,7 @@ export default function SearchScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.hintCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}><Feather name="info" size={18} color="#0A84FF" style={{ marginRight: 10 }} /><View style={{ flex: 1 }}><Text style={[styles.hintTitle, { color: colors.textPrimary }]}>Búsqueda inteligente</Text><Text style={[styles.hintText, { color: colors.textSecondary }]}>Los datos provienen directamente de la base de datos Supabase. Puedes buscar por cualquier campo del dispositivo.</Text></View></BlurView>
+            <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.hintCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}><Feather name="info" size={18} color="#0A84FF" style={{ marginRight: 10 }} /><View style={{ flex: 1 }}><Text style={[styles.hintTitle, { color: colors.textPrimary }]}>Búsqueda inteligente</Text><Text style={[styles.hintText, { color: colors.textSecondary }]}>Los datos provienen directamente de InsForge. Puedes buscar por cualquier campo del dispositivo.</Text></View></BlurView>
           </View>)}
           {query.trim().length > 0 && (<View style={styles.resultsContainer}>
             <View style={styles.resultsHeader}><Text style={[styles.resultsCount, { color: colors.textSecondary }]}>{filteredResults.length} {filteredResults.length === 1 ? 'resultado encontrado' : 'resultados encontrados'}</Text></View>

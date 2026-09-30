@@ -17,6 +17,7 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { validateEmail, validatePassword, validateRequired } from '../../utils/validators';
 import ThemeToggle from '../../components/ThemeToggle';
+import PasswordRecoveryScreen from './PasswordRecoveryScreen';
 
 const LOGO_DARK = require('../../../assets/logobitacoraredes.png');
 const LOGO_LIGHT = require('../../../assets/logobitacoraredesmodoclaro.png');
@@ -29,9 +30,10 @@ export default function LoginScreen() {
   
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
-  const { signIn, signUp, signInGoogle, signInGitHub, isLoading } = useAuth();
+  const { signIn, signUp, verifyEmail, signInGoogle, signInGitHub, isLoading } = useAuth();
 
   const [isRegister, setIsRegister] = useState(false);
+  const [showRecovery, setShowRecovery] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -44,6 +46,8 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
 
   const validateForm = (): boolean => {
@@ -94,12 +98,27 @@ export default function LoginScreen() {
 
   const handleSubmit = async () => {
     setErrorMsg('');
+    if (pendingVerificationEmail) {
+      if (!/^\d{6}$/.test(verificationCode.trim())) {
+        setErrorMsg('Introduce el código de seis dígitos enviado a tu correo.');
+        return;
+      }
+      try {
+        await verifyEmail(pendingVerificationEmail, verificationCode);
+      } catch (err: any) {
+        setErrorMsg(err?.message || 'No se pudo verificar el correo.');
+      }
+      return;
+    }
     if (!validateForm()) return;
 
     try {
       if (isRegister) {
-        await signUp(email.trim(), password, name.trim());
-        setErrorMsg('Solicitud de cuenta enviada correctamente. El administrador revisará la solicitud.');
+        const result = await signUp(email.trim(), password, name.trim());
+        if (result.requireEmailVerification) {
+          setPendingVerificationEmail(email.trim());
+          setIsRegister(false);
+        }
       } else {
         await signIn(email.trim(), password);
       }
@@ -111,6 +130,8 @@ export default function LoginScreen() {
 
   const handleSocialAuth = async (provider: string) => {
     setErrorMsg('');
+    setPendingVerificationEmail('');
+    setVerificationCode('');
     setFieldErrors({});
     try {
       if (provider === 'Google') {
@@ -139,6 +160,10 @@ export default function LoginScreen() {
   };
 
   const isSmallMobile = width < 380;
+
+  if (showRecovery) {
+    return <PasswordRecoveryScreen initialEmail={email} onBack={() => setShowRecovery(false)} />;
+  }
   
   // Colores dinámicos calculados
   const placeholderColor = isDark ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)";
@@ -182,7 +207,7 @@ export default function LoginScreen() {
           ]}
         >
           <Text style={[styles.title, isSmallMobile && { fontSize: 22, lineHeight: 28 }, { color: colors.text }]}>
-            {isRegister ? 'Solicitar cuenta\nen Bitácora Digital' : 'Bienvenido a\nBitácora Digital'}
+            {pendingVerificationEmail ? 'Verifica tu correo' : isRegister ? 'Crear cuenta\nen Bitácora Digital' : 'Bienvenido a\nBitácora Digital'}
           </Text>
 
           <View style={styles.navIconContainer}>
@@ -198,6 +223,23 @@ export default function LoginScreen() {
             <View style={styles.errorContainer}>
               <Feather name="alert-circle" size={16} color="#FF453A" />
               <Text style={styles.errorText}>{errorMsg}</Text>
+            </View>
+          )}
+
+          {pendingVerificationEmail !== '' && (
+            <View style={styles.inputWrapper}>
+              <Text style={{ color: colors.text, marginBottom: 10 }}>
+                Escribe el código de seis dígitos enviado a {pendingVerificationEmail}.
+              </Text>
+              <TextInput
+                placeholder="Código de verificación"
+                placeholderTextColor={placeholderColor}
+                keyboardType="number-pad"
+                maxLength={6}
+                value={verificationCode}
+                onChangeText={setVerificationCode}
+                style={[styles.input, { backgroundColor: inputBgColor, borderColor: inputBorderColor, color: colors.text }]}
+              />
             </View>
           )}
 
@@ -404,7 +446,7 @@ export default function LoginScreen() {
           )}
 
           {!isRegister && (
-            <TouchableOpacity style={styles.forgotPassword}>
+            <TouchableOpacity style={styles.forgotPassword} onPress={() => setShowRecovery(true)}>
               <Text style={[styles.forgotPasswordText, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }]}>
                 ¿Olvidaste tu contraseña?
               </Text>
@@ -423,7 +465,7 @@ export default function LoginScreen() {
             disabled={isLoading}
           >
             <Text style={[styles.buttonText, { color: colors.background }]}>
-              {isLoading ? 'Validando...' : isRegister ? 'Solicitar Cuenta' : 'Iniciar Sesión'}
+              {isLoading ? 'Validando...' : pendingVerificationEmail ? 'Verificar correo' : isRegister ? 'Crear cuenta' : 'Iniciar Sesión'}
             </Text>
           </TouchableOpacity>
 

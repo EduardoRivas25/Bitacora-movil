@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/React_Native-0.86.3-61DAFB?style=for-the-badge&logo=react&logoColor=white" alt="React Native"/>
   <img src="https://img.shields.io/badge/Expo-SDK_57-000020?style=for-the-badge&logo=expo&logoColor=white" alt="Expo"/>
   <img src="https://img.shields.io/badge/TypeScript-6.0-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript"/>
-  <img src="https://img.shields.io/badge/Supabase-Backend-3FCF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase"/>
+  <img src="https://img.shields.io/badge/InsForge-Backend-3FCF8E?style=for-the-badge" alt="InsForge"/>
 </p>
 
 ---
@@ -64,30 +64,19 @@ Esta aplicación resuelve estos problemas al ofrecer:
 - ✅ **Validaciones automáticas** de direcciones IPv4 y MAC.
 - ✅ **Buscador integrado** por nombre, IP, MAC, fabricante y ubicación.
 - ✅ **Interfaz moderna e intuitiva** con diseño oscuro profesional.
-- ✅ **Almacenamiento en la nube** con Supabase (PostgreSQL).
+- ✅ **Almacenamiento en la nube** con InsForge (PostgreSQL).
 
 ---
 
 ## 📄 Bitácora y reportes PDF
 
-En la pestaña **Bitácora**, selecciona Gestión de red, Dispositivos, Edificios, Incidentes, Mantenimientos o Bitácora completa y pulsa **Generar PDF**. El reporte se construye con los registros actuales de Supabase. En Android e iOS se abre el menú para guardar o compartir el archivo PDF; en web se abre el diálogo de impresión, donde se puede elegir **Guardar como PDF**.
+En la pestaña **Bitácora**, selecciona Gestión de red, Dispositivos, Edificios, Incidentes, Mantenimientos o Bitácora completa y pulsa **Generar PDF**. El reporte se construye con los registros actuales de InsForge. En Android e iOS se abre el menú para guardar o compartir el archivo PDF; en web se abre el diálogo de impresión, donde se puede elegir **Guardar como PDF**.
 
-Para habilitar el historial de cambios, el directorio administrativo y los conteos del reporte, ejecuta también `supabase/migrations/
-20260926120000_audit_users_and_report_summary.sql` desde el SQL Editor de Supabase, después de la migración de solicitudes de cuenta indicada
-abajo. El historial comienza a registrar cambios cuando se instala esta migración; no recupera acciones anteriores. El esquema actual no
-almacena el estado operativo de edificios/equipos ni el número de puertos de los switches, por lo que el PDF indica esos datos como no
-capturados en vez de inventarlos.
+El esquema actual no almacena el estado operativo de edificios/equipos ni el número de puertos de los switches, por lo que el PDF indica esos datos como no capturados.
 
 ### Solicitudes de cuenta
 
-El formulario de registro crea una solicitud **pendiente**; nunca guarda la contraseña de confirmación. Para habilitar la bandeja administrativa
-real, ejecuta primero `supabase/migrations/20260901120000_account_requests.sql` y después la migración de auditoría indicada
-arriba desde el SQL Editor de Supabase. La solicitud se crea mediante un trigger de Auth: solo el solicitante y administradores pueden leerla, y únicamente los
-administradores pueden resolverla. Para mostrar el panel en la app, configura `"role": "admin"` en `app_metadata` de cada administrador desde
-**Supabase > Authentication > Users** y vuelve a iniciar sesión. Los usuarios con solicitud pendiente o rechazada no pueden iniciar sesión; las
-cuentas existentes sin solicitud conservan su acceso. Aprobar una solicitud habilita el inicio de sesión, pero el tipo “Administrador” no
-concede privilegios administrativos automáticamente: ese rol solo lo asigna un operador de confianza en `app_metadata`. El trigger también
-evita que se creen cuentas nuevas mediante OAuth sin pasar por el formulario, pero conserva las cuentas OAuth existentes.
+El registro crea una cuenta en InsForge y solicita un código de verificación enviado al correo. El formulario aún recoge datos laborales, pero el esquema adjunto no incluye una tabla de solicitudes de acceso; esos campos no se guardan. Google y GitHub usan OAuth de InsForge. En móvil se necesita una compilación con el esquema `bitacoraredes` para recibir el retorno del navegador.
 
 ---
 
@@ -99,7 +88,7 @@ evita que se creen cuentas nuevas mediante OAuth sin pasar por el formulario, pe
 | [Expo](https://expo.dev/) | SDK 57 | Plataforma de desarrollo y compilación |
 | [TypeScript](https://www.typescriptlang.org/) | 6.0 | Lenguaje con tipado estático |
 | [React Navigation](https://reactnavigation.org/) | 7.x | Navegación entre pantallas |
-| [Supabase](https://supabase.com/) | - | Backend as a Service (PostgreSQL + Auth) |
+| [InsForge](https://insforge.dev/) | - | Backend as a Service (PostgreSQL + Auth) |
 | [Expo Vector Icons](https://icons.expo.fyi/) | - | Biblioteca de iconos |
 
 ---
@@ -113,7 +102,7 @@ Asegúrate de tener instalado:
 - **Node.js** (v18 o superior) — [Descargar](https://nodejs.org/)
 - **npm** (incluido con Node.js)
 - **Expo CLI** (se instala automáticamente)
-- **Expo Go** (app móvil) — [Android](https://play.google.com/store/apps/details?id=host.exp.exponent) | [iOS](https://apps.apple.com/app/expo-go/id982107779)
+- **Expo Go** para revisar la app; para probar Google y GitHub en móvil usa una compilación de desarrollo o producción que registre el esquema `bitacoraredes`.
 
 ### 1. Clonar el repositorio
 
@@ -130,14 +119,14 @@ npm install
 
 ### 3. Configurar variables de entorno
 
-Crear un archivo `.env` en la raíz del proyecto con las credenciales de Supabase:
+Crear un archivo `.env` en la raíz del proyecto con la URL y la clave pública de InsForge:
 
 ```env
-EXPO_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key-aqui
+EXPO_PUBLIC_INSFORGE_URL=https://tu-proyecto.us-west.insforge.app
+EXPO_PUBLIC_INSFORGE_ANON_KEY=tu-anon-key-aqui
 ```
 
-> **Nota:** Contactar al equipo para obtener las credenciales de Supabase si no las tienes.
+> **Nota:** La clave anónima se obtiene con `npx -y @insforge/cli secrets get ANON_KEY`. Nunca uses la clave administrativa en una variable `EXPO_PUBLIC_`.
 
 ### 4. Ejecutar la aplicación
 
@@ -467,9 +456,9 @@ bitacora-redes/
 └── src/
     ├── types/                       # Interfaces TypeScript
     ├── theme/                       # Colores, espaciado, tipografía
-    ├── lib/                         # Cliente Supabase
+    ├── lib/                         # Cliente InsForge
     ├── utils/                       # Validaciones y cálculos de red
-    ├── services/                    # Servicios CRUD (Supabase)
+    ├── services/                    # Servicios CRUD y autenticación (InsForge)
     ├── contexts/                    # Contextos de React (Auth)
     ├── components/                  # Componentes reutilizables
     │   ├── ui/                      # Botones, inputs, cards, etc.

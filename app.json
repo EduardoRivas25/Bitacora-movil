@@ -2,6 +2,7 @@
   "expo": {
     "name": "Bitácora Digital de Redes",
     "slug": "bitacora-redes",
+    "scheme": "bitacoraredes",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/logobitacoraredes.png",
@@ -22,7 +23,8 @@
     },
     "plugins": [
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-secure-store"
     ],
     "extra": {
       "eas": {

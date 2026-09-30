@@ -46,3 +46,6 @@ CLAUDE.md
 # generated native folders
 /ios
 /android
+
+# InsForge CLI credentials
+.insforge/
