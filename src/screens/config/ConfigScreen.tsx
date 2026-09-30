@@ -389,8 +389,8 @@ export default function ConfigScreen() {
               activeOpacity={0.8}
               onPress={handleClearEditor}
             >
-              <Feather name="file-plus" size={15} color="#FFFFFF" />
-              <Text style={styles.newConfigBtnText}>Nuevo Script</Text>
+              <Feather name="file-plus" size={15} color="#0A84FF" />
+              <Text style={[styles.newConfigBtnText, { color: '#0A84FF' }]}>Nuevo Script</Text>
             </TouchableOpacity>
           </View>
 
@@ -405,7 +405,7 @@ export default function ConfigScreen() {
                 size={16} 
                 color={statusMsg.type === 'error' ? '#FF453A' : '#30D158'} 
               />
-              <Text style={styles.toastText}>{statusMsg.text}</Text>
+              <Text style={[styles.toastText, { color: colors.textPrimary }]}>{statusMsg.text}</Text>
             </View>
           )}
 
@@ -589,7 +589,7 @@ export default function ConfigScreen() {
                               style={{ marginRight: 10 }}
                             />
                             <View style={{ flex: 1 }}>
-                              <Text style={[styles.deviceDropdownName, { color: colors.textPrimary }, isSelected && styles.deviceDropdownNameActive]}>
+                              <Text style={[styles.deviceDropdownName, { color: colors.textPrimary }]}>
                                 {dev.name}
                               </Text>
                               <Text style={[styles.deviceDropdownSub, { color: colors.textSecondary }]}>
@@ -711,13 +711,13 @@ export default function ConfigScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity 
-                      style={[styles.actionButton, styles.saveAsNewBtn]}
+                      style={[styles.actionButton, styles.saveAsNewBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
                       activeOpacity={0.8}
                       onPress={handleSaveNewConfig}
                       disabled={isSaving}
                     >
-                      <Feather name="plus-circle" size={15} color="#FFFFFF" />
-                      <Text style={styles.actionButtonText}>Guardar como Nuevo</Text>
+                      <Feather name="plus-circle" size={15} color={colors.textPrimary} />
+                      <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>Guardar como Nuevo</Text>
                     </TouchableOpacity>
                   </>
                 ) : (
@@ -811,10 +811,10 @@ export default function ConfigScreen() {
 
           {/* COLUMNA DERECHA: Consola Terminal y Editor Interactivo */}
           <View style={[styles.rightColumn, isDesktop && styles.rightColumnDesktop]}>
-            <View style={[styles.terminalWindow, { borderColor: colors.cardBorder }]}>
+            <View style={[styles.terminalWindow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               
               {/* Barra Superior estilo Terminal macOS */}
-              <View style={styles.terminalHeader}>
+              <View style={[styles.terminalHeader, { backgroundColor: colors.card, borderColor: colors.divider }]}>
                 <View style={styles.macButtons}>
                   <View style={[styles.macDot, { backgroundColor: '#FF5F56' }]} />
                   <View style={[styles.macDot, { backgroundColor: '#FFBD2E' }]} />
@@ -823,7 +823,7 @@ export default function ConfigScreen() {
 
                 <View style={styles.terminalTitleBlock}>
                   <Feather name="terminal" size={13} color="#0A84FF" style={{ marginRight: 6 }} />
-                  <Text style={styles.terminalTitle} numberOfLines={1}>
+                  <Text style={[styles.terminalTitle, { color: colors.textPrimary }]} numberOfLines={1}>
                     {uploadedFileName || selectedConfig?.file_name || 'editor-consola.cfg'}
                   </Text>
                 </View>
@@ -831,12 +831,12 @@ export default function ConfigScreen() {
                 <View style={styles.terminalControls}>
                   {configContent.length > 0 && (
                     <TouchableOpacity 
-                      style={styles.terminalBtn}
+                      style={[styles.terminalBtn, { backgroundColor: colors.chipBg }]}
                       onPress={handleCopyCode}
                       activeOpacity={0.7}
                     >
-                      <Feather name={copiedSuccess ? "check" : "copy"} size={12} color="#FFFFFF" />
-                      <Text style={styles.terminalBtnText}>{copiedSuccess ? "¡Copiado!" : "Copiar"}</Text>
+                      <Feather name={copiedSuccess ? "check" : "copy"} size={12} color={colors.textPrimary} />
+                      <Text style={[styles.terminalBtnText, { color: colors.textPrimary }]}>{copiedSuccess ? "¡Copiado!" : "Copiar"}</Text>
                     </TouchableOpacity>
                   )}
 
@@ -845,28 +845,28 @@ export default function ConfigScreen() {
                     onPress={handleClearEditor}
                     activeOpacity={0.7}
                   >
-                    <Feather name="trash" size={12} color="rgba(255,255,255,0.6)" />
-                    <Text style={styles.terminalBtnText}>Limpiar</Text>
+                    <Feather name="trash" size={12} color={colors.textPrimary} />
+                    <Text style={[styles.terminalBtnText, { color: colors.textPrimary }]}>Limpiar</Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
               {/* Barra Informativa de Estado del Editor */}
-              <View style={styles.terminalSubHeader}>
-                <Text style={styles.terminalMetaText}>
+              <View style={[styles.terminalSubHeader, { backgroundColor: colors.chipBg, borderColor: colors.divider }]}>
+                <Text style={[styles.terminalMetaText, { color: colors.textSecondary }]}>
                   {lineCount} líneas • {((configContent.length) / 1024).toFixed(1)} KB • Dispositivo: {currentDevice?.name || 'No asignado'}
                 </Text>
-                <Text style={styles.terminalHintText}>
+                <Text style={[styles.terminalHintText, { color: colors.textTertiary }]}>
                   ✏️ Puedes escribir o editar comandos directamente aquí
                 </Text>
               </View>
 
               {/* Editor en Consola */}
-              <View style={styles.terminalBody}>
+              <View style={[styles.terminalBody, { backgroundColor: colors.card }]}>
                 {/* Columna de Números de Línea */}
-                <View style={styles.lineNumbersCol}>
+                <View style={[styles.lineNumbersCol, { backgroundColor: colors.chipBg, borderColor: colors.divider }]}>
                   {Array.from({ length: Math.max(lineCount, 15) }).map((_, idx) => (
-                    <Text key={idx} style={styles.lineNumberText}>
+                    <Text key={idx} style={[styles.lineNumberText, { color: colors.textTertiary }]}>
                       {idx + 1}
                     </Text>
                   ))}
@@ -875,9 +875,9 @@ export default function ConfigScreen() {
                 {/* Área de Texto Editable */}
                 <TextInput
                   placeholder="! Escribe o pega aquí los comandos de configuración CLI (Cisco, MikroTik, Fortinet, etc.)&#10;! O sube un archivo desde la columna izquierda&#10;hostname Router-Principal&#10;interface GigabitEthernet0/1&#10; ip address 10.0.10.1 255.255.255.0&#10; no shutdown&#10;end"
-                  placeholderTextColor="rgba(255, 255, 255, 0.2)"
+                  placeholderTextColor={colors.placeholder}
                   multiline
-                  style={styles.terminalTextArea}
+                  style={[styles.terminalTextArea, { color: colors.textPrimary }]}
                   value={configContent}
                   onChangeText={setConfigContent}
                   autoCapitalize="none"
@@ -886,8 +886,8 @@ export default function ConfigScreen() {
               </View>
 
               {/* Pie de Terminal con Acciones Rápidas */}
-              <View style={styles.terminalFooter}>
-                <Text style={styles.terminalFooterInfo}>
+              <View style={[styles.terminalFooter, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+                <Text style={[styles.terminalFooterInfo, { color: colors.textSecondary }]}>
                   {selectedConfig ? `Editando: ${selectedConfig.name}` : 'Documento nuevo sin guardar'}
                 </Text>
                 {selectedConfig && (

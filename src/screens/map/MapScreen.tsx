@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -20,8 +20,11 @@ import GlassModal from '../../components/ui/GlassModal';
 import * as api from '../../services/api';
 import { Device, Building } from '../../types';
 import { validateGPS, validateRequired } from '../../utils/validators';
+import { useTheme, ThemeColors } from '../../contexts/ThemeContext';
 
 export default function MapScreen() {
+  const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
 
@@ -175,7 +178,7 @@ export default function MapScreen() {
 
   if (loading && devices.length === 0 && buildings.length === 0) {
     return (
-      <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
+      <LinearGradient colors={colors.gradient} style={styles.container}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#0A84FF" />
         </View>
@@ -188,7 +191,7 @@ export default function MapScreen() {
   const mappedCount = devices.filter(d => d.latitude && d.longitude).length;
 
   return (
-    <LinearGradient colors={['#050505', '#121212']} style={styles.container}>
+    <LinearGradient colors={colors.gradient} style={styles.container}>
       <View style={styles.innerWrapper}>
         <View style={styles.header}>
           <View style={{ minWidth: 180 }}>
@@ -210,7 +213,7 @@ export default function MapScreen() {
               </TouchableOpacity>
             )}
             <TouchableOpacity style={styles.addBuildingBtn} activeOpacity={0.8} onPress={handleOpenAddBuilding}>
-              <Feather name="plus" size={13} color="#000000" />
+              <Feather name="plus" size={13} color={colors.buttonText} />
               <Text style={styles.addBuildingBtnText}>Nuevo Edificio</Text>
             </TouchableOpacity>
             <View style={styles.counterBadge}>
@@ -234,6 +237,7 @@ export default function MapScreen() {
               devices={devices}
               buildings={buildings}
               selectedDeviceId={selectedDevice?.id}
+              isDark={isDark}
               onSelectDevice={(d) => {
                 setSelectedDevice(d);
                 setSelectedBuilding(null);
@@ -249,7 +253,7 @@ export default function MapScreen() {
                 onPress={() => setActiveTab('devices')}
                 activeOpacity={0.7}
               >
-                <Feather name="cpu" size={12} color={activeTab === 'devices' ? '#FFFFFF' : 'rgba(255,255,255,0.4)'} />
+                <Feather name="cpu" size={12} color={activeTab === 'devices' ? colors.textPrimary : colors.textTertiary} />
                 <Text style={[styles.tabButtonText, activeTab === 'devices' && styles.tabButtonTextActive]}>
                   Equipos ({devices.length})
                 </Text>
@@ -260,7 +264,7 @@ export default function MapScreen() {
                 onPress={() => setActiveTab('buildings')}
                 activeOpacity={0.7}
               >
-                <Feather name="home" size={12} color={activeTab === 'buildings' ? '#FFFFFF' : 'rgba(255,255,255,0.4)'} />
+                <Feather name="home" size={12} color={activeTab === 'buildings' ? colors.textPrimary : colors.textTertiary} />
                 <Text style={[styles.tabButtonText, activeTab === 'buildings' && styles.tabButtonTextActive]}>
                   Edificios ({buildings.length})
                 </Text>
@@ -364,7 +368,7 @@ export default function MapScreen() {
         <Text style={styles.inputLabel}>Nombre del Edificio *</Text>
         <TextInput 
           placeholder="ej. Edificio C - Telecomunicaciones" 
-          placeholderTextColor="rgba(255, 255, 255, 0.25)" 
+          placeholderTextColor={colors.placeholder}
           style={[styles.input, bldFieldErrors.name && styles.inputError]} 
           value={bldName} 
           onChangeText={(val) => {
@@ -377,7 +381,7 @@ export default function MapScreen() {
         <Text style={styles.inputLabel}>Código Corto *</Text>
         <TextInput 
           placeholder="ej. EDIF-C" 
-          placeholderTextColor="rgba(255, 255, 255, 0.25)" 
+          placeholderTextColor={colors.placeholder}
           autoCapitalize="characters" 
           style={[styles.input, bldFieldErrors.code && styles.inputError]} 
           value={bldCode} 
@@ -393,7 +397,7 @@ export default function MapScreen() {
             <Text style={styles.inputLabel}>Latitud GPS *</Text>
             <TextInput 
               placeholder="19.4326" 
-              placeholderTextColor="rgba(255, 255, 255, 0.25)" 
+              placeholderTextColor={colors.placeholder}
               style={[styles.input, bldFieldErrors.gps && styles.inputError]} 
               value={bldLat} 
               onChangeText={(val) => {
@@ -406,7 +410,7 @@ export default function MapScreen() {
             <Text style={styles.inputLabel}>Longitud GPS *</Text>
             <TextInput 
               placeholder="-99.1332" 
-              placeholderTextColor="rgba(255, 255, 255, 0.25)" 
+              placeholderTextColor={colors.placeholder}
               style={[styles.input, bldFieldErrors.gps && styles.inputError]} 
               value={bldLng} 
               onChangeText={(val) => {
@@ -424,7 +428,7 @@ export default function MapScreen() {
               <Text style={styles.inputLabel}>Departamento / Área Inicial</Text>
               <TextInput
                 placeholder="ej. Laboratorio de Redes y Telecom"
-                placeholderTextColor="rgba(255, 255, 255, 0.25)"
+                placeholderTextColor={colors.placeholder}
                 style={styles.input}
                 value={bldDeptName}
                 onChangeText={setBldDeptName}
@@ -434,7 +438,7 @@ export default function MapScreen() {
               <Text style={styles.inputLabel}>Piso / Nivel</Text>
               <TextInput
                 placeholder="Piso 1"
-                placeholderTextColor="rgba(255, 255, 255, 0.25)"
+                placeholderTextColor={colors.placeholder}
                 style={styles.input}
                 value={bldDeptFloor}
                 onChangeText={setBldDeptFloor}
@@ -446,7 +450,7 @@ export default function MapScreen() {
         <Text style={styles.inputLabel}>Descripción u Observaciones</Text>
         <TextInput 
           placeholder="Uso del edificio..." 
-          placeholderTextColor="rgba(255, 255, 255, 0.25)" 
+          placeholderTextColor={colors.placeholder}
           multiline 
           numberOfLines={2} 
           style={[styles.input, styles.textArea]} 
@@ -461,7 +465,7 @@ export default function MapScreen() {
           onPress={handleSaveBuilding}
         >
           {isSubmitting ? (
-            <ActivityIndicator size="small" color="#000000" />
+            <ActivityIndicator size="small" color={colors.buttonText} />
           ) : (
             <Text style={styles.modalSubmitButtonText}>{editingBuildingId ? 'Actualizar Edificio' : 'Guardar Edificio en Mapa'}</Text>
           )}
@@ -471,17 +475,17 @@ export default function MapScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   container: { flex: 1 },
   innerWrapper: { flex: 1, maxWidth: 1400, width: '100%', alignSelf: 'center' },
   header: { paddingHorizontal: 16, paddingTop: 45, paddingBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 },
   headerBadge: { fontFamily: 'Poppins_600SemiBold', fontSize: 10, color: '#30D158', letterSpacing: 1.5 },
-  headerTitle: { fontFamily: 'Poppins_700Bold', fontSize: 22, color: '#FFFFFF', lineHeight: 28 },
+  headerTitle: { fontFamily: 'Poppins_700Bold', fontSize: 22, color: colors.textPrimary, lineHeight: 28 },
   headerActions: { alignItems: 'center', gap: 6, flexDirection: 'row', flexWrap: 'wrap' },
   resetViewBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(10, 132, 255, 0.15)', borderWidth: 1, borderColor: 'rgba(10, 132, 255, 0.35)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, gap: 5 },
   resetViewBtnText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#0A84FF' },
-  addBuildingBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, gap: 5 },
-  addBuildingBtnText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#000000' },
+  addBuildingBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.buttonBg, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, gap: 5 },
+  addBuildingBtnText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: colors.buttonText },
   counterBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(10, 132, 255, 0.12)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(10, 132, 255, 0.25)' },
   counterText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10, color: '#0A84FF' },
   mainLayout: { flex: 1, flexDirection: 'column', padding: 12 },
@@ -490,25 +494,25 @@ const styles = StyleSheet.create({
   mapContainerTablet: { flex: 3, marginBottom: 0, marginRight: 12 },
   sidePanel: { flex: 1, maxHeight: 300 },
   sidePanelTablet: { flex: 1.2, maxHeight: undefined },
-  tabSelector: { flexDirection: 'row', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderRadius: 12, padding: 3, marginBottom: 10, gap: 4 },
+  tabSelector: { flexDirection: 'row', backgroundColor: colors.chipBg, borderRadius: 12, padding: 3, marginBottom: 10, gap: 4 },
   tabButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, borderRadius: 9 },
-  tabButtonActive: { backgroundColor: 'rgba(255, 255, 255, 0.12)' },
-  tabButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: 'rgba(255, 255, 255, 0.45)' },
-  tabButtonTextActive: { color: '#FFFFFF' },
-  deviceItem: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.03)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.04)', marginBottom: 6 },
+  tabButtonActive: { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)' },
+  tabButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: colors.textTertiary },
+  tabButtonTextActive: { color: colors.textPrimary },
+  deviceItem: { flexDirection: 'row', alignItems: 'center', padding: 10, borderRadius: 12, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.cardBorder, marginBottom: 6 },
   deviceItemActive: { borderColor: '#0A84FF', backgroundColor: 'rgba(10, 132, 255, 0.1)' },
   colorDot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
   deviceInfo: { flex: 1 },
-  deviceName: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: '#FFFFFF' },
-  deviceIp: { fontFamily: 'Poppins_400Regular', fontSize: 10, color: 'rgba(255, 255, 255, 0.5)' },
-  buildingCardItem: { padding: 12, borderRadius: 14, backgroundColor: 'rgba(255, 255, 255, 0.03)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)', marginBottom: 8 },
+  deviceName: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: colors.textPrimary },
+  deviceIp: { fontFamily: 'Poppins_400Regular', fontSize: 10, color: colors.textSecondary },
+  buildingCardItem: { padding: 12, borderRadius: 14, backgroundColor: colors.cardBg, borderWidth: 1, borderColor: colors.cardBorder, marginBottom: 8 },
   buildingCardItemActive: { borderColor: '#30D158', backgroundColor: 'rgba(48, 209, 88, 0.08)' },
   bldTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   bldBadge: { backgroundColor: 'rgba(10, 132, 255, 0.15)', borderWidth: 1, borderColor: 'rgba(10, 132, 255, 0.3)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   bldBadgeText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10, color: '#0A84FF' },
   deleteBldBtn: { padding: 4 },
-  bldName: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: '#FFFFFF', marginBottom: 2 },
-  bldGps: { fontFamily: 'Poppins_400Regular', fontSize: 10, color: 'rgba(255, 255, 255, 0.45)', marginBottom: 4 },
+  bldName: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: colors.textPrimary, marginBottom: 2 },
+  bldGps: { fontFamily: 'Poppins_400Regular', fontSize: 10, color: colors.textTertiary, marginBottom: 4 },
   deptRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
   deptText: { fontFamily: 'Poppins_400Regular', fontSize: 10, color: '#BF5AF2', flex: 1 },
   detailCard: { padding: 14, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', backgroundColor: 'rgba(0, 0, 0, 0.5)', marginTop: 10 },
@@ -516,14 +520,14 @@ const styles = StyleSheet.create({
   detailRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   detailLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 10, color: 'rgba(255, 255, 255, 0.4)' },
   detailValue: { fontFamily: 'Poppins_400Regular', fontSize: 11, color: '#FFFFFF' },
-  inputLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.7)', marginBottom: 5 },
-  input: { fontFamily: 'Poppins_400Regular', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderRadius: 13, padding: 12, color: '#FFFFFF', fontSize: 13.5, marginBottom: 12, ...Platform.select({ web: { outlineStyle: 'none' } }) as any },
+  inputLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: colors.textSecondary, marginBottom: 5 },
+  input: { fontFamily: 'Poppins_400Regular', backgroundColor: colors.inputBg, borderWidth: 1, borderColor: colors.inputBorder, borderRadius: 13, padding: 12, color: colors.textPrimary, fontSize: 13.5, marginBottom: 12, ...Platform.select({ web: { outlineStyle: 'none' } }) as any },
   inputError: { borderColor: '#FF453A', backgroundColor: 'rgba(255, 69, 58, 0.06)' },
   fieldErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, color: '#FF453A', marginTop: -8, marginBottom: 10, marginLeft: 4 },
   modalErrorContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 69, 58, 0.12)', borderWidth: 1, borderColor: 'rgba(255, 69, 58, 0.3)', borderRadius: 11, padding: 10, marginBottom: 14, gap: 8 },
   modalErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: '#FF453A', flex: 1 },
   formRow: { flexDirection: 'row', gap: 10 },
   textArea: { height: 55, textAlignVertical: 'top' },
-  modalSubmitButton: { backgroundColor: '#FFFFFF', paddingVertical: 14, borderRadius: 13, alignItems: 'center', marginTop: 8 },
-  modalSubmitButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 13.5, color: '#000000' },
+  modalSubmitButton: { backgroundColor: colors.buttonBg, paddingVertical: 14, borderRadius: 13, alignItems: 'center', marginTop: 8 },
+  modalSubmitButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 13.5, color: colors.buttonText },
 });

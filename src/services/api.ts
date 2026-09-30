@@ -15,10 +15,12 @@ import {
   Building,
   Department,
   Incident,
+  IncidentDevice,
   Maintenance,
   DeviceConfig,
   RecentActivity,
 } from '../types';
+import { hydrateIncident, packIncident } from '../utils/incidentRecord';
 
 // ============================================================
 // SISTEMA DE CACHÉ EN MEMORIA
@@ -648,7 +650,7 @@ export async function fetchIncidents(forceRefresh = false): Promise<Incident[]> 
     .order('created_at', { ascending: false });
 
   if (error) throw error;
-  const result = data || [];
+  const result = (data || []).map(row => hydrateIncident(row as Incident));
   setCache('incidents', result);
   return result;
 }
@@ -657,21 +659,42 @@ export async function createIncident(data: {
   title: string;
   description: string;
   severity: 'critical' | 'high' | 'medium' | 'low';
-  device_id?: string;
-  device_name: string;
-  device_ip?: string;
+  event_at: string;
+  affected_devices: IncidentDevice[];
+  initial_action?: string;
   location: string;
 }) {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) throw userError || new Error('Debes iniciar sesión para registrar un incidente.');
+  if (!data.affected_devices.length) throw new Error('Selecciona al menos un equipo afectado.');
+  const reporter = user.email || user.id;
+  const primaryDevice = data.affected_devices[0];
+  const incidentDescription = packIncident({
+    id: '', title: data.title, description: sanitize(data.description),
+    severity: data.severity, status: 'open',
+    device_id: primaryDevice.id,
+    device_name: primaryDevice.name,
+    device_ip: primaryDevice.ip,
+    location: data.location,
+    created_at: '',
+    event_at: data.event_at,
+    reported_by: reporter,
+    affected_devices: data.affected_devices,
+    actions: data.initial_action?.trim() ? [{
+      text: sanitize(data.initial_action), at: new Date().toISOString(),
+      by: reporter, kind: 'follow_up',
+    }] : [],
+  });
   const { data: result, error } = await supabase
     .from('incidents')
     .insert({
       title: sanitize(data.title),
-      description: sanitize(data.description),
+      description: incidentDescription,
       severity: data.severity,
       status: 'open',
-      device_id: data.device_id || null,
-      device_name: sanitize(data.device_name),
-      device_ip: sanitize(data.device_ip || ''),
+      device_id: primaryDevice.id,
+      device_name: sanitize(data.affected_devices.map(device => device.name).join(', ')),
+      device_ip: sanitize(data.affected_devices.map(device => device.ip || '').filter(Boolean).join(', ')),
       location: sanitize(data.location),
     })
     .select()
@@ -679,20 +702,43 @@ export async function createIncident(data: {
 
   if (error) throw error;
   invalidateCache('incidents', 'dashboard_stats');
-  return result;
+  return hydrateIncident(result as Incident);
 }
 
-export async function resolveIncident(id: string) {
+export async function addIncidentAction(id: string, text: string, kind: 'follow_up' | 'resolution') {
+  const cleanText = sanitize(text);
+  if (!cleanText) throw new Error('Describe la acción realizada.');
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) throw userError || new Error('Debes iniciar sesión para actualizar un incidente.');
+
+  const { data: current, error: readError } = await supabase
+    .from('incidents').select('*').eq('id', id).single();
+  if (readError) throw readError;
+  if (kind === 'resolution' && current.status === 'resolved') {
+    throw new Error('Este incidente ya está resuelto.');
+  }
+
+  const incident = hydrateIncident(current as Incident);
+  const now = new Date().toISOString();
+  const description = packIncident({
+    ...incident,
+    actions: [...(incident.actions || []), {
+      text: cleanText, at: now, by: user.email || user.id, kind,
+    }],
+  });
+  const changes = kind === 'resolution'
+    ? { description, status: 'resolved', resolved_at: now }
+    : { description };
   const { data, error } = await supabase
     .from('incidents')
-    .update({ status: 'resolved', resolved_at: new Date().toISOString() })
+    .update(changes)
     .eq('id', id)
     .select()
     .single();
 
   if (error) throw error;
   invalidateCache('incidents', 'dashboard_stats');
-  return data;
+  return hydrateIncident(data as Incident);
 }
 
 export async function deleteIncident(id: string) {

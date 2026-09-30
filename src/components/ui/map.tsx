@@ -126,7 +126,7 @@ export function Map({
         .layer-btn {
           background: transparent;
           border: none;
-          color: #94A3B8;
+          color: ${isDark ? '#94A3B8' : '#475569'};
           font-size: 11px;
           font-weight: 600;
           padding: 7px 12px;
@@ -282,8 +282,8 @@ export function Map({
     <body>
       <div id="map"></div>
       <div class="layer-switcher">
-        <button id="btnDefault" class="layer-btn active" onclick="switchLayer('default')">${isDark ? '🌙 Oscuro' : '☀️ Claro'}</button>
-        <button id="btnSat" class="layer-btn" onclick="switchLayer('sat')">🛰️ Satélite HD</button>
+        <button id="btnDefault" class="layer-btn" onclick="switchLayer('default')">${isDark ? '🌙 Oscuro' : '☀️ Claro'}</button>
+        <button id="btnSat" class="layer-btn active" onclick="switchLayer('sat')">🛰️ Satélite HD</button>
         <button id="btnHybrid" class="layer-btn" onclick="switchLayer('hybrid')">🌐 Híbrido</button>
       </div>
 
@@ -308,14 +308,14 @@ export function Map({
           maxNativeZoom: 20,
           subdomains: 'abcd',
           attribution: '&copy; OpenStreetMap &copy; CARTO'
-        }).addTo(map);
+        });
 
         const googleSatLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
           maxZoom: 21,
           maxNativeZoom: 20,
           subdomains: ['0', '1', '2', '3'],
           attribution: '&copy; Google Maps'
-        });
+        }).addTo(map);
 
         const googleHybridLayer = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
           maxZoom: 21,
@@ -469,7 +469,8 @@ export function Map({
       </script>
     </body>
     </html>
-  `, [lat, lng, zoom, hasExplicitCenter, serializedDevices, serializedBuildings, isDark]);
+  `;
+  }, [lat, lng, zoom, hasExplicitCenter, serializedDevices, serializedBuildings, isDark]);
 
   const containerBg = isDark ? '#0b0b0e' : '#f5f5f7';
   const containerBorder = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';

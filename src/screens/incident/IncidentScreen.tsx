@@ -6,13 +6,39 @@ import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import GlassModal from '../../components/ui/GlassModal';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import * as api from '../../services/api';
 import { Incident, Maintenance, Device, Building } from '../../types';
 
 const SEVERITY_FILTERS = ['Todos', 'Crítico', 'Alto', 'Medio', 'Bajo', 'Resueltos'];
 
+function localEventFields(date = new Date()) {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return {
+    date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    time: `${pad(date.getHours())}:${pad(date.getMinutes())}`,
+  };
+}
+
+function parseEventDateTime(date: string, time: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return null;
+  const [year, month, day] = date.split('-').map(Number);
+  const [hour, minute] = time.split(':').map(Number);
+  const result = new Date(year, month - 1, day, hour, minute);
+  return result.getFullYear() === year && result.getMonth() === month - 1 &&
+    result.getDate() === day && result.getHours() === hour && result.getMinutes() === minute
+    ? result : null;
+}
+
+function formatEventDateTime(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Fecha no disponible' :
+    date.toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
 export default function IncidentScreen() {
   const { colors, isDark } = useTheme();
+  const { user } = useAuth();
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
 
@@ -32,8 +58,16 @@ export default function IncidentScreen() {
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
   const [expandedBuildingId, setExpandedBuildingId] = useState<string | null>(null);
   const [incDesc, setIncDesc] = useState('');
+  const [incDate, setIncDate] = useState(() => localEventFields().date);
+  const [incTime, setIncTime] = useState(() => localEventFields().time);
+  const [incInitialAction, setIncInitialAction] = useState('');
   const [incError, setIncError] = useState('');
   const [incFieldErrors, setIncFieldErrors] = useState<{ [key: string]: string }>({});
+  const [actionIncident, setActionIncident] = useState<Incident | null>(null);
+  const [actionKind, setActionKind] = useState<'follow_up' | 'resolution'>('follow_up');
+  const [actionText, setActionText] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [isSavingAction, setIsSavingAction] = useState(false);
 
   // Formulario Mantenimiento
   const [mntTitle, setMntTitle] = useState('');
@@ -56,18 +90,27 @@ export default function IncidentScreen() {
         api.fetchIncidents(isSilent), api.fetchMaintenances(isSilent), api.fetchDevices(isSilent), api.fetchBuildings(isSilent),
       ]);
       setIncidents(incs); setMaintenances(mnts); setDevices(devs); setBuildings(blds);
-      if (blds.length > 0) setExpandedBuildingId(blds[0].id);
-      if (devs.length > 0 && selectedDeviceIds.length === 0) setSelectedDeviceIds([devs[0].id]);
+      setExpandedBuildingId(current => current || blds[0]?.id || 'unassigned');
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  }, [selectedDeviceIds.length, incidents.length, maintenances.length]);
+  }, [incidents.length, maintenances.length]);
 
   useFocusEffect(useCallback(() => { loadData(true); }, [loadData]));
 
   const handleOpenIncidentModal = () => {
     setIncError('');
     setIncFieldErrors({});
+    const now = localEventFields();
+    setIncDate(now.date);
+    setIncTime(now.time);
     setShowIncidentModal(true);
+  };
+
+  const openActionModal = (incident: Incident, kind: 'follow_up' | 'resolution') => {
+    setActionIncident(incident);
+    setActionKind(kind);
+    setActionText('');
+    setActionError('');
   };
 
   const handleOpenMaintenanceModal = () => {
@@ -87,12 +130,26 @@ export default function IncidentScreen() {
   };
 
   const groupedHierarchy = useMemo(() => {
-    return buildings.map(bld => {
-      const bldDevices = devices.filter(d => d.building_id === bld.id || d.location.includes(bld.code));
+    const assignedIds = new Set<string>();
+    const groupDevices = (group: Device[]) => {
       const categories: { [cat: string]: Device[] } = {};
-      bldDevices.forEach(dev => { const cat = getDeviceCategory(dev.name); if (!categories[cat]) categories[cat] = []; categories[cat].push(dev); });
-      return { building: bld, categories, totalDevices: bldDevices.length };
+      group.forEach(dev => { const cat = getDeviceCategory(dev.name); if (!categories[cat]) categories[cat] = []; categories[cat].push(dev); });
+      return categories;
+    };
+    const groups = buildings.map(bld => {
+      const bldDevices = devices.filter(d => !assignedIds.has(d.id) &&
+        (d.building_id === bld.id || (!!bld.code && d.location.includes(bld.code))));
+      bldDevices.forEach(device => assignedIds.add(device.id));
+      return { building: bld, categories: groupDevices(bldDevices), totalDevices: bldDevices.length };
     });
+    const unassigned = devices.filter(device => !assignedIds.has(device.id));
+    if (unassigned.length) {
+      groups.push({
+        building: { id: 'unassigned', name: 'Otros equipos', code: '' } as Building,
+        categories: groupDevices(unassigned), totalDevices: unassigned.length,
+      });
+    }
+    return groups;
   }, [buildings, devices]);
 
   const toggleDevice = (id: string) => {
@@ -135,6 +192,12 @@ export default function IncidentScreen() {
     if (!incDesc || incDesc.trim().length < 5) {
       errors.desc = 'La descripción debe tener al menos 5 caracteres.';
     }
+    const eventDateTime = parseEventDateTime(incDate.trim(), incTime.trim());
+    if (!eventDateTime) {
+      errors.event = 'Ingresa una fecha válida (AAAA-MM-DD) y una hora válida (HH:mm).';
+    } else if (eventDateTime.getTime() > Date.now()) {
+      errors.event = 'La fecha y hora del incidente no pueden estar en el futuro.';
+    }
 
     setIncFieldErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -145,21 +208,22 @@ export default function IncidentScreen() {
     try {
       setIsSubmitting(true);
       const selectedDevs = devices.filter(d => selectedDeviceIds.includes(d.id));
-      const deviceNames = selectedDevs.map(d => d.name).join(', ');
-      const deviceIps = selectedDevs.map(d => d.ipv4_address).join(', ');
       const location = selectedDevs[0]?.location || '';
       await api.createIncident({ 
         title: incTitle.trim(), 
         description: incDesc.trim(), 
         severity: incSeverity, 
-        device_id: selectedDeviceIds[0], 
-        device_name: deviceNames, 
-        device_ip: deviceIps, 
+        event_at: eventDateTime!.toISOString(),
+        affected_devices: selectedDevs.map(device => ({
+          id: device.id, name: device.name, ip: device.ipv4_address,
+        })),
+        initial_action: incInitialAction.trim(),
         location 
       });
       setShowIncidentModal(false); 
       setIncTitle(''); 
       setIncDesc(''); 
+      setIncInitialAction('');
       setIncSeverity('high');
       setIncError('');
       setIncFieldErrors({});
@@ -172,15 +236,21 @@ export default function IncidentScreen() {
     }
   };
 
-  const handleResolve = async (id: string) => {
-    // Actualización optimista instantánea (0ms)
-    const prevIncidents = [...incidents];
-    setIncidents(prev => prev.map(inc => inc.id === id ? { ...inc, status: 'resolved', resolved_at: new Date().toISOString() } : inc));
-    try { 
-      await api.resolveIncident(id); 
-    } catch (err) { 
-      console.error(err); 
-      setIncidents(prevIncidents);
+  const handleSaveAction = async () => {
+    if (!actionIncident || isSavingAction) return;
+    if (actionText.trim().length < 5) {
+      setActionError('Describe la acción realizada con al menos 5 caracteres.');
+      return;
+    }
+    try {
+      setIsSavingAction(true);
+      const updated = await api.addIncidentAction(actionIncident.id, actionText, actionKind);
+      setIncidents(prev => prev.map(incident => incident.id === updated.id ? updated : incident));
+      setActionIncident(null);
+    } catch (err: any) {
+      setActionError(err?.message || 'No se pudo guardar el seguimiento.');
+    } finally {
+      setIsSavingAction(false);
     }
   };
 
@@ -344,15 +414,43 @@ export default function IncidentScreen() {
                       <Text style={[styles.incTitle, { color: colors.textPrimary }]}>{inc.title}</Text>
                       <Text style={[styles.incDesc, { color: colors.textSecondary }]}>{inc.description}</Text>
                       <View style={styles.incMeta}>
-                        <View style={styles.metaItem}><Feather name="cpu" size={12} color={colors.textTertiary} /><Text style={[styles.metaText, { color: colors.textTertiary }]}>{inc.device_name}</Text></View>
+                        <View style={styles.metaItem}><Feather name="clock" size={12} color={colors.textTertiary} /><Text style={[styles.metaText, { color: colors.textTertiary }]}>Evento: {formatEventDateTime(inc.event_at || inc.created_at)}</Text></View>
+                        <View style={styles.metaItem}><Feather name="user" size={12} color={colors.textTertiary} /><Text style={[styles.metaText, { color: colors.textTertiary }]}>Registró: {inc.reported_by || 'No registrado'}</Text></View>
+                        {(inc.affected_devices || []).map((device, index) => (
+                          <View key={`${device.id}-${index}`} style={styles.metaItem}>
+                            <Feather name="cpu" size={12} color={colors.textTertiary} />
+                            <Text style={[styles.metaText, { color: colors.textTertiary }]}>{device.name}{device.ip ? ` · ${device.ip}` : ''}</Text>
+                          </View>
+                        ))}
                         <View style={styles.metaItem}><Feather name="map-pin" size={12} color={colors.textTertiary} /><Text style={[styles.metaText, { color: colors.textTertiary }]}>{inc.location}</Text></View>
                       </View>
+                      {!!inc.actions?.length && (
+                        <View style={[styles.actionHistory, { borderColor: colors.divider }]}>
+                          {inc.actions.map((action, index) => (
+                            <View key={`${action.at}-${index}`}>
+                              <Text style={[styles.actionHistoryTitle, { color: colors.textPrimary }]}>
+                                {action.kind === 'resolution' ? 'Solución' : 'Seguimiento'} · {formatEventDateTime(action.at)}
+                              </Text>
+                              <Text style={[styles.metaText, { color: colors.textSecondary }]}>{action.text}</Text>
+                              <Text style={[styles.metaText, { color: colors.textTertiary }]}>{action.by}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
                       <View style={styles.incActions}>
+                        <TouchableOpacity
+                          style={[styles.resolveBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+                          activeOpacity={0.7}
+                          onPress={() => openActionModal(inc, 'follow_up')}
+                        >
+                          <Feather name="edit-3" size={13} color={colors.textSecondary} />
+                          <Text style={[styles.resolveBtnText, { color: colors.textSecondary }]}>Seguimiento</Text>
+                        </TouchableOpacity>
                         {inc.status !== 'resolved' && (
                           <TouchableOpacity 
                             style={[styles.resolveBtn, { backgroundColor: isDark ? 'rgba(48, 209, 88, 0.12)' : 'rgba(48, 209, 88, 0.1)', borderColor: 'rgba(48, 209, 88, 0.3)' }]} 
                             activeOpacity={0.7} 
-                            onPress={() => handleResolve(inc.id)}
+                            onPress={() => openActionModal(inc, 'resolution')}
                           >
                             <Feather name="check-circle" size={13} color="#30D158" />
                             <Text style={styles.resolveBtnText}>Resolver</Text>
@@ -426,6 +524,35 @@ export default function IncidentScreen() {
             }} 
           />
           {incFieldErrors.title && <Text style={styles.fieldErrorText}>{incFieldErrors.title}</Text>}
+
+          <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Fecha del evento (AAAA-MM-DD) *</Text>
+              <TextInput
+                value={incDate}
+                onChangeText={setIncDate}
+                placeholder="AAAA-MM-DD"
+                placeholderTextColor={colors.placeholder}
+                keyboardType="numbers-and-punctuation"
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, incFieldErrors.event && styles.inputError]}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Hora del evento (HH:mm) *</Text>
+              <TextInput
+                value={incTime}
+                onChangeText={setIncTime}
+                placeholder="HH:mm"
+                placeholderTextColor={colors.placeholder}
+                keyboardType="numbers-and-punctuation"
+                style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, incFieldErrors.event && styles.inputError]}
+              />
+            </View>
+          </View>
+          {incFieldErrors.event && <Text style={styles.fieldErrorText}>{incFieldErrors.event}</Text>}
+
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Persona que registra</Text>
+          <Text style={[styles.metaText, { color: colors.textPrimary, marginBottom: 12 }]}>{user?.email || user?.id || 'Sesión no disponible'}</Text>
 
           <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Severidad *</Text>
           <View style={styles.severityRow}>
@@ -505,6 +632,17 @@ export default function IncidentScreen() {
           />
           {incFieldErrors.desc && <Text style={styles.fieldErrorText}>{incFieldErrors.desc}</Text>}
 
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Acción realizada o seguimiento inicial</Text>
+          <TextInput
+            placeholder="Opcional: anota las acciones que ya realizaste..."
+            placeholderTextColor={colors.placeholder}
+            multiline
+            numberOfLines={2}
+            style={[styles.input, styles.textArea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
+            value={incInitialAction}
+            onChangeText={setIncInitialAction}
+          />
+
           <TouchableOpacity 
             style={[styles.submitIncident, isSubmitting && { opacity: 0.6 }]} 
             disabled={isSubmitting} 
@@ -516,6 +654,36 @@ export default function IncidentScreen() {
             ) : (
               <Text style={styles.submitIncidentText}>Enviar Reporte de Incidente</Text>
             )}
+          </TouchableOpacity>
+        </GlassModal>
+
+        <GlassModal
+          visible={actionIncident !== null}
+          onClose={() => { if (!isSavingAction) setActionIncident(null); }}
+          title={actionKind === 'resolution' ? 'Resolver incidente' : 'Agregar seguimiento'}
+          subtitle={actionIncident?.title}
+        >
+          {actionError !== '' && <Text style={styles.fieldErrorText}>{actionError}</Text>}
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>
+            {actionKind === 'resolution' ? 'Solución aplicada *' : 'Acción realizada o seguimiento *'}
+          </Text>
+          <TextInput
+            placeholder={actionKind === 'resolution' ? 'Describe cómo se solucionó el incidente...' : 'Describe el avance o la acción realizada...'}
+            placeholderTextColor={colors.placeholder}
+            multiline
+            numberOfLines={4}
+            style={[styles.input, styles.textArea, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
+            value={actionText}
+            onChangeText={setActionText}
+          />
+          <TouchableOpacity
+            style={[styles.submitIncident, isSavingAction && { opacity: 0.6 }]}
+            disabled={isSavingAction}
+            activeOpacity={0.8}
+            onPress={handleSaveAction}
+          >
+            {isSavingAction ? <ActivityIndicator size="small" color="#FFFFFF" /> :
+              <Text style={styles.submitIncidentText}>{actionKind === 'resolution' ? 'Guardar solución y resolver' : 'Guardar seguimiento'}</Text>}
           </TouchableOpacity>
         </GlassModal>
 
@@ -662,6 +830,8 @@ const styles = StyleSheet.create({
   incMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 10, paddingTop: 8, borderTopWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaText: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, color: 'rgba(255, 255, 255, 0.5)' },
+  actionHistory: { gap: 8, borderTopWidth: 1, paddingTop: 10, marginBottom: 10 },
+  actionHistoryTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, marginBottom: 2 },
   incActions: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   resolveBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 7, backgroundColor: 'rgba(48, 209, 88, 0.12)', borderWidth: 1, borderColor: 'rgba(48, 209, 88, 0.3)' },
   resolveBtnText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#30D158' },
