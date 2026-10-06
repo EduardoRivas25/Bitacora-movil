@@ -12,7 +12,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, name?: string) => Promise<{ requireEmailVerification: boolean }>;
   verifyEmail: (email: string, code: string) => Promise<void>;
   signInGoogle: () => Promise<void>;
-  signInGitHub: () => Promise<void>;
+  signInApple: () => Promise<void>;
   signOut: () => Promise<void>;
   updateProfile: (profile: { name: string; area: string }) => Promise<void>;
 }
@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const signInProvider = useCallback(async (provider: 'google' | 'github') => {
+  const signInProvider = useCallback(async (provider: 'google' | 'apple') => {
     setIsLoading(true);
     try {
       const current = await auth.signInWithProvider(provider);
@@ -135,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       verifyEmail,
       signInGoogle: () => signInProvider('google'),
-      signInGitHub: () => signInProvider('github'),
+      signInApple: () => signInProvider('apple'),
       signOut,
       updateProfile,
     }}>

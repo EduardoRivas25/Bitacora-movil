@@ -30,7 +30,7 @@ export default function LoginScreen() {
   
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
-  const { signIn, signUp, verifyEmail, signInGoogle, signInGitHub, isLoading } = useAuth();
+  const { signIn, signUp, verifyEmail, signInGoogle, signInApple, isLoading } = useAuth();
 
   const [isRegister, setIsRegister] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
@@ -137,7 +137,7 @@ export default function LoginScreen() {
       if (provider === 'Google') {
         await signInGoogle();
       } else {
-        await signInGitHub();
+        await signInApple();
       }
     } catch (err: any) {
       setErrorMsg(err?.message || `Error al autenticar con ${provider}`);
@@ -496,10 +496,10 @@ export default function LoginScreen() {
                 borderColor: inputBorderColor
               }]} 
               activeOpacity={0.8} 
-              onPress={() => handleSocialAuth('GitHub')}
+              onPress={() => handleSocialAuth('Apple')}
             >
-              <Ionicons name="logo-github" size={18} color={colors.text} style={styles.socialIcon} />
-              <Text style={[styles.socialButtonText, { color: colors.text }]}>GitHub</Text>
+              <Ionicons name="logo-apple" size={18} color={colors.text} style={styles.socialIcon} />
+              <Text style={[styles.socialButtonText, { color: colors.text }]}>Apple</Text>
             </TouchableOpacity>
           </View>
 

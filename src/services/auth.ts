@@ -155,7 +155,7 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
   if (error) throw error;
 }
 
-export async function signInWithProvider(provider: 'google' | 'github'): Promise<UserSchema | null> {
+export async function signInWithProvider(provider: 'google' | 'apple'): Promise<UserSchema | null> {
   const redirectTo = Platform.OS === 'web'
     ? window.location.origin
     : NATIVE_REDIRECT;

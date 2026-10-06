@@ -76,7 +76,7 @@ El esquema actual no almacena el estado operativo de edificios/equipos ni el nú
 
 ### Solicitudes de cuenta
 
-El registro crea una cuenta en InsForge y solicita un código de verificación enviado al correo. El formulario aún recoge datos laborales, pero el esquema adjunto no incluye una tabla de solicitudes de acceso; esos campos no se guardan. Google y GitHub usan OAuth de InsForge. En móvil se necesita una compilación con el esquema `bitacoraredes` para recibir el retorno del navegador.
+El registro crea una cuenta en InsForge y solicita un código de verificación enviado al correo. El formulario aún recoge datos laborales, pero el esquema adjunto no incluye una tabla de solicitudes de acceso; esos campos no se guardan. Google y Apple usan OAuth de InsForge. En móvil se necesita una compilación con el esquema `bitacoraredes` para recibir el retorno del navegador.
 
 ---
 
@@ -102,7 +102,7 @@ Asegúrate de tener instalado:
 - **Node.js** (v18 o superior) — [Descargar](https://nodejs.org/)
 - **npm** (incluido con Node.js)
 - **Expo CLI** (se instala automáticamente)
-- **Expo Go** para revisar la app; para probar Google y GitHub en móvil usa una compilación de desarrollo o producción que registre el esquema `bitacoraredes`.
+- **Expo Go** para revisar la app; para probar Google y Apple en móvil usa una compilación de desarrollo o producción que registre el esquema `bitacoraredes`.
 
 ### 1. Clonar el repositorio
 
