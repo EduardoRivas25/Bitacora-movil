@@ -229,6 +229,8 @@ export type BottomTabParamList = {
   Inicio: undefined;
   Dispositivos: undefined;
   Redes: undefined;
+  Puertos: undefined;
+  Reportes: undefined;
   Mapa: undefined;
   Incidentes: undefined;
   Configuraciones: undefined;

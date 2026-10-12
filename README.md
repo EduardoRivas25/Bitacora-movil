@@ -70,13 +70,13 @@ Esta aplicación resuelve estos problemas al ofrecer:
 
 ## 📄 Bitácora y reportes PDF
 
-En la pestaña **Bitácora**, selecciona Gestión de red, Dispositivos, Edificios, Incidentes, Mantenimientos o Bitácora completa y pulsa **Generar PDF**. El reporte se construye con los registros actuales de InsForge. En Android e iOS se abre el menú para guardar o compartir el archivo PDF; en web se abre el diálogo de impresión, donde se puede elegir **Guardar como PDF**.
+En la pestaña **Reportes**, selecciona Gestión de red, Dispositivos, Edificios, Incidentes, Mantenimientos, Actividad del día o Bitácora completa; elige el periodo y pulsa **Generar PDF**. El reporte se construye con los registros actuales de InsForge e incluye un resumen ejecutivo calculado para esas fechas, los indicadores operativos y las tablas con información disponible. Las secciones sin registros se indican sin añadir páginas vacías. En Android e iOS se abre el menú para guardar o compartir el archivo PDF; en web se abre una ventana con el informe y su diálogo de impresión, donde se puede elegir **Guardar como PDF**. La actividad del periodo refleja las fechas de los registros disponibles; la base actual no conserva un historial de auditoría para cada edición.
 
-El esquema actual no almacena el estado operativo de edificios/equipos ni el número de puertos de los switches, por lo que el PDF indica esos datos como no capturados.
+La pestaña **Documentos** dentro de **Búsqueda** también permite buscar un tipo de reporte, elegir las fechas y generar el PDF con los mismos datos y formato.
 
 ### Solicitudes de cuenta
 
-El registro crea una cuenta en InsForge y solicita un código de verificación enviado al correo. El formulario aún recoge datos laborales, pero el esquema adjunto no incluye una tabla de solicitudes de acceso; esos campos no se guardan. Google y Apple usan OAuth de InsForge. En móvil se necesita una compilación con el esquema `bitacoraredes` para recibir el retorno del navegador.
+El registro crea una cuenta en InsForge y solicita un código de verificación enviado al correo. El tipo seleccionado en el formulario se guarda como `requested_role`; se muestra como una solicitud, no como un rol concedido. El proveedor de acceso también se indica en el panel. Las cuentas existentes de Google o Apple deben tener el campo `role` configurado en su perfil de InsForge (`Administrador` o `Técnico de red`) para mostrar el rol asignado; si no está configurado, la app indica que no está asignado. Google y Apple usan OAuth de InsForge. En móvil se necesita una compilación con el esquema `bitacoraredes` para recibir el retorno del navegador.
 
 ---
 

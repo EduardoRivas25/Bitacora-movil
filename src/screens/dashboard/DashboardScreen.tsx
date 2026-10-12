@@ -16,6 +16,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { getAccountRole, getRequestedAccountRole } from '../../services/auth';
 import ThemeToggle from '../../components/ThemeToggle';
 import { fetchDashboardStats, fetchRecentActivities, DashboardStats } from '../../services/api';
 import { RecentActivity } from '../../types';
@@ -30,10 +31,21 @@ export default function DashboardScreen() {
   const isTablet = width >= 600 && width < 1024;
   const isDesktop = width >= 1024;
   const navigation = useNavigation<any>();
-  const { signOut, user } = useAuth();
+  const { signOut, user, authMethod } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const appLogo = isDark ? LOGO_DARK : LOGO_LIGHT;
+  const accountName = user?.profile?.name?.trim() || user?.email || 'Usuario';
+  const accountRole = getAccountRole(user);
+  const requestedRole = getRequestedAccountRole(user);
+  const accountRoleLabel = accountRole || (requestedRole ? `${requestedRole} solicitado` : 'Rol no asignado');
+  const authMethodLabel = authMethod === 'google'
+    ? 'Google'
+    : authMethod === 'apple'
+      ? 'Apple'
+      : authMethod === 'email'
+        ? 'Correo y contraseña'
+        : 'Acceso no identificado';
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [activities, setActivities] = useState<RecentActivity[]>([]);
@@ -135,10 +147,13 @@ export default function DashboardScreen() {
                   <Text style={styles.statusBadgeText}>SISTEMA EN LÍNEA</Text>
                 </View>
                 <Text style={[styles.headerTitle, isSmallMobile && { fontSize: 20, lineHeight: 24 }, { color: textColor }]}>
-                  Bitácora Digital
+                  {accountName}
                 </Text>
                 <Text style={[styles.headerSubtitle, { color: subtitleColor }]} numberOfLines={1}>
-                  {user?.email ? user.email : 'Administración de Redes & Dispositivos'}
+                  {user?.email || 'Cuenta activa'}
+                </Text>
+                <Text style={[styles.headerSubtitle, styles.accountAccessSubtitle, { color: subtitleColor }]} numberOfLines={1}>
+                  {accountRoleLabel} · Acceso con {authMethodLabel}
                 </Text>
               </View>
             </View>
@@ -467,6 +482,7 @@ const styles = StyleSheet.create({
   statusBadgeText: { fontFamily: 'Poppins_600SemiBold', fontSize: 9.5, color: '#30D158', letterSpacing: 1 },
   headerTitle: { fontFamily: 'Poppins_700Bold', fontSize: 22, lineHeight: 26 },
   headerSubtitle: { fontFamily: 'Poppins_400Regular', fontSize: 11.5 },
+  accountAccessSubtitle: { fontSize: 10 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   searchHeaderButton: { width: 38, height: 38, borderRadius: 11, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   themeHeaderButton: { width: 38, height: 38, borderRadius: 11, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },

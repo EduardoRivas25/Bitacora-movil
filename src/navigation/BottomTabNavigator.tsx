@@ -13,9 +13,9 @@ import MapScreen from '../screens/map/MapScreen';
 import IncidentScreen from '../screens/incident/IncidentScreen';
 import ConfigScreen from '../screens/config/ConfigScreen';
 import SearchScreen from '../screens/search/SearchScreen';
+import ReportsScreen from '../screens/reports/ReportsScreen';
 
 const Tab = createBottomTabNavigator();
-const TAB_COUNT = 7;
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const { width } = useWindowDimensions();
@@ -26,7 +26,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 
   const horizontalMargin = isSmallMobile ? 12 : 20;
   const effectiveWidth = Math.min(width - horizontalMargin, isDesktop ? 620 : 580);
-  const TAB_WIDTH = effectiveWidth / TAB_COUNT;
+  const TAB_WIDTH = effectiveWidth / state.routes.length;
   const indicatorSize = Math.min(42, Math.max(34, TAB_WIDTH - 4));
   const iconSize = TAB_WIDTH < 48 ? 16 : 19;
   const bottomInset = Platform.OS === 'ios' ? insets.bottom + 8 : 18;
@@ -43,8 +43,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
   }, [state.index]);
 
   const indicatorPosition = animatedValue.interpolate({
-    inputRange: [0, 1, 2, 3, 4, 5, 6],
-    outputRange: [0, TAB_WIDTH, TAB_WIDTH * 2, TAB_WIDTH * 3, TAB_WIDTH * 4, TAB_WIDTH * 5, TAB_WIDTH * 6],
+    inputRange: state.routes.map((_: any, index: number) => index),
+    outputRange: state.routes.map((_: any, index: number) => TAB_WIDTH * index),
   });
 
   return (
@@ -104,6 +104,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
           else if (route.name === 'Redes') iconName = 'wifi';
           else if (route.name === 'Mapa') iconName = 'map-pin';
           else if (route.name === 'Incidentes') iconName = 'alert-triangle';
+          else if (route.name === 'Reportes') iconName = 'file-text';
           else if (route.name === 'Configuraciones') iconName = 'terminal';
           else if (route.name === 'Buscar') iconName = 'search';
 
@@ -144,6 +145,7 @@ export default function BottomTabNavigator() {
       <Tab.Screen name="Redes" component={NetworkListScreen} />
       <Tab.Screen name="Mapa" component={MapScreen} />
       <Tab.Screen name="Incidentes" component={IncidentScreen} />
+      <Tab.Screen name="Reportes" component={ReportsScreen} />
       <Tab.Screen name="Configuraciones" component={ConfigScreen} />
       <Tab.Screen name="Buscar" component={SearchScreen} />
     </Tab.Navigator>

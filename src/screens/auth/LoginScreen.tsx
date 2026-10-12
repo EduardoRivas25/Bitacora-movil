@@ -114,7 +114,7 @@ export default function LoginScreen() {
 
     try {
       if (isRegister) {
-        const result = await signUp(email.trim(), password, name.trim());
+        const result = await signUp(email.trim(), password, name.trim(), requestType);
         if (result.requireEmailVerification) {
           setPendingVerificationEmail(email.trim());
           setIsRegister(false);

@@ -17,7 +17,10 @@ import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import * as api from '../../services/api';
-import { AccountRequest, AuditLogEntry, Device, NotificationItem, PdfDocumentLink, UserAccessRecord } from '../../types';
+import { AccountRequest, AuditLogEntry, Device, NotificationItem, UserAccessRecord } from '../../types';
+import { useAuth } from '../../contexts/AuthContext';
+import { REPORT_AREAS, ReportArea } from '../../services/reports';
+import { generateAndShareReport } from '../../services/reportPdf';
 
 const SEARCH_FILTERS = ['Todo', 'Nombre', 'IPv4', 'MAC', 'Fabricante', 'Ubicación'];
 const POPULAR_QUERIES = ['Cisco', '10.0.10.', 'UniFi', 'MikroTik', 'Rack 01', 'Apple', 'Fortinet'];
@@ -46,16 +49,14 @@ const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
   { id: 'a-3', user: 'Elena Ruiz', module: 'Usuarios', action: 'Aprobó solicitud', description: 'Se validó la solicitud de acceso del usuario Rosa Torres.', date: '2026-02-27', area: 'Seguridad', status: 'ok' },
 ];
 
-const INITIAL_PDF_LINKS: PdfDocumentLink[] = [
-  { id: 'pdf-1', title: 'Infraestructura general', kind: 'infraestructura', generatedAt: 'Hoy, 10:05' },
-  { id: 'pdf-2', title: 'Bitácora de cambios', kind: 'bitacora', generatedAt: 'Hoy, 09:40' },
-  { id: 'pdf-3', title: 'Incidentes', kind: 'incidentes', generatedAt: 'Ayer, 18:15' },
-  { id: 'pdf-4', title: 'Usuarios y accesos', kind: 'usuarios', generatedAt: 'Ayer, 16:00' },
-  { id: 'pdf-5', title: 'Segmentación de red', kind: 'segmentacion', generatedAt: 'Hoy, 08:25' },
-];
+function todayISO(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
 
 export default function SearchScreen() {
   const { colors, isDark } = useTheme();
+  const { user } = useAuth();
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
   const isSmallMobile = width < 380;
@@ -69,6 +70,11 @@ export default function SearchScreen() {
   const [activeAdminTab, setActiveAdminTab] = useState<'Solicitudes' | 'Usuarios' | 'Bitácora' | 'Documentos'>('Solicitudes');
   const [adminSearch, setAdminSearch] = useState('');
   const [accountRequests, setAccountRequests] = useState<AccountRequest[]>(INITIAL_ACCOUNT_REQUESTS);
+  const [documentFrom, setDocumentFrom] = useState(todayISO);
+  const [documentTo, setDocumentTo] = useState(todayISO);
+  const [generatingDocument, setGeneratingDocument] = useState<ReportArea | null>(null);
+  const [documentFeedback, setDocumentFeedback] = useState('');
+  const [documentFeedbackIsError, setDocumentFeedbackIsError] = useState(false);
 
   const loadDevices = useCallback(async (isSilent = false) => {
     try {
@@ -108,6 +114,34 @@ export default function SearchScreen() {
       );
     });
   }, [accountRequests, adminSearch]);
+  const filteredDocuments = useMemo(() => {
+    const q = adminSearch.trim().toLowerCase();
+    return REPORT_AREAS.filter(report => !q || report.title.toLowerCase().includes(q));
+  }, [adminSearch]);
+
+  const generateDocument = async (area: ReportArea) => {
+    setDocumentFeedback('');
+    setDocumentFeedbackIsError(false);
+    setGeneratingDocument(area);
+    try {
+      const createdBy = user?.profile?.name?.trim() || user?.email || 'Usuario';
+      await generateAndShareReport({
+        area,
+        from: documentFrom,
+        to: documentTo,
+        createdBy,
+      });
+      setDocumentFeedback(Platform.OS === 'web'
+        ? 'Se abrió la impresión. Selecciona “Guardar como PDF”.'
+        : 'El documento está listo para guardar o compartir.');
+    } catch (error) {
+      console.error('No se pudo generar el documento desde búsqueda:', error);
+      setDocumentFeedback(error instanceof Error ? error.message : 'No se pudo generar el PDF.');
+      setDocumentFeedbackIsError(true);
+    } finally {
+      setGeneratingDocument(null);
+    }
+  };
 
   const handleRequestDecision = (id: string, status: 'activo' | 'rechazado') => {
     setAccountRequests((current) => current.map((item) => item.id === id ? { ...item, status } : item));
@@ -213,7 +247,7 @@ export default function SearchScreen() {
             <View style={[styles.adminSearchRow, { backgroundColor: colors.searchBg, borderColor: colors.searchBorder }]}>
               <Feather name="search" size={15} color={colors.textTertiary} />
               <TextInput
-                placeholder="Buscar por nombre, correo o área..."
+                placeholder={activeAdminTab === 'Documentos' ? 'Buscar tipo de documento...' : 'Buscar por nombre, correo o área...'}
                 placeholderTextColor={colors.placeholder}
                 style={[styles.adminSearchInput, { color: colors.textPrimary }]}
                 value={adminSearch}
@@ -304,17 +338,54 @@ export default function SearchScreen() {
 
             {activeAdminTab === 'Documentos' && (
               <View style={styles.adminList}>
-                {INITIAL_PDF_LINKS.map((doc) => (
-                  <View key={doc.id} style={[styles.docCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.cardBorder }]}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.userName, { color: colors.textPrimary }]}>{doc.title}</Text>
-                      <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Generado: {doc.generatedAt}</Text>
+                <Text style={[styles.userMeta, { color: colors.textSecondary }]}>
+                  Elige el periodo y genera un documento con los datos actuales de InsForge.
+                </Text>
+                <View style={styles.documentDateRow}>
+                  <TextInput
+                    accessibilityLabel="Fecha inicial del documento"
+                    value={documentFrom}
+                    onChangeText={setDocumentFrom}
+                    placeholder="AAAA-MM-DD"
+                    placeholderTextColor={colors.placeholder}
+                    style={[styles.documentDateInput, { color: colors.textPrimary, backgroundColor: colors.searchBg, borderColor: colors.searchBorder }]}
+                  />
+                  <TextInput
+                    accessibilityLabel="Fecha final del documento"
+                    value={documentTo}
+                    onChangeText={setDocumentTo}
+                    placeholder="AAAA-MM-DD"
+                    placeholderTextColor={colors.placeholder}
+                    style={[styles.documentDateInput, { color: colors.textPrimary, backgroundColor: colors.searchBg, borderColor: colors.searchBorder }]}
+                  />
+                </View>
+                {documentFeedback ? (
+                  <Text style={[styles.documentFeedback, { color: documentFeedbackIsError ? '#FF453A' : '#30D158' }]}>
+                    {documentFeedback}
+                  </Text>
+                ) : null}
+                {filteredDocuments.map((report) => (
+                  <View key={report.id} style={[styles.docCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.cardBorder }]}>
+                    <View style={{ flex: 1, marginRight: 10 }}>
+                      <Text style={[styles.userName, { color: colors.textPrimary }]}>{report.title}</Text>
+                      <Text style={[styles.userMeta, { color: colors.textSecondary }]}>
+                        {documentFrom} a {documentTo} · datos actuales del sistema
+                      </Text>
                     </View>
-                    <TouchableOpacity style={[styles.primaryAction, { backgroundColor: colors.buttonBg, paddingHorizontal: 16 }]} onPress={() => Alert.alert('Documento', `Se está generando el PDF de ${doc.title}.`)}>
-                      <Text style={[styles.primaryActionText, { color: colors.buttonText }]}>Generar PDF</Text>
+                    <TouchableOpacity
+                      disabled={generatingDocument !== null}
+                      style={[styles.primaryAction, { backgroundColor: colors.buttonBg, paddingHorizontal: 16, opacity: generatingDocument && generatingDocument !== report.id ? 0.55 : 1 }]}
+                      onPress={() => void generateDocument(report.id)}
+                    >
+                      <Text style={[styles.primaryActionText, { color: colors.buttonText }]}>
+                        {generatingDocument === report.id ? 'Generando...' : 'Generar PDF'}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 ))}
+                {filteredDocuments.length === 0 ? (
+                  <Text style={[styles.emptyState, { color: colors.textSecondary }]}>No hay tipos de documento que coincidan.</Text>
+                ) : null}
               </View>
             )}
           </BlurView>
@@ -398,5 +469,8 @@ const styles = StyleSheet.create({
   secondaryActionText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#FF453A' },
   auditCard: { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 14, padding: 12 },
   docCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 14, padding: 12 },
+  documentDateRow: { flexDirection: 'row', gap: 8, marginTop: 5, marginBottom: 8 },
+  documentDateInput: { flex: 1, minWidth: 0, height: 40, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, fontFamily: 'Poppins_400Regular', fontSize: 11 },
+  documentFeedback: { fontFamily: 'Poppins_400Regular', fontSize: 11, lineHeight: 17 },
   emptyState: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: 'rgba(255,255,255,0.5)', paddingVertical: 12 },
 });

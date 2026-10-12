@@ -8,6 +8,14 @@ if (Platform.OS !== 'web') {
 const baseUrl = process.env.EXPO_PUBLIC_INSFORGE_URL;
 const anonKey = process.env.EXPO_PUBLIC_INSFORGE_ANON_KEY;
 
+export function assertInsForgeConfigured(): void {
+  if (!baseUrl || !anonKey) {
+    throw new Error(
+      'Falta configurar InsForge. Define EXPO_PUBLIC_INSFORGE_URL y EXPO_PUBLIC_INSFORGE_ANON_KEY en .env; las claves de Supabase no sirven para este cliente.',
+    );
+  }
+}
+
 if (!baseUrl || !anonKey) {
   console.warn('Falta la configuración pública de InsForge en .env');
 }

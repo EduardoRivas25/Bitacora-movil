@@ -13,10 +13,10 @@ import BottomTabNavigator from './BottomTabNavigator';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function AppNavigator() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isInitializing } = useAuth();
   const { theme, isDark, colors: themeColors } = useTheme();
 
-  if (isLoading) {
+  if (isInitializing) {
     return null;
   }
 

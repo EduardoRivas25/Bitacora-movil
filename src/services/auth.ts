@@ -1,12 +1,71 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
 import type { UserSchema } from '@insforge/sdk';
-import { insforge } from '../lib/insforgeClient';
+import { assertInsForgeConfigured, insforge } from '../lib/insforgeClient';
+import type { AccountRequestType } from '../types';
 
 const REFRESH_TOKEN_KEY = 'insforge_refresh_token';
+const PENDING_OAUTH_PROVIDER_KEY = '@bitacora_pending_oauth_provider';
 const NATIVE_REDIRECT = 'bitacoraredes://auth/callback';
+
+export type AuthMethod = 'email' | 'google' | 'apple';
+export type AccountRole = 'Administrador' | 'Técnico de red';
+
+function getProfile(user: UserSchema): Record<string, unknown> {
+  const profile: unknown = user.profile;
+  return profile && typeof profile === 'object' && !Array.isArray(profile)
+    ? profile as Record<string, unknown>
+    : {};
+}
+
+function roleLabel(role: AccountRequestType): AccountRole {
+  return role === 'administrador' ? 'Administrador' : 'Técnico de red';
+}
+
+export function getAccountRole(user: UserSchema | null): AccountRole | null {
+  if (!user) return null;
+  const role = getProfile(user).role;
+  return role === 'Administrador' || role === 'Técnico de red' ? role : null;
+}
+
+export function getRequestedAccountRole(user: UserSchema | null): AccountRole | null {
+  if (!user) return null;
+  const role = getProfile(user).requested_role;
+  return role === 'Administrador' || role === 'Técnico de red' ? role : null;
+}
+
+export function getAuthMethod(user: UserSchema | null): AuthMethod | null {
+  if (!user) return null;
+  const method = getProfile(user).auth_method;
+  return method === 'email' || method === 'google' || method === 'apple' ? method : null;
+}
+
+async function saveAccountMetadata(
+  user: UserSchema,
+  metadata: { role?: AccountRole; requestedRole?: AccountRole; authMethod?: AuthMethod },
+): Promise<UserSchema> {
+  const profile = {
+    ...getProfile(user),
+    ...(metadata.role ? { role: metadata.role } : {}),
+    ...(metadata.requestedRole ? { requested_role: metadata.requestedRole } : {}),
+    ...(metadata.authMethod ? { auth_method: metadata.authMethod } : {}),
+  };
+  const { error } = await insforge.auth.setProfile(profile);
+  if (error) throw error;
+  return { ...user, profile };
+}
+
+async function completePendingBrowserOAuth(user: UserSchema): Promise<UserSchema> {
+  if (Platform.OS !== 'web') return user;
+  const pendingMethod = await AsyncStorage.getItem(PENDING_OAUTH_PROVIDER_KEY);
+  if (pendingMethod !== 'google' && pendingMethod !== 'apple') return user;
+  const updated = await saveAccountMetadata(user, { authMethod: pendingMethod });
+  await AsyncStorage.removeItem(PENDING_OAUTH_PROVIDER_KEY);
+  return updated;
+}
 
 if (Platform.OS !== 'web') {
   // The SDK's PKCE helper needs Web Crypto, TextEncoder and btoa. Expo Crypto
@@ -87,7 +146,7 @@ export async function restoreUser(): Promise<UserSchema | null> {
   }
   const { data, error } = await insforge.auth.getCurrentUser();
   if (error) return null;
-  return data.user;
+  return data.user ? completePendingBrowserOAuth(data.user) : null;
 }
 
 export async function refreshMobileSession(): Promise<UserSchema | null> {
@@ -98,7 +157,7 @@ export async function refreshMobileSession(): Promise<UserSchema | null> {
 export async function currentUser(): Promise<UserSchema | null> {
   const { data, error } = await insforge.auth.getCurrentUser();
   if (error) throw error;
-  return data.user;
+  return data.user ? completePendingBrowserOAuth(data.user) : null;
 }
 
 export async function saveProfile(profile: { name: string; area: string }): Promise<void> {
@@ -113,26 +172,45 @@ export async function saveProfile(profile: { name: string; area: string }): Prom
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<UserSchema> {
+  await AsyncStorage.removeItem(PENDING_OAUTH_PROVIDER_KEY);
   const { data, error } = await insforge.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
   if (error) throw error;
-  return acceptSession(data);
+  return saveAccountMetadata(await acceptSession(data), { authMethod: 'email' });
 }
 
-export async function signUpWithEmail(email: string, password: string, name?: string) {
+export async function signUpWithEmail(email: string, password: string, name: string | undefined, role: AccountRequestType) {
+  const normalizedEmail = email.trim().toLowerCase();
+  await AsyncStorage.removeItem(PENDING_OAUTH_PROVIDER_KEY);
   const { data, error } = await insforge.auth.signUp({
-    email: email.trim().toLowerCase(),
+    email: normalizedEmail,
     password,
     name: name?.trim(),
   });
   if (error) throw error;
-  if (data?.accessToken && data.user) await acceptSession(data as SessionResult);
+  if (data?.accessToken && data.user) {
+    const user = await acceptSession(data as SessionResult);
+    const updatedUser = await saveAccountMetadata(user, { requestedRole: roleLabel(role), authMethod: 'email' });
+    return { ...data, user: updatedUser };
+  } else {
+    await AsyncStorage.setItem(`@bitacora_pending_role:${normalizedEmail}`, role);
+  }
   return data;
 }
 
 export async function verifyEmail(email: string, otp: string): Promise<UserSchema> {
-  const { data, error } = await insforge.auth.verifyEmail({ email: email.trim().toLowerCase(), otp: otp.trim() });
+  const normalizedEmail = email.trim().toLowerCase();
+  const { data, error } = await insforge.auth.verifyEmail({ email: normalizedEmail, otp: otp.trim() });
   if (error) throw error;
-  return acceptSession(data);
+  const user = await acceptSession(data);
+  const pendingRole = await AsyncStorage.getItem(`@bitacora_pending_role:${normalizedEmail}`);
+  const updated = pendingRole === 'administrador' || pendingRole === 'tecnico_red'
+    ? await saveAccountMetadata(user, {
+      requestedRole: roleLabel(pendingRole),
+      authMethod: 'email',
+    })
+    : await saveAccountMetadata(user, { authMethod: 'email' });
+  if (pendingRole) await AsyncStorage.removeItem(`@bitacora_pending_role:${normalizedEmail}`);
+  return updated;
 }
 
 export async function sendPasswordResetEmail(email: string): Promise<void> {
@@ -156,15 +234,22 @@ export async function resetPasswordWithToken(token: string, newPassword: string)
 }
 
 export async function signInWithProvider(provider: 'google' | 'apple'): Promise<UserSchema | null> {
+  assertInsForgeConfigured();
   const redirectTo = Platform.OS === 'web'
     ? window.location.origin
     : NATIVE_REDIRECT;
+  if (Platform.OS === 'web') {
+    await AsyncStorage.setItem(PENDING_OAUTH_PROVIDER_KEY, provider);
+  }
   const { data, error } = await insforge.auth.signInWithOAuth(provider, {
     redirectTo,
     skipBrowserRedirect: Platform.OS !== 'web',
   });
-  if (error) throw error;
-  if (Platform.OS === 'web') return null; // SDK completes the callback after navigation.
+  if (error) {
+    if (Platform.OS === 'web') await AsyncStorage.removeItem(PENDING_OAUTH_PROVIDER_KEY);
+    throw error;
+  }
+  if (Platform.OS === 'web') return null;
   if (!data.url || !data.codeVerifier) throw new Error('No se pudo iniciar la autorización externa.');
 
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
@@ -176,11 +261,12 @@ export async function signInWithProvider(provider: 'google' | 'apple'): Promise<
   if (!code) throw new Error('No se recibió el código de autorización de InsForge.');
   const exchange = await insforge.auth.exchangeOAuthCode(code, data.codeVerifier);
   if (exchange.error) throw exchange.error;
-  return acceptSession(exchange.data);
+  return saveAccountMetadata(await acceptSession(exchange.data), { authMethod: provider });
 }
 
 export async function signOut(): Promise<void> {
   const { error } = await insforge.auth.signOut();
+  await AsyncStorage.removeItem(PENDING_OAUTH_PROVIDER_KEY);
   if (Platform.OS !== 'web') {
     await SecureStore.deleteItemAsync(REFRESH_TOKEN_KEY);
     insforge.setAccessToken(null);
