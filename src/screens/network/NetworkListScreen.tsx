@@ -9,6 +9,7 @@ import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import GlassModal from '../../components/ui/GlassModal';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import * as api from '../../services/api';
 import { Network, Subnet } from '../../types';
 import { 
@@ -18,9 +19,14 @@ import {
   validateSubnetAgainstParent, 
   validateRequired 
 } from '../../utils/validators';
+import { canManageNetworks, isAdministrator } from '../../utils/permissions';
+import { confirmDestructiveAction, showUserNotice } from '../../utils/destructiveConfirmation';
 
 export default function NetworkListScreen() {
   const { colors, isDark } = useTheme();
+  const { user } = useAuth();
+  const canWriteNetworks = canManageNetworks(user);
+  const canDeleteRecords = isAdministrator(user);
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
 
@@ -108,6 +114,7 @@ export default function NetworkListScreen() {
   };
 
   const handleSaveNetwork = async () => {
+    if (!canWriteNetworks) return;
     if (isSubmitting) return;
     setNetError('');
     const errors: { [key: string]: string } = {};
@@ -165,6 +172,7 @@ export default function NetworkListScreen() {
   };
 
   const handleSaveSubnet = async () => {
+    if (!canWriteNetworks) return;
     if (isSubmitting) return;
     setSubError('');
     const errors: { [key: string]: string } = {};
@@ -228,6 +236,13 @@ export default function NetworkListScreen() {
   };
 
   const handleDeleteNetwork = async (id: string) => {
+    if (!canDeleteRecords) return;
+    const network = networks.find(item => item.id === id);
+    if (!network || !await confirmDestructiveAction(
+      'Eliminar red',
+      `¿Seguro que quieres eliminar “${network.name}”? Revisa sus subredes antes de continuar.`,
+    )) return;
+
     // Actualización optimista instantánea (0ms)
     const prevNetworks = [...networks];
     setNetworks(prev => prev.filter(n => n.id !== id));
@@ -236,10 +251,19 @@ export default function NetworkListScreen() {
     } catch (err) { 
       console.error(err); 
       setNetworks(prevNetworks);
+      showUserNotice('No se pudo eliminar la red', 'La red sigue en el listado. Puede tener subredes o dispositivos relacionados.');
     }
   };
 
   const handleDeleteSubnet = async (networkId: string, subnetId: string) => {
+    if (!canDeleteRecords) return;
+    const network = networks.find(item => item.id === networkId);
+    const subnet = network?.subnets?.find(item => item.id === subnetId);
+    if (!subnet || !await confirmDestructiveAction(
+      'Eliminar subred',
+      `¿Seguro que quieres eliminar “${subnet.name}”${network ? ` de ${network.name}` : ''}? Esta acción no se puede deshacer.`,
+    )) return;
+
     // Actualización optimista instantánea (0ms)
     const prevNetworks = [...networks];
     setNetworks(prev => prev.map(net => {
@@ -257,6 +281,7 @@ export default function NetworkListScreen() {
     } catch (err) { 
       console.error(err); 
       setNetworks(prevNetworks);
+      showUserNotice('No se pudo eliminar la subred', 'La subred sigue en el listado. Puede tener dispositivos asociados.');
     }
   };
 
@@ -286,10 +311,12 @@ export default function NetworkListScreen() {
               <Text style={[styles.headerTitle, { color: colors.textPrimary }, isSmallMobile && { fontSize: 22 }]}>Redes y Subredes</Text>
               <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]}>{networks.length} Redes Principales • {networks.reduce((acc, n) => acc + n.subnets.length, 0)} Subredes</Text>
             </View>
-            <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.buttonBg }]} activeOpacity={0.8} onPress={handleOpenAddNetwork}>
-              <Feather name="plus" size={17} color={colors.buttonText} />
-              <Text style={[styles.addButtonText, { color: colors.buttonText }]}>Nueva Red</Text>
-            </TouchableOpacity>
+            {canWriteNetworks && (
+              <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.buttonBg }]} activeOpacity={0.8} onPress={handleOpenAddNetwork}>
+                <Feather name="plus" size={17} color={colors.buttonText} />
+                <Text style={[styles.addButtonText, { color: colors.buttonText }]}>Nueva Red</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
           <View style={styles.networkList}>
@@ -326,18 +353,26 @@ export default function NetworkListScreen() {
                       <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={15} color={colors.textSecondary} />
                     </TouchableOpacity>
                     <View style={styles.cardControlButtons}>
-                      <TouchableOpacity style={[styles.iconActionButton, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} activeOpacity={0.7} onPress={() => handleOpenAddSubnet(net.id)}><Feather name="plus-circle" size={15} color="#0A84FF" /></TouchableOpacity>
-                      <TouchableOpacity style={[styles.iconActionButton, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} activeOpacity={0.7} accessibilityLabel={`Editar ${net.name}`} onPress={() => handleOpenEditNetwork(net)}><Feather name="edit-2" size={15} color="#FFD60A" /></TouchableOpacity>
-                      <TouchableOpacity style={[styles.iconActionButton, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} activeOpacity={0.7} onPress={() => handleDeleteNetwork(net.id)}><Feather name="trash-2" size={15} color="#FF453A" /></TouchableOpacity>
+                      {canWriteNetworks && (
+                        <>
+                          <TouchableOpacity style={[styles.iconActionButton, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} activeOpacity={0.7} onPress={() => handleOpenAddSubnet(net.id)}><Feather name="plus-circle" size={15} color="#0A84FF" /></TouchableOpacity>
+                          <TouchableOpacity style={[styles.iconActionButton, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} activeOpacity={0.7} accessibilityLabel={`Editar ${net.name}`} onPress={() => handleOpenEditNetwork(net)}><Feather name="edit-2" size={15} color="#FFD60A" /></TouchableOpacity>
+                        </>
+                      )}
+                      {canDeleteRecords && (
+                        <TouchableOpacity style={[styles.iconActionButton, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} activeOpacity={0.7} onPress={() => handleDeleteNetwork(net.id)}><Feather name="trash-2" size={15} color="#FF453A" /></TouchableOpacity>
+                      )}
                     </View>
                   </View>
                   {isExpanded && (
                     <View style={[styles.subnetsContainer, { backgroundColor: colors.inputBg, borderColor: colors.cardBorder }]}>
                       <View style={styles.subnetHeaderRow}>
                         <Text style={[styles.subnetSectionTitle, { color: colors.textTertiary }]}>SUBREDES ASOCIADAS</Text>
-                        <TouchableOpacity style={styles.addSubnetSmallBtn} activeOpacity={0.7} onPress={() => handleOpenAddSubnet(net.id)}>
-                          <Feather name="plus" size={12} color="#0A84FF" /><Text style={styles.addSubnetSmallText}>Añadir Subred</Text>
-                        </TouchableOpacity>
+                        {canWriteNetworks && (
+                          <TouchableOpacity style={styles.addSubnetSmallBtn} activeOpacity={0.7} onPress={() => handleOpenAddSubnet(net.id)}>
+                            <Feather name="plus" size={12} color="#0A84FF" /><Text style={styles.addSubnetSmallText}>Añadir Subred</Text>
+                          </TouchableOpacity>
+                        )}
                       </View>
                       {net.subnets.length === 0 ? (
                         <Text style={[styles.emptySubnetText, { color: colors.textTertiary }]}>No hay subredes registradas en esta red.</Text>
@@ -353,8 +388,12 @@ export default function NetworkListScreen() {
                             </View>
                             <View style={styles.subnetSide}>
                               <View style={styles.deviceCountBadge}><Feather name="cpu" size={11} color="#30D158" /><Text style={styles.deviceCountText}>{(sub as any).device_count || 0}</Text></View>
-                              <TouchableOpacity style={styles.deleteSubnetBtn} activeOpacity={0.7} accessibilityLabel={`Editar ${sub.name}`} onPress={() => handleOpenEditSubnet(net.id, sub)}><Feather name="edit-2" size={13} color="#FFD60A" /></TouchableOpacity>
-                              <TouchableOpacity style={styles.deleteSubnetBtn} activeOpacity={0.7} onPress={() => handleDeleteSubnet(net.id, sub.id)}><Feather name="trash-2" size={13} color="rgba(255, 69, 58, 0.7)" /></TouchableOpacity>
+                              {canWriteNetworks && (
+                                <TouchableOpacity style={styles.deleteSubnetBtn} activeOpacity={0.7} accessibilityLabel={`Editar ${sub.name}`} onPress={() => handleOpenEditSubnet(net.id, sub)}><Feather name="edit-2" size={13} color="#FFD60A" /></TouchableOpacity>
+                              )}
+                              {canDeleteRecords && (
+                                <TouchableOpacity style={styles.deleteSubnetBtn} activeOpacity={0.7} onPress={() => handleDeleteSubnet(net.id, sub.id)}><Feather name="trash-2" size={13} color="rgba(255, 69, 58, 0.7)" /></TouchableOpacity>
+                              )}
                             </View>
                           </View>
                         ))
@@ -514,7 +553,7 @@ export default function NetworkListScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingTop: 45, paddingBottom: 110 },
+  scrollContent: { paddingTop: 24, paddingBottom: 110 },
   innerWrapper: { maxWidth: 1200, width: '100%', alignSelf: 'center' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 },
   headerBadge: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#0A84FF', letterSpacing: 1.5, marginBottom: 2 },

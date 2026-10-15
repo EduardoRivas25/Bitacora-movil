@@ -74,9 +74,42 @@ En la pestaña **Reportes**, selecciona Gestión de red, Dispositivos, Edificios
 
 La pestaña **Documentos** dentro de **Búsqueda** también permite buscar un tipo de reporte, elegir las fechas y generar el PDF con los mismos datos y formato.
 
-### Solicitudes de cuenta
+### Navegación y cuenta
 
-El registro crea una cuenta en InsForge y solicita un código de verificación enviado al correo. El tipo seleccionado en el formulario se guarda como `requested_role`; se muestra como una solicitud, no como un rol concedido. El proveedor de acceso también se indica en el panel. Las cuentas existentes de Google o Apple deben tener el campo `role` configurado en su perfil de InsForge (`Administrador` o `Técnico de red`) para mostrar el rol asignado; si no está configurado, la app indica que no está asignado. Google y Apple usan OAuth de InsForge. En móvil se necesita una compilación con el esquema `bitacoraredes` para recibir el retorno del navegador.
+La barra inferior tiene seis accesos: **Inicio**, **Infraestructura** (Dispositivos y Redes), **Mapa**, **Centro de control** (Seguimiento de incidentes, Reportes y Documentos), **Configuraciones** y **Buscar**. Las secciones agrupadas muestran un selector compacto y centrado en la parte superior; en celular se adapta al ancho disponible y mantiene espacio antes del contenido, sin cruzarse con la barra inferior. En la parte superior se muestra el nombre de la app y una burbuja de cuenta a la derecha; los datos personales no aparecen en esa franja. Al tocar la burbuja se abre **Mi cuenta**, donde están el perfil y la seguridad. El inventario de puertos se abre desde Dispositivos y no añade otra pestaña a la barra.
+
+En **Dispositivos**, la búsqueda puede combinarse con las categorías existentes y filtros por fabricante, edificio y subred. También se puede ordenar por fecha de registro, nombre o dirección IP; el contador muestra cuántos equipos coinciden con los criterios activos.
+
+El inicio incluye **Pendientes accionables**: incidentes sin resolver y mantenimientos no completados, priorizados para destacar incidentes críticos y tareas atrasadas. Cada elemento abre la bitácora para continuar su seguimiento; cuando no hay pendientes, el inicio muestra el estado **Todo al día**.
+
+### Inventario de puertos (pendiente de habilitar en InsForge)
+
+El inventario está separado de la lista de dispositivos para mantenerla más breve. Permite registrar manualmente los puertos de switches, indicar si están libres o en uso y anotar el equipo conectado. Para que cargue y sincronice, primero debe aplicarse una sola vez la migración [`insforge/migrations/20261010_create_switch_ports.sql`](./insforge/migrations/20261010_create_switch_ports.sql) al proyecto InsForge correcto. Mientras la tabla no exista, la sección mostrará el error de InsForge; los reportes permiten continuar sin sus datos.
+
+### Registro y acceso de cuentas
+
+El formulario de registro no permite escoger un rol. Las cuentas nuevas, incluidas las creadas con Google o Apple, reciben el rol menos privilegiado de técnico y comienzan desactivadas; un administrador debe habilitarlas desde **Buscar → Usuarios**. La promoción a administrador sigue siendo una operación privilegiada de base de datos. La desactivación bloquea las operaciones protegidas por RLS y la entrada a la interfaz, aunque no revoca por sí sola el token de autenticación emitido por InsForge. Google y Apple usan OAuth de InsForge. En móvil se necesita una compilación con el esquema `bitacoraredes` para recibir el retorno del navegador.
+
+### Roles e historial de cambios (requiere InsForge)
+
+La app obtiene el rol efectivo y el estado de acceso desde `app_user_roles` en InsForge; el valor editable del perfil no concede permisos. Si InsForge no puede verificar el acceso, la app no inicia sesión. La política prevista permite consultar a técnicos activos y administradores activos; los técnicos pueden crear y editar redes, subredes, dispositivos e incidentes, y solo los administradores pueden escribir en los demás módulos o borrar registros.
+
+La migración [`insforge/migrations/20261013234500_roles_and_audit_rls.sql`](./insforge/migrations/20261013234500_roles_and_audit_rls.sql) crea las asignaciones protegidas, registra cambios de las nueve tablas de aplicación y restringe el historial a administradores. **Todavía no está aplicada en InsForge.** Antes de ejecutarla, revisa el esquema y las políticas vigentes con el equipo: la migración reemplaza todas las políticas RLS de esas nueve tablas. Tras aplicarla, las cuentas existentes comienzan como técnicos; promueve solo las cuentas autorizadas en una sesión SQL privilegiada, por ejemplo:
+
+```sql
+UPDATE public.app_user_roles AS roles
+SET role = 'Administrador',
+    active = true
+FROM auth.users AS users
+WHERE roles.user_id = users.id
+  AND users.email = 'correo-admin@dominio.com';
+```
+
+Después aplica [`insforge/migrations/20261014000000_managed_account_access.sql`](./insforge/migrations/20261014000000_managed_account_access.sql). Añade el estado `active`, hace que los nuevos registros queden desactivados, y provee las funciones RPC seguras `list_app_users` y `set_app_user_active`. Finalmente aplica [`insforge/migrations/20261014010000_managed_account_roles.sql`](./insforge/migrations/20261014010000_managed_account_roles.sql), que habilita cambiar roles desde **Buscar → Usuarios** mediante la función RPC `set_app_user_role`. Solo un administrador activo puede gestionar accesos y roles; no puede desactivar su propia cuenta ni cambiar su propio rol, y el backend impide desactivar o degradar al último administrador activo. No ejecutes solo el cambio visual: las migraciones deben estar aplicadas en InsForge para que estas operaciones funcionen.
+
+La migración de roles también añade `maintenances.device_id` como asociación opcional al inventario. Los nuevos mantenimientos seleccionados desde un dispositivo se relacionan por su ID; los registros anteriores o escritos manualmente se siguen encontrando por nombre y ubicación. Verifica con cuentas de ambos roles que la lectura, creación, edición, eliminación y consulta del historial respeten la matriz antes de publicar. Las migraciones y la promoción inicial de administradores quedan pendientes; no se han ejecutado contra el backend remoto.
+
+Las pantallas de inventario, redes, incidentes, edificios y configuraciones solicitan confirmación antes de borrar. Si la operación falla, muestran un aviso y, donde la lista se actualiza de forma optimista, restauran el registro.
 
 ---
 

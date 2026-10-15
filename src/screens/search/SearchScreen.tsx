@@ -9,7 +9,6 @@ import {
   useWindowDimensions,
   Platform,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,46 +16,61 @@ import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
 import * as api from '../../services/api';
-import { AccountRequest, AuditLogEntry, Device, NotificationItem, UserAccessRecord } from '../../types';
+import { AuditLogRecord, Device, UserAccessRecord } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
 import { REPORT_AREAS, ReportArea } from '../../services/reports';
 import { generateAndShareReport } from '../../services/reportPdf';
+import { isAdministrator } from '../../utils/permissions';
+import { confirmDestructiveAction } from '../../utils/destructiveConfirmation';
 
 const SEARCH_FILTERS = ['Todo', 'Nombre', 'IPv4', 'MAC', 'Fabricante', 'Ubicación'];
 const POPULAR_QUERIES = ['Cisco', '10.0.10.', 'UniFi', 'MikroTik', 'Rack 01', 'Apple', 'Fortinet'];
-
-const INITIAL_ACCOUNT_REQUESTS: AccountRequest[] = [
-  { id: 'req-1', name: 'Ana García', email: 'ana.garcia@redes.com', area: 'Infraestructura', workInfo: 'Analista de redes y soporte WAN', activities: 'Monitoreo de enlaces, mantenimiento de switches y administración de VLAN.', requestType: 'tecnico_red', status: 'pendiente', created_at: '2026-02-28T09:15:00Z' },
-  { id: 'req-2', name: 'Luis Romero', email: 'luis.romero@empresa.com', area: 'Administración', workInfo: 'Coordinador del área de TI', activities: 'Gestión de usuarios, permisos y políticas de seguridad.', requestType: 'administrador', status: 'pendiente', created_at: '2026-02-27T14:20:00Z' },
-  { id: 'req-3', name: 'Rosa Torres', email: 'rosa.torres@redes.com', area: 'Seguridad', workInfo: 'Especialista en seguridad de la red', activities: 'Auditoría de firewalls, segmentación y control de accesos.', requestType: 'tecnico_red', status: 'pendiente', created_at: '2026-02-26T11:05:00Z' },
-];
-
-const INITIAL_USERS: UserAccessRecord[] = [
-  { id: 'user-1', name: 'María Solis', email: 'maria@empresa.com', area: 'Infraestructura', role: 'Administrador', status: 'activo', lastLogin: 'Hace 10 min' },
-  { id: 'user-2', name: 'Pedro Nava', email: 'pedro@empresa.com', area: 'Soporte', role: 'Técnico de red', status: 'activo', lastLogin: 'Hace 42 min' },
-  { id: 'user-3', name: 'Elena Ruiz', email: 'elena@empresa.com', area: 'Seguridad', role: 'Técnico de red', status: 'pendiente', lastLogin: 'Sin acceso' },
-];
-
-const INITIAL_NOTIFICATIONS: NotificationItem[] = [
-  { id: 'n-1', title: 'Cambio de configuración', message: 'Se actualizó la VLAN 20 y se reconfiguraron los accesos de seguridad.', type: 'info', time: 'Hace 8 min', unread: true },
-  { id: 'n-2', title: 'Incidente resuelto', message: 'La interrupción en el firewall principal fue atendida por el equipo de soporte.', type: 'success', time: 'Hace 35 min', unread: true },
-  { id: 'n-3', title: 'Usuario pendiente', message: 'Se solicitó acceso para una nueva cuenta y requiere aprobación.', type: 'warning', time: 'Hace 1 hora', unread: false },
-];
-
-const INITIAL_AUDIT_LOGS: AuditLogEntry[] = [
-  { id: 'a-1', user: 'María Solis', module: 'Infraestructura', action: 'Actualizó red', description: 'Se modificó el segmento de la VLAN 20 y se validó la identificación de equipos.', date: '2026-02-28', area: 'Infraestructura', status: 'ok' },
-  { id: 'a-2', user: 'Pedro Nava', module: 'Incidentes', action: 'Cerró incidente', description: 'Se solucionó la alerta en el switch core y se activó la revisión final.', date: '2026-02-28', area: 'Soporte', status: 'warning' },
-  { id: 'a-3', user: 'Elena Ruiz', module: 'Usuarios', action: 'Aprobó solicitud', description: 'Se validó la solicitud de acceso del usuario Rosa Torres.', date: '2026-02-27', area: 'Seguridad', status: 'ok' },
-];
+type AdminTab = 'Usuarios' | 'Bitácora' | 'Documentos';
 
 function todayISO(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
-export default function SearchScreen() {
+function auditTableLabel(tableName: string) {
+  const labels: Record<string, string> = {
+    networks: 'Redes',
+    subnets: 'Subredes',
+    buildings: 'Edificios',
+    departments: 'Departamentos',
+    devices: 'Dispositivos',
+    incidents: 'Incidentes',
+    maintenances: 'Mantenimientos',
+    device_configs: 'Configuraciones',
+    switch_ports: 'Puertos',
+    app_user_roles: 'Roles de cuenta',
+  };
+  return labels[tableName] || tableName;
+}
+
+function auditOperationLabel(operation: AuditLogRecord['operation']) {
+  if (operation === 'INSERT') return 'Registro creado';
+  if (operation === 'UPDATE') return 'Registro actualizado';
+  return 'Registro eliminado';
+}
+
+function auditChangeSummary(entry: AuditLogRecord) {
+  const before = entry.old_data || {};
+  const after = entry.new_data || {};
+  const changedFields = [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .filter(key => !['id', 'created_at', 'updated_at'].includes(key))
+    .filter(key => JSON.stringify(before[key]) !== JSON.stringify(after[key]))
+    .map(key => key.replace(/_/g, ' '));
+
+  if (entry.operation === 'INSERT') return `Campos registrados: ${changedFields.slice(0, 5).join(', ') || 'sin detalle'}`;
+  if (entry.operation === 'DELETE') return `Campos previos: ${changedFields.slice(0, 5).join(', ') || 'sin detalle'}`;
+  return `Campos modificados: ${changedFields.slice(0, 5).join(', ') || 'sin cambios detectados'}`;
+}
+
+export default function SearchScreen({ documentsOnly = false }: { documentsOnly?: boolean }) {
   const { colors, isDark } = useTheme();
   const { user } = useAuth();
+  const canManageAccess = isAdministrator(user);
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
   const isSmallMobile = width < 380;
@@ -67,9 +81,17 @@ export default function SearchScreen() {
   const [activeFilter, setActiveFilter] = useState('Todo');
   const [allDevices, setAllDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeAdminTab, setActiveAdminTab] = useState<'Solicitudes' | 'Usuarios' | 'Bitácora' | 'Documentos'>('Solicitudes');
+  const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>('Usuarios');
   const [adminSearch, setAdminSearch] = useState('');
-  const [accountRequests, setAccountRequests] = useState<AccountRequest[]>(INITIAL_ACCOUNT_REQUESTS);
+  const [managedAccounts, setManagedAccounts] = useState<UserAccessRecord[]>([]);
+  const [accountsLoading, setAccountsLoading] = useState(false);
+  const [accountsError, setAccountsError] = useState('');
+  const [accountAction, setAccountAction] = useState<{ id: string; type: 'access' | 'role' } | null>(null);
+  const [accountReloadKey, setAccountReloadKey] = useState(0);
+  const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditError, setAuditError] = useState('');
+  const [auditReloadKey, setAuditReloadKey] = useState(0);
   const [documentFrom, setDocumentFrom] = useState(todayISO);
   const [documentTo, setDocumentTo] = useState(todayISO);
   const [generatingDocument, setGeneratingDocument] = useState<ReportArea | null>(null);
@@ -77,15 +99,55 @@ export default function SearchScreen() {
   const [documentFeedbackIsError, setDocumentFeedbackIsError] = useState(false);
 
   const loadDevices = useCallback(async (isSilent = false) => {
+    if (documentsOnly) return;
     try {
       if (!isSilent && allDevices.length === 0) setLoading(true);
       const data = await api.fetchDevices(isSilent);
       setAllDevices(data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  }, [allDevices.length]);
+  }, [allDevices.length, documentsOnly]);
 
-  useFocusEffect(useCallback(() => { loadDevices(true); }, [loadDevices]));
+  useFocusEffect(useCallback(() => {
+    if (documentsOnly) return undefined;
+    loadDevices(true);
+    return undefined;
+  }, [documentsOnly, loadDevices]));
+
+  const selectedAdminTab: AdminTab = documentsOnly ? 'Documentos' : activeAdminTab;
+  const visibleAdminTabs: readonly AdminTab[] = ['Usuarios', 'Bitácora', 'Documentos'];
+
+  useFocusEffect(useCallback(() => {
+    if (!canManageAccess || selectedAdminTab !== 'Usuarios') return undefined;
+    let isActive = true;
+    setAccountsLoading(true);
+    setAccountsError('');
+    api.fetchManagedAccounts().then(records => {
+      if (isActive) setManagedAccounts(records);
+    }).catch(error => {
+      console.error('No se pudieron cargar las cuentas de InsForge:', error);
+      if (isActive) setAccountsError('No se pudieron cargar las cuentas. Confirma que la migración de administración de cuentas esté aplicada y vuelve a intentar.');
+    }).finally(() => {
+      if (isActive) setAccountsLoading(false);
+    });
+    return () => { isActive = false; };
+  }, [canManageAccess, selectedAdminTab, accountReloadKey]));
+
+  useFocusEffect(useCallback(() => {
+    if (!canManageAccess || selectedAdminTab !== 'Bitácora') return undefined;
+    let isActive = true;
+    setAuditLoading(true);
+    setAuditError('');
+    api.fetchAuditLogs().then(records => {
+      if (isActive) setAuditLogs(records);
+    }).catch(error => {
+      console.error('No se pudo cargar el historial de auditoría:', error);
+      if (isActive) setAuditError('No se pudo cargar el historial. Confirma que la migración de auditoría esté aplicada y vuelve a intentar.');
+    }).finally(() => {
+      if (isActive) setAuditLoading(false);
+    });
+    return () => { isActive = false; };
+  }, [canManageAccess, selectedAdminTab, auditReloadKey]));
 
   const filteredResults = allDevices.filter((dev) => {
     if (!query.trim()) return false;
@@ -102,22 +164,77 @@ export default function SearchScreen() {
     );
   });
 
-  const filteredRequests = useMemo(() => {
+  const filteredAccounts = useMemo(() => {
     const q = adminSearch.trim().toLowerCase();
-    return accountRequests.filter((req) => {
-      if (!q) return true;
-      return (
-        req.name.toLowerCase().includes(q) ||
-        req.email.toLowerCase().includes(q) ||
-        req.area.toLowerCase().includes(q) ||
-        req.requestType.toLowerCase().includes(q)
-      );
-    });
-  }, [accountRequests, adminSearch]);
+    return managedAccounts.filter(account => (
+      !q || account.email.toLowerCase().includes(q) || account.role.toLowerCase().includes(q)
+    ));
+  }, [managedAccounts, adminSearch]);
   const filteredDocuments = useMemo(() => {
     const q = adminSearch.trim().toLowerCase();
     return REPORT_AREAS.filter(report => !q || report.title.toLowerCase().includes(q));
   }, [adminSearch]);
+  const filteredAuditLogs = useMemo(() => {
+    const q = adminSearch.trim().toLowerCase();
+    return auditLogs.filter(entry => !q || [
+      entry.actor_email || '',
+      entry.actor_role || '',
+      entry.table_name,
+      entry.record_id,
+      entry.operation,
+    ].join(' ').toLowerCase().includes(q));
+  }, [auditLogs, adminSearch]);
+
+  const handleAccountAccessChange = async (account: UserAccessRecord) => {
+    const nextActive = !account.active;
+    if (!nextActive && !await confirmDestructiveAction(
+      'Desactivar acceso',
+      `¿Quieres bloquear el acceso de ${account.email}? La sesión dejará de acceder a los datos protegidos de la aplicación.`,
+      'Desactivar',
+    )) return;
+
+    setAccountAction({ id: account.id, type: 'access' });
+    setAccountsError('');
+    try {
+      await api.setManagedAccountActive(account.id, nextActive);
+      setManagedAccounts(current => current.map(item => (
+        item.id === account.id ? { ...item, active: nextActive } : item
+      )));
+    } catch (error) {
+      console.error('No se pudo cambiar el acceso de la cuenta:', error);
+      setAccountsError(error instanceof Error ? error.message : 'No se pudo cambiar el acceso de la cuenta.');
+    } finally {
+      setAccountAction(null);
+    }
+  };
+
+  const handleAccountRoleChange = async (account: UserAccessRecord) => {
+    if (account.id === user?.id) return;
+
+    const nextRole: UserAccessRecord['role'] = account.role === 'Administrador'
+      ? 'Técnico de red'
+      : 'Administrador';
+    const actionLabel = nextRole === 'Administrador' ? 'Hacer administrador' : 'Devolver a técnico';
+    if (!await confirmDestructiveAction(
+      'Cambiar rol de cuenta',
+      `¿Quieres cambiar el rol de ${account.email} a ${nextRole}?`,
+      actionLabel,
+    )) return;
+
+    setAccountAction({ id: account.id, type: 'role' });
+    setAccountsError('');
+    try {
+      await api.setManagedAccountRole(account.id, nextRole);
+      setManagedAccounts(current => current.map(item => (
+        item.id === account.id ? { ...item, role: nextRole } : item
+      )));
+    } catch (error) {
+      console.error('No se pudo cambiar el rol de la cuenta:', error);
+      setAccountsError(error instanceof Error ? error.message : 'No se pudo cambiar el rol de la cuenta.');
+    } finally {
+      setAccountAction(null);
+    }
+  };
 
   const generateDocument = async (area: ReportArea) => {
     setDocumentFeedback('');
@@ -143,19 +260,20 @@ export default function SearchScreen() {
     }
   };
 
-  const handleRequestDecision = (id: string, status: 'activo' | 'rechazado') => {
-    setAccountRequests((current) => current.map((item) => item.id === id ? { ...item, status } : item));
-    Alert.alert('Solicitud actualizada', status === 'activo' ? 'Se habilitó el acceso al usuario.' : 'Se rechazó la solicitud y se registró la decisión.');
-  };
-
-  if (loading && allDevices.length === 0) {
+  if (!documentsOnly && loading && allDevices.length === 0) {
     return (<LinearGradient colors={colors.gradient} style={styles.container}><View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#FF9F0A" /></View></LinearGradient>);
   }
 
   return (
     <LinearGradient colors={colors.gradient} style={styles.container}>
-      <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isDesktop ? '6%' : isTablet ? '4%' : 16 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[
+        styles.scrollContent,
+        documentsOnly && styles.documentsOnlyScrollContent,
+        { paddingHorizontal: isDesktop ? '6%' : isTablet ? '4%' : 16 },
+      ]} showsVerticalScrollIndicator={false}>
         <View style={styles.innerWrapper}>
+          {!documentsOnly && (
+            <>
           <View style={styles.header}>
             <Text style={styles.headerBadge}>BÚSQUEDA GLOBAL</Text>
             <Text style={[styles.headerTitle, { color: colors.textPrimary }, isSmallMobile && { fontSize: 22 }]}>Buscador de Red</Text>
@@ -216,38 +334,48 @@ export default function SearchScreen() {
                 <View style={[styles.resultSubnet, { borderColor: colors.divider }]}><Feather name="layers" size={11} color="#BF5AF2" /><Text style={styles.resultSubnetText} numberOfLines={1}>{dev.subnet_name || 'Sin VLAN asignada'}</Text></View>
               </BlurView>))}</View>)}
           </View>)}
+            </>
+          )}
 
-          <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.adminPanel, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+          {(documentsOnly || canManageAccess) && <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.adminPanel, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
             <View style={styles.adminHeader}>
-              <Text style={[styles.adminTitle, { color: colors.textPrimary }]}>Administración de usuarios y acceso</Text>
-              <Text style={styles.adminMeta}>{accountRequests.filter((item) => item.status === 'pendiente').length} pendientes</Text>
+              <Text style={[styles.adminTitle, { color: colors.textPrimary }]}>
+                {documentsOnly ? 'Reportes y documentación' : 'Administración de usuarios y acceso'}
+              </Text>
+              {!documentsOnly && (
+                <Text style={styles.adminMeta}>{managedAccounts.length} cuentas</Text>
+              )}
             </View>
 
-            <View style={styles.adminTabsRow}>
-              {['Solicitudes', 'Usuarios', 'Bitácora', 'Documentos'].map((tab) => (
+            {!documentsOnly && <View style={styles.adminTabsRow}>
+              {visibleAdminTabs.map(tab => (
                 <TouchableOpacity
                   key={tab}
                   activeOpacity={0.8}
-                  onPress={() => setActiveAdminTab(tab as any)}
+                  onPress={() => setActiveAdminTab(tab)}
                   style={[
                     styles.adminTab, 
                     { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)', borderColor: colors.cardBorder },
-                    activeAdminTab === tab && { backgroundColor: colors.chipActiveBg, borderColor: colors.chipActiveBg }
+                    selectedAdminTab === tab && { backgroundColor: colors.chipActiveBg, borderColor: colors.chipActiveBg }
                   ]}
                 >
                   <Text style={[
                     styles.adminTabText, 
                     { color: colors.textSecondary },
-                    activeAdminTab === tab && { color: colors.chipActiveText }
+                    selectedAdminTab === tab && { color: colors.chipActiveText }
                   ]}>{tab}</Text>
                 </TouchableOpacity>
               ))}
-            </View>
+            </View>}
 
             <View style={[styles.adminSearchRow, { backgroundColor: colors.searchBg, borderColor: colors.searchBorder }]}>
               <Feather name="search" size={15} color={colors.textTertiary} />
               <TextInput
-                placeholder={activeAdminTab === 'Documentos' ? 'Buscar tipo de documento...' : 'Buscar por nombre, correo o área...'}
+                placeholder={selectedAdminTab === 'Documentos'
+                  ? 'Buscar tipo de documento...'
+                  : selectedAdminTab === 'Bitácora'
+                    ? 'Buscar por usuario, módulo, acción o registro...'
+                    : 'Buscar por correo o rol...'}
                 placeholderTextColor={colors.placeholder}
                 style={[styles.adminSearchInput, { color: colors.textPrimary }]}
                 value={adminSearch}
@@ -255,88 +383,130 @@ export default function SearchScreen() {
               />
             </View>
 
-            {activeAdminTab === 'Solicitudes' && (
+            {selectedAdminTab === 'Usuarios' && (
               <View style={styles.adminList}>
-                {filteredRequests.map((req) => (
-                  <View key={req.id} style={[styles.userCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.cardBorder }]}>
+                <Text style={[styles.userMeta, { color: colors.textSecondary }]}>
+                  Activa o desactiva el acceso y cambia el rol entre Técnico de red y Administrador.
+                </Text>
+                {accountsLoading && (
+                  <View style={styles.auditLoading}>
+                    <ActivityIndicator size="small" color="#0A84FF" />
+                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Cargando cuentas de InsForge...</Text>
+                  </View>
+                )}
+                {accountsError !== '' && (
+                  <View>
+                    <Text style={[styles.emptyState, { color: '#FF453A' }]}>{accountsError}</Text>
+                    <TouchableOpacity
+                      style={[styles.primaryAction, { backgroundColor: colors.buttonBg, alignSelf: 'flex-start', marginTop: 8 }]}
+                      onPress={() => setAccountReloadKey(value => value + 1)}>
+                      <Text style={[styles.primaryActionText, { color: colors.buttonText }]}>Reintentar</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {!accountsLoading && !accountsError && filteredAccounts.map(account => (
+                  <View key={account.id} style={[styles.userCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.cardBorder }]}>
                     <View style={styles.userCardHeader}>
-                      <View>
-                        <Text style={[styles.userName, { color: colors.textPrimary }]}>{req.name}</Text>
-                        <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{req.email}</Text>
+                      <View style={{ flex: 1, paddingRight: 10 }}>
+                        <Text style={[styles.userName, { color: colors.textPrimary }]} numberOfLines={1}>{account.email}</Text>
+                        <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{account.role}</Text>
                       </View>
-                      <View style={[styles.statusPill, req.status === 'activo' ? styles.statusActive : req.status === 'rechazado' ? styles.statusRejected : styles.statusPending]}>
-                        <Text style={styles.statusText}>{req.status}</Text>
+                      <View style={[styles.statusPill, account.active ? styles.statusActive : styles.statusRejected]}>
+                        <Text style={styles.statusText}>{account.active ? 'Activo' : 'Desactivado'}</Text>
                       </View>
                     </View>
-                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Área: {req.area}</Text>
-                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Tipo: {req.requestType === 'tecnico_red' ? 'Técnico de red' : 'Administrador'}</Text>
-                    <Text style={[styles.userDetail, { color: colors.textSecondary }]}>{req.workInfo}</Text>
-                    <Text style={[styles.userDetail, { color: colors.textSecondary }]}>{req.activities}</Text>
                     <View style={styles.cardActions}>
-                      <TouchableOpacity style={[styles.primaryAction, { backgroundColor: colors.buttonBg }]} onPress={() => handleRequestDecision(req.id, 'activo')}>
-                        <Text style={[styles.primaryActionText, { color: colors.buttonText }]}>Aceptar</Text>
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        disabled={accountAction !== null || (account.id === user?.id && account.active)}
+                        style={[
+                          styles.primaryAction,
+                          { backgroundColor: account.active ? 'rgba(255,69,58,0.12)' : colors.buttonBg, opacity: accountAction && accountAction.id !== account.id ? 0.55 : 1 },
+                        ]}
+                        onPress={() => void handleAccountAccessChange(account)}>
+                        {accountAction?.id === account.id && accountAction.type === 'access'
+                          ? <ActivityIndicator size="small" color={account.active ? '#FF453A' : colors.buttonText} />
+                          : <Text style={[styles.primaryActionText, { color: account.active ? '#FF453A' : colors.buttonText }]}>
+                            {account.id === user?.id && account.active ? 'Tu propia cuenta' : account.active ? 'Desactivar acceso' : 'Activar acceso'}
+                          </Text>}
                       </TouchableOpacity>
-                      <TouchableOpacity style={styles.secondaryAction} onPress={() => handleRequestDecision(req.id, 'rechazado')}>
-                        <Text style={styles.secondaryActionText}>Rechazar</Text>
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        disabled={accountAction !== null || account.id === user?.id}
+                        style={[
+                          styles.primaryAction,
+                          { backgroundColor: 'rgba(10,132,255,0.12)', opacity: accountAction && accountAction.id !== account.id ? 0.55 : 1 },
+                        ]}
+                        onPress={() => void handleAccountRoleChange(account)}>
+                        {accountAction?.id === account.id && accountAction.type === 'role'
+                          ? <ActivityIndicator size="small" color="#0A84FF" />
+                          : <Text style={[styles.primaryActionText, { color: '#0A84FF' }]}>
+                            {account.id === user?.id
+                              ? 'No puedes cambiar tu rol'
+                              : account.role === 'Administrador' ? 'Devolver a técnico' : 'Hacer administrador'}
+                          </Text>}
                       </TouchableOpacity>
                     </View>
                   </View>
                 ))}
-                {filteredRequests.length === 0 && <Text style={[styles.emptyState, { color: colors.textTertiary }]}>No hay solicitudes que coincidan con la búsqueda.</Text>}
+                {!accountsLoading && !accountsError && filteredAccounts.length === 0 && (
+                  <Text style={[styles.emptyState, { color: colors.textTertiary }]}>
+                    {managedAccounts.length === 0 ? 'No hay cuentas asignadas en la tabla de roles.' : 'No hay cuentas que coincidan con la búsqueda.'}
+                  </Text>
+                )}
               </View>
             )}
 
-            {activeAdminTab === 'Usuarios' && (
+            {selectedAdminTab === 'Bitácora' && (
               <View style={styles.adminList}>
-                {INITIAL_USERS.filter((user) => {
-                  const q = adminSearch.trim().toLowerCase();
-                  if (!q) return true;
-                  return user.name.toLowerCase().includes(q) || user.email.toLowerCase().includes(q) || user.area.toLowerCase().includes(q);
-                }).map((user) => (
-                  <View key={user.id} style={[styles.userCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.cardBorder }]}>
+                {auditLoading && (
+                  <View style={styles.auditLoading}>
+                    <ActivityIndicator size="small" color="#0A84FF" />
+                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Cargando historial protegido...</Text>
+                  </View>
+                )}
+                {auditError ? (
+                  <View>
+                    <Text style={[styles.userDetail, { color: '#FF453A' }]}>{auditError}</Text>
+                    <TouchableOpacity
+                      style={[styles.primaryAction, { backgroundColor: colors.buttonBg, alignSelf: 'flex-start', marginTop: 8 }]}
+                      onPress={() => setAuditReloadKey(value => value + 1)}>
+                      <Text style={[styles.primaryActionText, { color: colors.buttonText }]}>Reintentar</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+                {!auditLoading && !auditError && filteredAuditLogs.map(entry => (
+                  <View key={entry.id} style={[styles.auditCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.cardBorder }]}>
                     <View style={styles.userCardHeader}>
                       <View>
-                        <Text style={[styles.userName, { color: colors.textPrimary }]}>{user.name}</Text>
-                        <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{user.email}</Text>
+                        <Text style={[styles.userName, { color: colors.textPrimary }]}>{entry.actor_email || entry.actor_id || 'Acción de sistema'}</Text>
+                        <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{auditTableLabel(entry.table_name)}</Text>
                       </View>
-                      <View style={[styles.statusPill, user.status === 'activo' ? styles.statusActive : styles.statusPending]}>
-                        <Text style={styles.statusText}>{user.status}</Text>
+                      <View style={[
+                        styles.statusPill,
+                        entry.operation === 'DELETE' ? styles.statusRejected : entry.operation === 'UPDATE' ? styles.statusPending : styles.statusActive,
+                      ]}>
+                        <Text style={styles.statusText}>{auditOperationLabel(entry.operation)}</Text>
                       </View>
                     </View>
-                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Área: {user.area}</Text>
-                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Rol: {user.role}</Text>
-                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Último acceso: {user.lastLogin}</Text>
+                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>
+                      Rol: {entry.actor_role || 'No identificado'} · Registro: {entry.record_id}
+                    </Text>
+                    <Text style={[styles.userDetail, { color: colors.textSecondary }]}>{auditChangeSummary(entry)}</Text>
+                    <Text style={[styles.userMeta, { color: colors.textTertiary }]}>
+                      {new Date(entry.changed_at).toLocaleString('es-MX')}
+                    </Text>
                   </View>
                 ))}
+                {!auditLoading && !auditError && filteredAuditLogs.length === 0 && (
+                  <Text style={[styles.emptyState, { color: colors.textSecondary }]}>
+                    {auditLogs.length ? 'No hay registros que coincidan con la búsqueda.' : 'Aún no hay cambios registrados.'}
+                  </Text>
+                )}
               </View>
             )}
 
-            {activeAdminTab === 'Bitácora' && (
-              <View style={styles.adminList}>
-                {INITIAL_AUDIT_LOGS.filter((item) => {
-                  const q = adminSearch.trim().toLowerCase();
-                  if (!q) return true;
-                  return item.user.toLowerCase().includes(q) || item.module.toLowerCase().includes(q) || item.action.toLowerCase().includes(q) || item.area.toLowerCase().includes(q);
-                }).map((item) => (
-                  <View key={item.id} style={[styles.auditCard, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.cardBorder }]}>
-                    <View style={styles.userCardHeader}>
-                      <View>
-                        <Text style={[styles.userName, { color: colors.textPrimary }]}>{item.user}</Text>
-                        <Text style={[styles.userEmail, { color: colors.textSecondary }]}>{item.module}</Text>
-                      </View>
-                      <View style={[styles.statusPill, item.status === 'ok' ? styles.statusActive : item.status === 'warning' ? styles.statusPending : styles.statusRejected]}>
-                        <Text style={styles.statusText}>{item.status}</Text>
-                      </View>
-                    </View>
-                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Acción: {item.action}</Text>
-                    <Text style={[styles.userDetail, { color: colors.textSecondary }]}>{item.description}</Text>
-                    <Text style={[styles.userMeta, { color: colors.textSecondary }]}>Fecha: {item.date} • Área: {item.area}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {activeAdminTab === 'Documentos' && (
+            {selectedAdminTab === 'Documentos' && (
               <View style={styles.adminList}>
                 <Text style={[styles.userMeta, { color: colors.textSecondary }]}>
                   Elige el periodo y genera un documento con los datos actuales de InsForge.
@@ -388,7 +558,7 @@ export default function SearchScreen() {
                 ) : null}
               </View>
             )}
-          </BlurView>
+          </BlurView>}
         </View>
       </ScrollView>
     </LinearGradient>
@@ -398,6 +568,7 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingTop: 45, paddingBottom: 110 },
+  documentsOnlyScrollContent: { paddingTop: 18 },
   innerWrapper: { maxWidth: 1200, width: '100%', alignSelf: 'center' },
   header: { marginBottom: 18 },
   headerBadge: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#FF9F0A', letterSpacing: 1.5, marginBottom: 2 },
@@ -468,6 +639,7 @@ const styles = StyleSheet.create({
   secondaryAction: { flex: 1, backgroundColor: 'rgba(255,69,58,0.12)', borderRadius: 10, paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,69,58,0.3)' },
   secondaryActionText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#FF453A' },
   auditCard: { backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 14, padding: 12 },
+  auditLoading: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 8 },
   docCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'rgba(255,255,255,0.03)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 14, padding: 12 },
   documentDateRow: { flexDirection: 'row', gap: 8, marginTop: 5, marginBottom: 8 },
   documentDateInput: { flex: 1, minWidth: 0, height: 40, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, fontFamily: 'Poppins_400Regular', fontSize: 11 },

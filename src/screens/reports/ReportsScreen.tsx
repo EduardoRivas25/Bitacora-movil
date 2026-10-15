@@ -264,7 +264,7 @@ export default function ReportsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 125, maxWidth: 1100, width: '100%', alignSelf: 'center' },
+  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 125, maxWidth: 1100, width: '100%', alignSelf: 'center' },
   eyebrow: { color: '#0A84FF', fontSize: 11, fontWeight: '700', letterSpacing: 1.2 },
   title: { fontSize: 30, fontWeight: '700', marginTop: 5 },
   subtitle: { fontSize: 13, lineHeight: 19, marginTop: 4, marginBottom: 22 },

@@ -16,14 +16,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
+import * as Clipboard from 'expo-clipboard';
 import { useTheme } from '../../contexts/ThemeContext';
 import * as api from '../../services/api';
 import { DeviceConfig, Device } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
-import { validateRequired } from '../../utils/validators';
-import PasswordRecoveryScreen from '../auth/PasswordRecoveryScreen';
-
-const UTILITY_TABS = ['Notificaciones', 'Perfil', 'Seguridad', 'Preferencias', 'Acerca de'];
+import { isAdministrator } from '../../utils/permissions';
+import { confirmDestructiveAction } from '../../utils/destructiveConfirmation';
 
 export default function ConfigScreen() {
   const { colors, isDark } = useTheme();
@@ -31,7 +30,8 @@ export default function ConfigScreen() {
   const isTablet = width > 768;
   const isDesktop = width > 900;
   const navigation = useNavigation<any>();
-  const { user, updateProfile } = useAuth();
+  const { user } = useAuth();
+  const canManageConfigs = isAdministrator(user);
 
   const [configs, setConfigs] = useState<DeviceConfig[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -51,31 +51,6 @@ export default function ConfigScreen() {
   const [isDragging, setIsDragging] = useState(false);
   const [copiedSuccess, setCopiedSuccess] = useState(false);
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const [selectedUtility, setSelectedUtility] = useState('Notificaciones');
-  const [profileName, setProfileName] = useState(user?.profile?.name || '');
-  const [profileArea, setProfileArea] = useState(typeof user?.profile?.area === 'string' ? user.profile.area : '');
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [showPasswordRecovery, setShowPasswordRecovery] = useState(false);
-
-  useEffect(() => {
-    setProfileName(user?.profile?.name || '');
-    setProfileArea(typeof user?.profile?.area === 'string' ? user.profile.area : '');
-  }, [user?.id, user?.profile?.name, user?.profile?.area]);
-
-  const handleSaveProfile = async () => {
-    const name = validateRequired(profileName.trim(), 2, 'El nombre');
-    if (!name.valid) { showFeedback(name.error || 'Ingresa tu nombre.', 'error'); return; }
-    try {
-      setSavingProfile(true);
-      await updateProfile({ name: profileName, area: profileArea });
-      api.invalidateCache('incidents');
-      showFeedback('Perfil actualizado');
-    } catch (err: any) {
-      showFeedback(err?.message || 'No se pudo actualizar el perfil.', 'error');
-    } finally {
-      setSavingProfile(false);
-    }
-  };
 
   // Ref para input de archivo en Web
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -209,6 +184,7 @@ export default function ConfigScreen() {
 
   // Guardar configuración nueva en Base de Datos
   const handleSaveNewConfig = async () => {
+    if (!canManageConfigs) return;
     if (isSaving) return;
     if (!configName.trim()) {
       showFeedback('Ingresa un nombre para la configuración', 'error');
@@ -257,6 +233,7 @@ export default function ConfigScreen() {
 
   // Actualizar configuración existente en Base de Datos
   const handleUpdateExistingConfig = async () => {
+    if (!canManageConfigs) return;
     if (isSaving) return;
     if (!selectedConfig) return;
     if (!configContent || !configContent.trim()) {
@@ -298,6 +275,7 @@ export default function ConfigScreen() {
 
   // Limpiar editor / Nuevo documento en blanco
   const handleClearEditor = () => {
+    if (!canManageConfigs) return;
     setSelectedConfig(null);
     setConfigName('');
     setConfigDesc('');
@@ -309,15 +287,22 @@ export default function ConfigScreen() {
 
   // Eliminar configuración de Base de Datos
   const handleDeleteConfig = async (id: string) => {
+    if (!canManageConfigs) return;
+    const config = configs.find(item => item.id === id);
+    if (!config || !await confirmDestructiveAction(
+      'Eliminar configuración',
+      `¿Seguro que quieres eliminar “${config.name}”? Esta acción no se puede deshacer.`,
+    )) return;
+
     // Actualización optimista instantánea (0ms)
     const prevConfigs = [...configs];
     setConfigs(prev => prev.filter(c => c.id !== id));
     if (selectedConfig?.id === id) {
       handleClearEditor();
     }
-    showFeedback('Configuración eliminada de la base de datos');
     try {
       await api.deleteConfig(id);
+      showFeedback('Configuración eliminada de la base de datos');
     } catch (err: any) {
       console.error(err);
       setConfigs(prevConfigs);
@@ -326,23 +311,17 @@ export default function ConfigScreen() {
   };
 
   // Copiar contenido al portapapeles
-  const handleCopyCode = async () => {
-    if (!configContent) return;
-
-    if (Platform.OS === 'web' && navigator?.clipboard) {
-      await navigator.clipboard.writeText(configContent);
+  const handleCopyCode = async (content = configContent) => {
+    if (!content) return;
+    try {
+      await Clipboard.setStringAsync(content);
       setCopiedSuccess(true);
       setTimeout(() => setCopiedSuccess(false), 2000);
       showFeedback('¡Copiado al portapapeles!');
-      return;
+    } catch (error) {
+      console.error('No se pudo copiar la configuración al portapapeles:', error);
+      showFeedback(error instanceof Error ? error.message : 'No se pudo copiar el contenido.', 'error');
     }
-
-    if (Platform.OS !== 'web') {
-      showFeedback('La copia no está disponible en esta plataforma.', 'error');
-      return;
-    }
-
-    showFeedback('No se pudo acceder al portapapeles del navegador.', 'error');
   };
 
   if (loading && configs.length === 0 && devices.length === 0) {
@@ -358,31 +337,77 @@ export default function ConfigScreen() {
     );
   }
 
+  if (!canManageConfigs) {
+    return (
+      <LinearGradient colors={colors.gradient} style={styles.container}>
+        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: isDesktop ? '6%' : isTablet ? '4%' : 16 }]} showsVerticalScrollIndicator={false}>
+          <View style={styles.innerWrapper}>
+            <View style={styles.header}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.headerBadge}>HISTORIAL & BACKUPS DE EQUIPOS</Text>
+                <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Configuraciones</Text>
+                <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
+                  Consulta los respaldos guardados. Solo administración puede crear, editar o eliminar configuraciones.
+                </Text>
+              </View>
+            </View>
+            {configs.map(config => (
+              <TouchableOpacity
+                key={config.id}
+                activeOpacity={0.75}
+                onPress={() => setSelectedConfig(current => current?.id === config.id ? null : config)}
+                style={[styles.backupItem, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder, marginBottom: 10 }]}>
+                <View style={styles.backupItemLeft}>
+                  <View style={[styles.cfgIconBadge, { backgroundColor: colors.inputBg }]}>
+                    <Feather name="file-text" size={16} color="#0A84FF" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.backupName, { color: colors.textPrimary }]} numberOfLines={1}>{config.name}</Text>
+                    <Text style={[styles.backupMeta, { color: colors.textSecondary }]}>
+                      Dispositivo: {config.device_name} · Archivo: {config.file_name} · {config.file_size || 'Tamaño no disponible'}
+                    </Text>
+                  </View>
+                  <Feather name={selectedConfig?.id === config.id ? 'chevron-up' : 'chevron-down'} size={17} color={colors.textSecondary} />
+                </View>
+                {selectedConfig?.id === config.id && (
+                  <View style={{ borderTopWidth: 1, borderColor: colors.divider, marginTop: 12, paddingTop: 12 }}>
+                    <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>{config.description}</Text>
+                    <Text selectable style={[styles.terminalTextArea, { color: colors.textPrimary, padding: 10, maxHeight: 260 }]}>
+                      {config.content || 'Este respaldo no contiene texto para mostrar.'}
+                    </Text>
+                    {!!config.content && (
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        style={[styles.terminalBtn, { backgroundColor: colors.chipBg, alignSelf: 'flex-start', marginTop: 8 }]}
+                        onPress={() => void handleCopyCode(config.content)}>
+                        <Feather name={copiedSuccess ? 'check' : 'copy'} size={13} color={colors.textPrimary} />
+                        <Text style={[styles.terminalBtnText, { color: colors.textPrimary }]}>{copiedSuccess ? '¡Copiado!' : 'Copiar código'}</Text>
+                      </TouchableOpacity>
+                    )}
+                    {statusMsg && (
+                      <Text style={[styles.utilityItemText, { color: statusMsg.type === 'error' ? '#FF453A' : '#30D158', marginTop: 6 }]}>
+                        {statusMsg.text}
+                      </Text>
+                    )}
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+            {configs.length === 0 && (
+              <View style={[styles.emptyBackups, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder, borderWidth: 1, borderRadius: 14 }]}>
+                <Feather name="folder" size={32} color={colors.textTertiary} />
+                <Text style={[styles.emptyBackupsText, { color: colors.textTertiary }]}>No hay configuraciones guardadas.</Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </LinearGradient>
+    );
+  }
+
   const lineCount = configContent ? configContent.split('\n').length : 1;
 
   const isSmallMobile = width < 380;
-  const notificationList = [
-    { title: 'Cambio de acceso', detail: 'Se aprobo el acceso del usuario Ana García', type: 'success' },
-    { title: 'Incidente crítico', detail: 'Se registró una caída en el firewall principal', type: 'danger' },
-    { title: 'Copia de seguridad', detail: 'Se generó la réplica del segmento interno', type: 'info' },
-  ];
-
-  const profileSummary = [
-    { label: 'Correo', value: user?.email || 'No disponible' },
-  ];
-
-  if (showPasswordRecovery) {
-    return <PasswordRecoveryScreen initialEmail={user?.email || ''} onBack={() => setShowPasswordRecovery(false)} />;
-  }
-
-  const documentLinks = [
-    'Infraestructura general',
-    'Bitácora de operaciones',
-    'Incidentes de red',
-    'Usuarios y accesos',
-    'Segmentación por VLAN',
-  ];
-
   return (
     <LinearGradient colors={colors.gradient} style={styles.container}>
       {/* Input oculto para carga de archivos en Web */}
@@ -439,107 +464,6 @@ export default function ConfigScreen() {
               <Text style={[styles.toastText, { color: colors.textPrimary }]}>{statusMsg.text}</Text>
             </View>
           )}
-
-          <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.utilityCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
-            <View style={styles.utilityHeader}>
-              <Text style={[styles.cardSectionTitle, { color: colors.textPrimary }]}>Sistema y configuración</Text>
-              <View style={styles.editingBadge}>
-                <Text style={styles.editingBadgeText}>Panel administrativo</Text>
-              </View>
-            </View>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.utilityTabsRow}>
-              {UTILITY_TABS.map((tab) => (
-                <TouchableOpacity
-                  key={tab}
-                  activeOpacity={0.8}
-                  onPress={() => setSelectedUtility(tab)}
-                  style={[
-                    styles.utilityTab, 
-                    { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)', borderColor: colors.cardBorder },
-                    selectedUtility === tab && styles.utilityTabActive
-                  ]}
-                >
-                  <Text style={[styles.utilityTabText, { color: colors.textSecondary }, selectedUtility === tab && styles.utilityTabTextActive]}>{tab}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            {selectedUtility === 'Notificaciones' && (
-              <View style={[styles.utilityContent, { borderColor: colors.divider }]}>
-                {notificationList.map((item, index) => (
-                  <View key={`${item.title}-${index}`} style={styles.utilityItem}>
-                    <View style={[styles.utilityMarker, { backgroundColor: item.type === 'success' ? '#30D158' : item.type === 'danger' ? '#FF453A' : '#0A84FF' }]} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.utilityItemTitle, { color: colors.textPrimary }]}>{item.title}</Text>
-                      <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>{item.detail}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {selectedUtility === 'Perfil' && (
-              <View style={[styles.utilityContent, { borderColor: colors.divider }]}>
-                <Text style={[styles.utilityItemTitle, { color: colors.textPrimary }]}>Tu perfil</Text>
-                <TextInput
-                  accessibilityLabel="Nombre completo"
-                  placeholder="Nombre completo"
-                  placeholderTextColor={colors.placeholder}
-                  value={profileName}
-                  onChangeText={setProfileName}
-                  style={[styles.profileInput, { color: colors.textPrimary, backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
-                />
-                <TextInput
-                  accessibilityLabel="Área de trabajo"
-                  placeholder="Área de trabajo (opcional)"
-                  placeholderTextColor={colors.placeholder}
-                  value={profileArea}
-                  onChangeText={setProfileArea}
-                  style={[styles.profileInput, { color: colors.textPrimary, backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
-                />
-                <TouchableOpacity style={styles.profileSaveButton} disabled={savingProfile} onPress={handleSaveProfile}>
-                  <Text style={styles.profileSaveText}>{savingProfile ? 'Guardando...' : 'Guardar perfil'}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.profileSaveButton, { backgroundColor: colors.chipBg, borderWidth: 1, borderColor: colors.chipBorder }]} onPress={() => setShowPasswordRecovery(true)}>
-                  <Text style={[styles.profileSaveText, { color: colors.textPrimary }]}>Cambiar contraseña</Text>
-                </TouchableOpacity>
-                {profileSummary.map((item) => (
-                  <View key={item.label} style={[styles.profileRow, { borderColor: colors.divider }]}>
-                    <Text style={[styles.profileLabel, { color: colors.textTertiary }]}>{item.label}</Text>
-                    <Text style={[styles.profileValue, { color: colors.textPrimary }]}>{item.value}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {selectedUtility === 'Seguridad' && (
-              <View style={[styles.utilityContent, { borderColor: colors.divider }]}>
-                <Text style={[styles.utilityItemTitle, { color: colors.textPrimary }]}>Autenticación y seguridad</Text>
-                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Para cambiar tu contraseña, enviaremos un código a {user?.email || 'tu correo'}.</Text>
-                <TouchableOpacity style={styles.profileSaveButton} onPress={() => setShowPasswordRecovery(true)}>
-                  <Text style={styles.profileSaveText}>Cambiar contraseña</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {selectedUtility === 'Preferencias' && (
-              <View style={[styles.utilityContent, { borderColor: colors.divider }]}>
-                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Tema visual: {isDark ? 'Oscuro' : 'Claro'}</Text>
-                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Notificaciones: Activadas</Text>
-                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Idioma: Español</Text>
-                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Área predeterminada: Infraestructura</Text>
-              </View>
-            )}
-
-            {selectedUtility === 'Acerca de' && (
-              <View style={[styles.utilityContent, { borderColor: colors.divider }]}>
-                <Text style={[styles.utilityItemTitle, { color: colors.textPrimary }]}>Bitácora Digital</Text>
-                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Sistema para registrar cambios, incidentes, infraestructura, usuarios y reportes administrativos.</Text>
-                <Text style={[styles.utilityItemText, { color: colors.textSecondary }]}>Versión: 1.0.0 • Componentes: React Native + Expo + InsForge</Text>
-              </View>
-            )}
-          </BlurView>
 
           {/* Layout 2 Columnas */}
           <View style={[styles.mainLayout, isDesktop && styles.mainLayoutDesktop]}>
@@ -601,7 +525,7 @@ export default function ConfigScreen() {
                 ) : (
                   <View style={styles.noDeviceBanner}>
                     <Text style={[styles.noDeviceText, { color: colors.textSecondary }]}>No hay dispositivos en la base de datos.</Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('Dispositivos')}>
+                    <TouchableOpacity onPress={() => navigation.navigate('Infraestructura', { screen: 'InventarioDispositivos' })}>
                       <Text style={styles.addDeviceLink}>+ Registrar Dispositivo</Text>
                     </TouchableOpacity>
                   </View>
@@ -825,7 +749,7 @@ export default function ConfigScreen() {
                         <View style={{ flex: 1, paddingRight: 8 }}>
                           <Text style={[styles.backupName, { color: colors.textPrimary }]} numberOfLines={1}>{cfg.name}</Text>
                           <Text style={[styles.backupMeta, { color: colors.textSecondary }]}>
-                            {cfg.device_name} • {cfg.file_name} ({cfg.file_size || 'N/A'})
+                            Dispositivo: {cfg.device_name} • {cfg.file_name} ({cfg.file_size || 'N/A'})
                           </Text>
                         </View>
                       </View>
@@ -888,7 +812,7 @@ export default function ConfigScreen() {
                   {configContent.length > 0 && (
                     <TouchableOpacity 
                       style={[styles.terminalBtn, { backgroundColor: colors.chipBg }]}
-                      onPress={handleCopyCode}
+                      onPress={() => void handleCopyCode()}
                       activeOpacity={0.7}
                     >
                       <Feather name={copiedSuccess ? "check" : "copy"} size={12} color={colors.textPrimary} />
@@ -1047,120 +971,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     flex: 1,
   },
-  utilityCard: {
-    padding: 18,
-    marginBottom: 20,
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-  },
-  utilityHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 14,
-  },
-  utilityTabsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingBottom: 12,
-  },
-  utilityTab: {
-    paddingHorizontal: 13,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-  },
-  utilityTabActive: {
-    borderColor: 'rgba(10, 132, 255, 0.5)',
-    backgroundColor: 'rgba(10, 132, 255, 0.16)',
-  },
-  utilityTabText: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.55)',
-  },
-  utilityTabTextActive: {
-    color: '#0A84FF',
-  },
-  utilityContent: {
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  utilityItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    paddingVertical: 9,
-  },
-  utilityMarker: {
-    width: 8,
-    height: 8,
-    marginTop: 6,
-    borderRadius: 4,
-  },
-  utilityItemTitle: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 12,
-    color: '#FFFFFF',
-    marginBottom: 3,
-  },
   utilityItemText: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
     lineHeight: 18,
     color: 'rgba(255, 255, 255, 0.55)',
     marginBottom: 4,
-  },
-  profileRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-    paddingVertical: 9,
-    borderBottomWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
-  },
-  profileLabel: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.5)',
-  },
-  profileValue: {
-    flex: 1,
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 11,
-    color: '#FFFFFF',
-    textAlign: 'right',
-  },
-  profileInput: {
-    fontFamily: 'Poppins_400Regular',
-    fontSize: 14,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginTop: 12,
-  },
-  profileSaveButton: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#0A84FF',
-    borderRadius: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    marginTop: 14,
-    marginBottom: 12,
-  },
-  profileSaveText: {
-    fontFamily: 'Poppins_600SemiBold',
-    fontSize: 13,
-    color: '#FFFFFF',
   },
   mainLayout: {
     flexDirection: 'column',

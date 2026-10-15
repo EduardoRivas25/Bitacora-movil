@@ -67,6 +67,17 @@ export interface Device {
   network_name?: string;
 }
 
+export interface SwitchPort {
+  id: string;
+  switch_device_id: string;
+  port_label: string;
+  status: 'available' | 'in_use';
+  connected_device: string;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface NetworkFormData {
   name: string;
   address: string;
@@ -134,6 +145,7 @@ export interface IncidentAction {
 
 export interface Maintenance {
   id: string;
+  device_id?: string;
   title: string;
   type: 'preventive' | 'firmware' | 'cleaning' | 'ups_battery' | 'audit';
   type_label: string;
@@ -161,39 +173,11 @@ export interface DeviceConfig {
   author: string;
 }
 
-export type AccountRequestType = 'tecnico_red' | 'administrador';
-export type AccessStatus = 'activo' | 'pendiente' | 'rechazado';
-
-export interface AccountRequest {
-  id: string;
-  name: string;
-  email: string;
-  area: string;
-  workInfo: string;
-  activities: string;
-  requestType: AccountRequestType;
-  status: AccessStatus;
-  created_at: string;
-  lastUpdated?: string;
-}
-
 export interface UserAccessRecord {
   id: string;
-  name: string;
   email: string;
-  area: string;
   role: 'Administrador' | 'Técnico de red';
-  status: AccessStatus;
-  lastLogin: string;
-}
-
-export interface NotificationItem {
-  id: string;
-  title: string;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'danger';
-  time: string;
-  unread: boolean;
+  active: boolean;
 }
 
 export interface AuditLogEntry {
@@ -205,6 +189,19 @@ export interface AuditLogEntry {
   date: string;
   area: string;
   status: 'ok' | 'warning' | 'error';
+}
+
+export interface AuditLogRecord {
+  id: number;
+  table_name: string;
+  record_id: string;
+  operation: 'INSERT' | 'UPDATE' | 'DELETE';
+  actor_id: string | null;
+  actor_email: string | null;
+  actor_role: 'Administrador' | 'Técnico de red' | null;
+  changed_at: string;
+  old_data: Record<string, unknown> | null;
+  new_data: Record<string, unknown> | null;
 }
 
 export interface PdfDocumentLink {

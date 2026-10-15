@@ -9,6 +9,7 @@ import {
   View,
   ScrollView,
   Image,
+  Modal,
 } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { BlurView } from 'expo-blur';
@@ -21,6 +22,32 @@ import PasswordRecoveryScreen from './PasswordRecoveryScreen';
 
 const LOGO_DARK = require('../../../assets/logobitacoraredes.png');
 const LOGO_LIGHT = require('../../../assets/logobitacoraredesmodoclaro.png');
+const TERMS_SECTIONS = [
+  {
+    title: 'Uso autorizado',
+    body: 'La aplicación es para personal autorizado que administra o consulta información de redes e infraestructura. Cada usuario debe usar únicamente las funciones permitidas por su rol.',
+  },
+  {
+    title: 'Cuenta y acceso',
+    body: 'El usuario debe proporcionar datos correctos, proteger sus credenciales y no compartir su cuenta. El administrador puede habilitar o deshabilitar el acceso según las necesidades del proyecto.',
+  },
+  {
+    title: 'Información registrada',
+    body: 'Los datos de dispositivos, redes, incidentes, mantenimientos, configuraciones y reportes deben ser correctos y mantenerse actualizados. Cada usuario es responsable de las operaciones que realiza con su cuenta.',
+  },
+  {
+    title: 'Información sensible',
+    body: 'No se deben guardar contraseñas, claves privadas, tokens ni secretos en descripciones, configuraciones o archivos. Los respaldos pueden contener información sensible y solo deben consultarse o compartirse con autorización.',
+  },
+  {
+    title: 'Disponibilidad y reportes',
+    body: 'La aplicación depende de los servicios de InsForge y de la conexión a Internet. Los reportes reflejan la información disponible en el sistema al momento de generarlos; el usuario debe verificar su contenido antes de distribuirlos.',
+  },
+  {
+    title: 'Uso indebido y soporte',
+    body: 'No se permite acceder, modificar, borrar ni divulgar información sin autorización. El administrador podrá suspender el acceso ante uso indebido o por razones operativas. Para soporte o dudas, contacta al responsable del proyecto o del área de TI.',
+  },
+];
 
 export default function LoginScreen() {
   // Extraemos también 'theme' para evaluar si estamos en modo oscuro
@@ -30,7 +57,7 @@ export default function LoginScreen() {
   
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
-  const { signIn, signUp, verifyEmail, signInGoogle, signInApple, isLoading } = useAuth();
+  const { signIn, signUp, verifyEmail, signInGoogle, signInApple, isLoading, authorizationError } = useAuth();
 
   const [isRegister, setIsRegister] = useState(false);
   const [showRecovery, setShowRecovery] = useState(false);
@@ -38,11 +65,8 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [jobInfo, setJobInfo] = useState('');
-  const [area, setArea] = useState('');
-  const [activities, setActivities] = useState('');
-  const [requestType, setRequestType] = useState<'tecnico_red' | 'administrador'>('tecnico_red');
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -56,19 +80,10 @@ export default function LoginScreen() {
     if (isRegister) {
       const nameVal = validateRequired(name, 2, 'El nombre completo');
       if (!nameVal.valid) errors.name = nameVal.error!;
+    }
 
-      const jobVal = validateRequired(jobInfo, 3, 'La información laboral');
-      if (!jobVal.valid) errors.jobInfo = jobVal.error!;
-
-      const areaVal = validateRequired(area, 2, 'El área');
-      if (!areaVal.valid) errors.area = areaVal.error!;
-
-      const activitiesVal = validateRequired(activities, 6, 'Las actividades');
-      if (!activitiesVal.valid) errors.activities = activitiesVal.error!;
-
-      if (!termsAccepted) {
-        errors.terms = 'Debes aceptar los términos y condiciones para solicitar la cuenta.';
-      }
+    if (!termsAccepted) {
+      errors.terms = 'Debes aceptar los términos y condiciones para continuar.';
     }
 
     const emailVal = validateEmail(email);
@@ -107,6 +122,10 @@ export default function LoginScreen() {
         await verifyEmail(pendingVerificationEmail, verificationCode);
       } catch (err: any) {
         setErrorMsg(err?.message || 'No se pudo verificar el correo.');
+        if (err?.message?.includes('administrador habilite')) {
+          setPendingVerificationEmail('');
+          setVerificationCode('');
+        }
       }
       return;
     }
@@ -114,7 +133,7 @@ export default function LoginScreen() {
 
     try {
       if (isRegister) {
-        const result = await signUp(email.trim(), password, name.trim(), requestType);
+        const result = await signUp(email.trim(), password, name.trim());
         if (result.requireEmailVerification) {
           setPendingVerificationEmail(email.trim());
           setIsRegister(false);
@@ -124,11 +143,30 @@ export default function LoginScreen() {
       }
     } catch (err: any) {
       const msg = err?.message || 'Error de autenticación';
+      if (msg.includes('administrador habilite')) {
+        setIsRegister(false);
+        setPendingVerificationEmail('');
+        setVerificationCode('');
+        setName('');
+        setPassword('');
+        setConfirmPassword('');
+      }
       setErrorMsg(msg);
     }
   };
 
+  const handleAcceptTerms = () => {
+    setTermsAccepted(true);
+    setFieldErrors(current => ({ ...current, terms: '' }));
+    setErrorMsg(current => current === 'Debes aceptar los términos y condiciones para continuar.' ? '' : current);
+    setShowTerms(false);
+  };
+
   const handleSocialAuth = async (provider: string) => {
+    if (!termsAccepted) {
+      setErrorMsg('Debes aceptar los términos y condiciones para continuar.');
+      return;
+    }
     setErrorMsg('');
     setPendingVerificationEmail('');
     setVerificationCode('');
@@ -150,11 +188,8 @@ export default function LoginScreen() {
     setEmail('');
     setPassword('');
     setConfirmPassword('');
-    setJobInfo('');
-    setArea('');
-    setActivities('');
-    setRequestType('tecnico_red');
     setTermsAccepted(false);
+    setShowTerms(false);
     setErrorMsg('');
     setFieldErrors({});
   };
@@ -225,6 +260,12 @@ export default function LoginScreen() {
               <Text style={styles.errorText}>{errorMsg}</Text>
             </View>
           )}
+          {authorizationError !== '' && errorMsg === '' && (
+            <View style={styles.errorContainer}>
+              <Feather name="alert-circle" size={16} color="#FF453A" />
+              <Text style={styles.errorText}>{authorizationError}</Text>
+            </View>
+          )}
 
           {pendingVerificationEmail !== '' && (
             <View style={styles.inputWrapper}>
@@ -264,111 +305,47 @@ export default function LoginScreen() {
                 {fieldErrors.name && <Text style={styles.fieldErrorText}>{fieldErrors.name}</Text>}
               </View>
 
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  placeholder="Información laboral"
-                  placeholderTextColor={placeholderColor}
-                  style={[
-                    styles.input, 
-                    { backgroundColor: inputBgColor, borderColor: inputBorderColor, color: colors.text },
-                    fieldErrors.jobInfo && styles.inputError
-                  ]}
-                  value={jobInfo}
-                  onChangeText={(val) => {
-                    setJobInfo(val);
-                    if (fieldErrors.jobInfo) setFieldErrors(prev => ({ ...prev, jobInfo: '' }));
-                  }}
-                />
-                {fieldErrors.jobInfo && <Text style={styles.fieldErrorText}>{fieldErrors.jobInfo}</Text>}
-              </View>
+            </>
+          )}
 
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  placeholder="Área en la que se desempeña"
-                  placeholderTextColor={placeholderColor}
-                  style={[
-                    styles.input, 
-                    { backgroundColor: inputBgColor, borderColor: inputBorderColor, color: colors.text },
-                    fieldErrors.area && styles.inputError
-                  ]}
-                  value={area}
-                  onChangeText={(val) => {
-                    setArea(val);
-                    if (fieldErrors.area) setFieldErrors(prev => ({ ...prev, area: '' }));
-                  }}
-                />
-                {fieldErrors.area && <Text style={styles.fieldErrorText}>{fieldErrors.area}</Text>}
-              </View>
-
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  placeholder="Actividades principales"
-                  placeholderTextColor={placeholderColor}
-                  multiline
-                  numberOfLines={3}
-                  style={[
-                    styles.input, 
-                    styles.textArea, 
-                    { backgroundColor: inputBgColor, borderColor: inputBorderColor, color: colors.text },
-                    fieldErrors.activities && styles.inputError
-                  ]}
-                  value={activities}
-                  onChangeText={(val) => {
-                    setActivities(val);
-                    if (fieldErrors.activities) setFieldErrors(prev => ({ ...prev, activities: '' }));
-                  }}
-                />
-                {fieldErrors.activities && <Text style={styles.fieldErrorText}>{fieldErrors.activities}</Text>}
-              </View>
-
-              <View style={styles.sectionLabelRow}>
-                <Text style={[styles.sectionLabel, { color: colors.text }]}>Tipo de solicitud</Text>
-              </View>
-              <View style={[styles.segmentedContainer, { 
-                backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)',
-                borderColor: inputBorderColor
-              }]}>
-                <TouchableOpacity
-                  style={[styles.segmentOption, requestType === 'tecnico_red' && { backgroundColor: colors.text }]}
-                  onPress={() => setRequestType('tecnico_red')}
-                >
-                  <Text style={[
-                    styles.segmentText, 
-                    { color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' },
-                    requestType === 'tecnico_red' && { color: colors.background }
-                  ]}>
-                    Técnico de red
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.segmentOption, requestType === 'administrador' && { backgroundColor: colors.text }]}
-                  onPress={() => setRequestType('administrador')}
-                >
-                  <Text style={[
-                    styles.segmentText, 
-                    { color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' },
-                    requestType === 'administrador' && { color: colors.background }
-                  ]}>
-                    Administrador
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
+          {!pendingVerificationEmail && (
+            <>
               <View style={styles.checkboxRow}>
                 <TouchableOpacity
+                  accessibilityRole="checkbox"
+                  accessibilityLabel="Acepto los términos y condiciones"
+                  accessibilityHint={termsAccepted ? 'Desmarca para retirar tu aceptación' : 'Abre los términos para revisarlos y aceptarlos'}
+                  accessibilityState={{ checked: termsAccepted }}
                   style={[
-                    styles.checkbox, 
+                    styles.checkbox,
                     { borderColor: colors.text, backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)' },
                     termsAccepted && { backgroundColor: colors.text }
                   ]}
-                  onPress={() => setTermsAccepted(!termsAccepted)}
-                >
+                  onPress={() => {
+                    if (termsAccepted) {
+                      setTermsAccepted(false);
+                    } else {
+                      setShowTerms(true);
+                    }
+                  }}>
                   {termsAccepted && <Feather name="check" size={12} color={colors.background} />}
                 </TouchableOpacity>
                 <Text style={[styles.checkboxText, { color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }]}>
-                  Acepto los términos y condiciones.
+                  Acepto los{' '}
+                  <Text
+                    accessibilityRole="link"
+                    style={[styles.termsLink, { color: colors.text }]}
+                    onPress={() => setShowTerms(true)}>
+                    términos y condiciones
+                  </Text>
+                  .
                 </Text>
               </View>
+              {isRegister && (
+                <Text style={[styles.termsDraftHint, { color: colors.textTertiary }]}>
+                  El acceso se habilita por un administrador.
+                </Text>
+              )}
               {fieldErrors.terms && <Text style={styles.fieldErrorText}>{fieldErrors.terms}</Text>}
             </>
           )}
@@ -453,6 +430,16 @@ export default function LoginScreen() {
             </TouchableOpacity>
           )}
 
+          {!pendingVerificationEmail && (
+            <TouchableOpacity
+              accessibilityRole="button"
+              style={styles.termsButton}
+              onPress={() => setShowTerms(true)}>
+              <Feather name="file-text" size={14} color="#0A84FF" />
+              <Text style={styles.termsButtonText}>Leer términos y condiciones</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={[
               styles.button, 
@@ -515,6 +502,55 @@ export default function LoginScreen() {
           </View>
         </BlurView>
       </ScrollView>
+      <Modal visible={showTerms} transparent animationType="fade" onRequestClose={() => setShowTerms(false)}>
+        <View style={styles.termsOverlay}>
+          <View style={[styles.termsModal, { backgroundColor: colors.modalBg, borderColor: colors.cardBorder }]}>
+            <View style={styles.termsModalHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.termsModalTitle, { color: colors.textPrimary }]}>Términos de uso</Text>
+                <Text style={[styles.termsModalSubtitle, { color: colors.textSecondary }]}>Bitácora Digital</Text>
+              </View>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar términos y condiciones"
+                style={styles.termsCloseButton}
+                onPress={() => setShowTerms(false)}>
+                <Feather name="x" size={20} color={colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.termsDraftNotice}>
+              <Feather name="alert-triangle" size={16} color="#FF9F0A" />
+              <Text style={styles.termsDraftNoticeText}>
+                Borrador pendiente de revisión y aprobación institucional. No sustituye un aviso de privacidad.
+              </Text>
+            </View>
+            <ScrollView style={styles.termsScroll} showsVerticalScrollIndicator>
+              {TERMS_SECTIONS.map(section => (
+                <View key={section.title} style={styles.termsSection}>
+                  <Text style={[styles.termsSectionTitle, { color: colors.textPrimary }]}>{section.title}</Text>
+                  <Text style={[styles.termsSectionBody, { color: colors.textSecondary }]}>{section.body}</Text>
+                </View>
+              ))}
+            </ScrollView>
+            <View style={styles.termsActions}>
+              <TouchableOpacity
+                accessibilityRole="button"
+                style={[styles.termsAction, styles.termsDeclineAction, { borderColor: colors.cardBorder }]}
+                onPress={() => setShowTerms(false)}>
+                <Text style={[styles.termsDeclineText, { color: colors.textSecondary }]}>
+                  {isRegister ? 'No aceptar' : 'Cerrar'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                accessibilityRole="button"
+                style={[styles.termsAction, { backgroundColor: colors.buttonBg }]}
+                onPress={handleAcceptTerms}>
+                <Text style={[styles.termsCloseActionText, { color: colors.buttonText }]}>Aceptar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </LinearGradient>
   );
 }
@@ -582,20 +618,8 @@ const styles = StyleSheet.create({
     marginBottom: 0,
     ...Platform.select({ web: { outlineStyle: 'none' } }) as any,
   },
-  textArea: { minHeight: 90, textAlignVertical: 'top' },
   inputError: { borderColor: '#FF453A', backgroundColor: 'rgba(255, 69, 58, 0.06)' },
   fieldErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 11, color: '#FF453A', marginTop: 4, marginLeft: 6 },
-  sectionLabelRow: { marginTop: 4, marginBottom: 8 },
-  sectionLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 12 },
-  segmentedContainer: {
-    flexDirection: 'row',
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 4,
-    marginBottom: 12,
-  },
-  segmentOption: { flex: 1, borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
-  segmentText: { fontFamily: 'Poppins_600SemiBold', fontSize: 12 },
   checkboxRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 10 },
   checkbox: {
     width: 18,
@@ -614,6 +638,27 @@ const styles = StyleSheet.create({
   forgotPasswordText: { fontFamily: 'Poppins_400Regular', fontSize: 13 },
   button: { padding: 18, borderRadius: 16, alignItems: 'center' },
   buttonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 15 },
+  termsButton: { minHeight: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginBottom: 4 },
+  termsButtonText: { color: '#0A84FF', fontFamily: 'Poppins_600SemiBold', fontSize: 12 },
+  termsLink: { fontFamily: 'Poppins_600SemiBold', textDecorationLine: 'underline' },
+  termsDraftHint: { fontFamily: 'Poppins_400Regular', fontSize: 10, marginTop: -7, marginBottom: 10, marginLeft: 28 },
+  termsOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 18, backgroundColor: 'rgba(0,0,0,0.72)' },
+  termsModal: { width: '100%', maxWidth: 520, maxHeight: '86%', borderRadius: 20, borderWidth: 1, padding: 18 },
+  termsModalHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 },
+  termsModalTitle: { fontFamily: 'Poppins_700Bold', fontSize: 18 },
+  termsModalSubtitle: { fontFamily: 'Poppins_400Regular', fontSize: 11, marginTop: 2 },
+  termsCloseButton: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(128,128,128,0.12)' },
+  termsDraftNotice: { flexDirection: 'row', alignItems: 'flex-start', gap: 9, borderRadius: 12, padding: 11, marginBottom: 10, backgroundColor: 'rgba(255,159,10,0.12)' },
+  termsDraftNoticeText: { flex: 1, color: '#FF9F0A', fontFamily: 'Poppins_400Regular', fontSize: 10, lineHeight: 16 },
+  termsScroll: { flexShrink: 1 },
+  termsSection: { marginBottom: 13 },
+  termsSectionTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, marginBottom: 3 },
+  termsSectionBody: { fontFamily: 'Poppins_400Regular', fontSize: 11, lineHeight: 17 },
+  termsActions: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  termsAction: { flex: 1, minHeight: 42, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  termsDeclineAction: { borderWidth: 1 },
+  termsDeclineText: { fontFamily: 'Poppins_600SemiBold', fontSize: 12 },
+  termsCloseActionText: { fontFamily: 'Poppins_600SemiBold', fontSize: 12 },
   dividerContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 22 },
   dividerLine: { flex: 1, height: 1 },
   dividerText: { fontFamily: 'Poppins_400Regular', fontSize: 12, marginHorizontal: 12 },

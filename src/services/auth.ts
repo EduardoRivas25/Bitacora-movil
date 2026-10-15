@@ -5,7 +5,6 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
 import type { UserSchema } from '@insforge/sdk';
 import { assertInsForgeConfigured, insforge } from '../lib/insforgeClient';
-import type { AccountRequestType } from '../types';
 
 const REFRESH_TOKEN_KEY = 'insforge_refresh_token';
 const PENDING_OAUTH_PROVIDER_KEY = '@bitacora_pending_oauth_provider';
@@ -21,20 +20,30 @@ function getProfile(user: UserSchema): Record<string, unknown> {
     : {};
 }
 
-function roleLabel(role: AccountRequestType): AccountRole {
-  return role === 'administrador' ? 'Administrador' : 'Técnico de red';
-}
-
 export function getAccountRole(user: UserSchema | null): AccountRole | null {
   if (!user) return null;
   const role = getProfile(user).role;
   return role === 'Administrador' || role === 'Técnico de red' ? role : null;
 }
 
-export function getRequestedAccountRole(user: UserSchema | null): AccountRole | null {
-  if (!user) return null;
-  const role = getProfile(user).requested_role;
-  return role === 'Administrador' || role === 'Técnico de red' ? role : null;
+export async function getTrustedAccountAccess(userId: string): Promise<{
+  role: AccountRole | null;
+  active: boolean;
+  exists: boolean;
+}> {
+  const { data, error } = await insforge.database
+    .from('app_user_roles')
+    .select('role, active')
+    .eq('user_id', userId)
+    .limit(1);
+  if (error) throw error;
+  const record = data?.[0];
+  const role = record?.role;
+  return {
+    role: role === 'Administrador' || role === 'Técnico de red' ? role : null,
+    active: record?.active === true,
+    exists: Boolean(record),
+  };
 }
 
 export function getAuthMethod(user: UserSchema | null): AuthMethod | null {
@@ -45,12 +54,10 @@ export function getAuthMethod(user: UserSchema | null): AuthMethod | null {
 
 async function saveAccountMetadata(
   user: UserSchema,
-  metadata: { role?: AccountRole; requestedRole?: AccountRole; authMethod?: AuthMethod },
+  metadata: { authMethod?: AuthMethod },
 ): Promise<UserSchema> {
   const profile = {
     ...getProfile(user),
-    ...(metadata.role ? { role: metadata.role } : {}),
-    ...(metadata.requestedRole ? { requested_role: metadata.requestedRole } : {}),
     ...(metadata.authMethod ? { auth_method: metadata.authMethod } : {}),
   };
   const { error } = await insforge.auth.setProfile(profile);
@@ -178,7 +185,7 @@ export async function signInWithEmail(email: string, password: string): Promise<
   return saveAccountMetadata(await acceptSession(data), { authMethod: 'email' });
 }
 
-export async function signUpWithEmail(email: string, password: string, name: string | undefined, role: AccountRequestType) {
+export async function signUpWithEmail(email: string, password: string, name: string | undefined) {
   const normalizedEmail = email.trim().toLowerCase();
   await AsyncStorage.removeItem(PENDING_OAUTH_PROVIDER_KEY);
   const { data, error } = await insforge.auth.signUp({
@@ -189,10 +196,8 @@ export async function signUpWithEmail(email: string, password: string, name: str
   if (error) throw error;
   if (data?.accessToken && data.user) {
     const user = await acceptSession(data as SessionResult);
-    const updatedUser = await saveAccountMetadata(user, { requestedRole: roleLabel(role), authMethod: 'email' });
+    const updatedUser = await saveAccountMetadata(user, { authMethod: 'email' });
     return { ...data, user: updatedUser };
-  } else {
-    await AsyncStorage.setItem(`@bitacora_pending_role:${normalizedEmail}`, role);
   }
   return data;
 }
@@ -202,15 +207,7 @@ export async function verifyEmail(email: string, otp: string): Promise<UserSchem
   const { data, error } = await insforge.auth.verifyEmail({ email: normalizedEmail, otp: otp.trim() });
   if (error) throw error;
   const user = await acceptSession(data);
-  const pendingRole = await AsyncStorage.getItem(`@bitacora_pending_role:${normalizedEmail}`);
-  const updated = pendingRole === 'administrador' || pendingRole === 'tecnico_red'
-    ? await saveAccountMetadata(user, {
-      requestedRole: roleLabel(pendingRole),
-      authMethod: 'email',
-    })
-    : await saveAccountMetadata(user, { authMethod: 'email' });
-  if (pendingRole) await AsyncStorage.removeItem(`@bitacora_pending_role:${normalizedEmail}`);
-  return updated;
+  return saveAccountMetadata(user, { authMethod: 'email' });
 }
 
 export async function sendPasswordResetEmail(email: string): Promise<void> {
