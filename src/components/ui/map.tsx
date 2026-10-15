@@ -244,6 +244,9 @@ export function Map({
           box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3), 0 0 14px rgba(10, 132, 255, 0.4);
           letter-spacing: 0.5px;
           white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 140px;
           text-shadow: 0 1px 2px rgba(0,0,0,0.3);
           backdrop-filter: blur(10px);
           display: flex;
