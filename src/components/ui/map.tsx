@@ -144,6 +144,12 @@ export function Map({
           box-shadow: 0 3px 12px rgba(10, 132, 255, 0.5);
         }
 
+        .custom-dev-pin,
+        .custom-bld-icon {
+          background: transparent !important;
+          border: none !important;
+        }
+
         /* 📍 Pines de Equipos de Red */
         .device-pin {
           display: flex;
@@ -156,11 +162,14 @@ export function Map({
           box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2), 0 0 10px rgba(10, 132, 255, 0.25);
           cursor: pointer;
           transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
-          white-space: nowrap;
           backdrop-filter: blur(8px);
+          width: 170px;
+          max-width: 170px;
+          box-sizing: border-box;
+          overflow: hidden;
         }
         .device-pin:hover {
-          transform: translateY(-5px) scale(1.08);
+          transform: translateY(-5px) scale(1.06);
           border-color: #0A84FF;
           box-shadow: 0 10px 28px rgba(0, 0, 0, 0.9), 0 0 16px rgba(10, 132, 255, 0.6);
           z-index: 9999 !important;
@@ -187,19 +196,32 @@ export function Map({
         .pin-text-block {
           display: flex;
           flex-direction: column;
+          flex: 1;
+          min-width: 0;
+          overflow: hidden;
         }
         .pin-name {
           font-size: 11px;
           font-weight: 700;
           color: ${pinNameColor};
-          line-height: 13px;
+          line-height: 14px;
           text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: block;
+          width: 100%;
         }
         .pin-ip {
           font-size: 9.5px;
           font-family: monospace;
           color: #60A5FA;
           font-weight: 600;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: block;
+          width: 100%;
         }
 
         /* Colores temáticos elegantes por tipo */
@@ -398,8 +420,10 @@ export function Map({
             allCoords.push([dev.latitude, dev.longitude]);
             const info = getDevType(dev.name);
 
+            const cleanName = (dev.name || '').replace(/"/g, '&quot;');
+            const cleanIp = (dev.ipv4_address || 'Sin IP').replace(/"/g, '&quot;');
             const pinHtml = 
-              '<div class="device-pin">' +
+              '<div class="device-pin" title="' + cleanName + ' (' + cleanIp + ')">' +
                 '<div class="pin-avatar ' + info.class + '">' + info.svg + '</div>' +
                 '<div class="pin-text-block">' +
                   '<span class="pin-name">' + dev.name + '</span>' +
@@ -410,8 +434,8 @@ export function Map({
             const icon = L.divIcon({
               className: 'custom-dev-pin',
               html: pinHtml,
-              iconSize: [160, 36],
-              iconAnchor: [80, 18]
+              iconSize: [170, 36],
+              iconAnchor: [85, 18]
             });
 
             const popupContent = 

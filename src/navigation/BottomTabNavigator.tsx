@@ -51,11 +51,13 @@ function AccountIdentityHeader({ navigation }: BottomTabHeaderProps) {
           style={[
             styles.accountBubble,
             {
-              backgroundColor: isDark ? 'rgba(10,132,255,0.16)' : 'rgba(10,132,255,0.10)',
-              borderColor: isDark ? 'rgba(10,132,255,0.34)' : 'rgba(10,132,255,0.24)',
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.18)' : '#CBD5E1',
             },
           ]}>
-          <Text style={styles.accountInitial}>{accountName.slice(0, 1).toUpperCase()}</Text>
+          <Text style={[styles.accountInitial, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
+            {accountName.slice(0, 1).toUpperCase()}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -210,23 +212,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   accountBubble: {
-    minWidth: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
+    minWidth: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 3,
-    shadowColor: '#0A84FF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.16,
-    shadowRadius: 5,
+    paddingHorizontal: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 2,
   },
   accountInitial: {
-    color: '#0A84FF',
     fontFamily: 'Poppins_700Bold',
-    fontSize: 16,
+    fontSize: 15,
   },
   tabBarContainer: {
     position: 'absolute',
