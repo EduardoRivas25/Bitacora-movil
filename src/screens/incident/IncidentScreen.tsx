@@ -9,6 +9,8 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import * as api from '../../services/api';
 import { Incident, Maintenance, Device, Building } from '../../types';
+import { canManageIncidents, isAdministrator } from '../../utils/permissions';
+import { confirmDestructiveAction, showUserNotice } from '../../utils/destructiveConfirmation';
 
 const SEVERITY_FILTERS = ['Todos', 'Crítico', 'Alto', 'Medio', 'Bajo', 'Resueltos'];
 
@@ -39,6 +41,9 @@ function formatEventDateTime(value: string) {
 export default function IncidentScreen() {
   const { colors, isDark } = useTheme();
   const { user } = useAuth();
+  const canWriteIncidents = canManageIncidents(user);
+  const canDeleteRecords = isAdministrator(user);
+  const canManageMaintenance = isAdministrator(user);
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
 
@@ -72,9 +77,10 @@ export default function IncidentScreen() {
   // Formulario Mantenimiento
   const [mntTitle, setMntTitle] = useState('');
   const [mntType, setMntType] = useState<'preventive' | 'firmware' | 'cleaning' | 'ups_battery' | 'audit'>('preventive');
+  const [mntDeviceId, setMntDeviceId] = useState('');
   const [mntDevice, setMntDevice] = useState('');
   const [mntLocation, setMntLocation] = useState('');
-  const [mntDate, setMntDate] = useState('2026-09-15');
+  const [mntDate, setMntDate] = useState(() => localEventFields().date);
   const [mntWindow, setMntWindow] = useState('02:00 - 05:00 hrs');
   const [mntTech, setMntTech] = useState('');
   const [mntNotes, setMntNotes] = useState('');
@@ -98,6 +104,7 @@ export default function IncidentScreen() {
   useFocusEffect(useCallback(() => { loadData(true); }, [loadData]));
 
   const handleOpenIncidentModal = () => {
+    if (!canWriteIncidents) return;
     setIncError('');
     setIncFieldErrors({});
     const now = localEventFields();
@@ -114,8 +121,10 @@ export default function IncidentScreen() {
   };
 
   const handleOpenMaintenanceModal = () => {
+    if (!canManageMaintenance) return;
     setMntError('');
     setMntFieldErrors({});
+    setMntDeviceId('');
     setShowMaintenanceModal(true);
   };
 
@@ -179,6 +188,7 @@ export default function IncidentScreen() {
   };
 
   const handleSaveIncident = async () => {
+    if (!canWriteIncidents) return;
     if (isSubmitting) return;
     setIncError('');
     const errors: { [key: string]: string } = {};
@@ -237,6 +247,7 @@ export default function IncidentScreen() {
   };
 
   const handleSaveAction = async () => {
+    if (!canWriteIncidents) return;
     if (!actionIncident || isSavingAction) return;
     if (actionText.trim().length < 5) {
       setActionError('Describe la acción realizada con al menos 5 caracteres.');
@@ -255,6 +266,13 @@ export default function IncidentScreen() {
   };
 
   const handleDeleteIncident = async (id: string) => {
+    if (!canDeleteRecords) return;
+    const incident = incidents.find(item => item.id === id);
+    if (!incident || !await confirmDestructiveAction(
+      'Eliminar incidente',
+      `¿Seguro que quieres eliminar “${incident.title}”? Se perderá su historial de seguimiento.`,
+    )) return;
+
     // Actualización optimista instantánea (0ms)
     const prevIncidents = [...incidents];
     setIncidents(prev => prev.filter(inc => inc.id !== id));
@@ -263,10 +281,12 @@ export default function IncidentScreen() {
     } catch (err) { 
       console.error(err); 
       setIncidents(prevIncidents);
+      showUserNotice('No se pudo eliminar el incidente', 'El incidente permanece en la bitácora. Inténtalo de nuevo.');
     }
   };
 
   const handleSaveMaintenance = async () => {
+    if (!canManageMaintenance) return;
     if (isSubmittingMaint) return;
     setMntError('');
     const errors: { [key: string]: string } = {};
@@ -279,9 +299,15 @@ export default function IncidentScreen() {
     }
     
     // Validación estricta de fecha YYYY-MM-DD
-    const dateRegex = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
-    if (!mntDate || !dateRegex.test(mntDate.trim())) {
-      errors.date = 'La fecha debe tener formato YYYY-MM-DD (ej. 2026-09-15).';
+    const dateParts = mntDate.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const parsedDate = dateParts
+      ? new Date(Date.UTC(Number(dateParts[1]), Number(dateParts[2]) - 1, Number(dateParts[3])))
+      : null;
+    const isValidDate = dateParts !== null && parsedDate !== null &&
+      parsedDate.getUTCFullYear() === Number(dateParts[1]) &&
+      parsedDate.getUTCMonth() === Number(dateParts[2]) - 1 && parsedDate.getUTCDate() === Number(dateParts[3]);
+    if (!isValidDate) {
+      errors.date = 'Ingresa una fecha real con formato YYYY-MM-DD.';
     }
 
     setMntFieldErrors(errors);
@@ -304,6 +330,7 @@ export default function IncidentScreen() {
         title: mntTitle.trim(), 
         type: mntType, 
         type_label: typeLabels[mntType] || 'Preventivo', 
+        device_id: mntDeviceId || undefined,
         device_name: mntDevice.trim(), 
         location: mntLocation.trim() || 'No especificada', 
         scheduled_date: mntDate.trim(), 
@@ -314,8 +341,10 @@ export default function IncidentScreen() {
       });
       setShowMaintenanceModal(false); 
       setMntTitle(''); 
+      setMntDeviceId('');
       setMntDevice(''); 
       setMntLocation(''); 
+      setMntDate(localEventFields().date);
       setMntNotes(''); 
       setMntTech('');
       setMntError('');
@@ -353,14 +382,18 @@ export default function IncidentScreen() {
               <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]}>{incidents.filter(i => i.status !== 'resolved').length} incidentes activos • {maintenances.length} tareas programadas</Text>
             </View>
             <View style={styles.headerButtons}>
-              <TouchableOpacity style={styles.reportButton} activeOpacity={0.8} onPress={handleOpenIncidentModal}>
-                <Feather name="alert-triangle" size={13} color="#FF453A" />
-                <Text style={styles.reportButtonText}>Reportar Falla</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.scheduleButton} activeOpacity={0.8} onPress={handleOpenMaintenanceModal}>
-                <Feather name="calendar" size={13} color="#0A84FF" />
-                <Text style={styles.scheduleButtonText}>Agendar</Text>
-              </TouchableOpacity>
+              {canWriteIncidents && (
+                <TouchableOpacity style={styles.reportButton} activeOpacity={0.8} onPress={handleOpenIncidentModal}>
+                  <Feather name="alert-triangle" size={13} color="#FF453A" />
+                  <Text style={styles.reportButtonText}>Reportar Falla</Text>
+                </TouchableOpacity>
+              )}
+              {canManageMaintenance && (
+                <TouchableOpacity style={styles.scheduleButton} activeOpacity={0.8} onPress={handleOpenMaintenanceModal}>
+                  <Feather name="calendar" size={13} color="#0A84FF" />
+                  <Text style={styles.scheduleButtonText}>Agendar</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
@@ -438,15 +471,15 @@ export default function IncidentScreen() {
                         </View>
                       )}
                       <View style={styles.incActions}>
-                        <TouchableOpacity
+                        {canWriteIncidents && <TouchableOpacity
                           style={[styles.resolveBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
                           activeOpacity={0.7}
                           onPress={() => openActionModal(inc, 'follow_up')}
                         >
                           <Feather name="edit-3" size={13} color={colors.textSecondary} />
                           <Text style={[styles.resolveBtnText, { color: colors.textSecondary }]}>Seguimiento</Text>
-                        </TouchableOpacity>
-                        {inc.status !== 'resolved' && (
+                        </TouchableOpacity>}
+                        {canWriteIncidents && inc.status !== 'resolved' && (
                           <TouchableOpacity 
                             style={[styles.resolveBtn, { backgroundColor: isDark ? 'rgba(48, 209, 88, 0.12)' : 'rgba(48, 209, 88, 0.1)', borderColor: 'rgba(48, 209, 88, 0.3)' }]} 
                             activeOpacity={0.7} 
@@ -456,9 +489,9 @@ export default function IncidentScreen() {
                             <Text style={styles.resolveBtnText}>Resolver</Text>
                           </TouchableOpacity>
                         )}
-                        <TouchableOpacity style={[styles.deleteBtn, { backgroundColor: colors.chipBg }]} activeOpacity={0.7} onPress={() => handleDeleteIncident(inc.id)}>
+                        {canDeleteRecords && <TouchableOpacity style={[styles.deleteBtn, { backgroundColor: colors.chipBg }]} activeOpacity={0.7} onPress={() => handleDeleteIncident(inc.id)}>
                           <Feather name="trash-2" size={14} color="#FF453A" />
-                        </TouchableOpacity>
+                        </TouchableOpacity>}
                       </View>
                     </BlurView>
                   );
@@ -731,12 +764,35 @@ export default function IncidentScreen() {
           <View style={[styles.formRow, isSmallMobile && { flexDirection: 'column', gap: 0 }]}>
             <View style={{ flex: 1 }}>
               <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Equipo(s) Afectados *</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+                <TouchableOpacity
+                  style={[styles.typeOption, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }, !mntDeviceId && { borderColor: '#0A84FF' }]}
+                  activeOpacity={0.75}
+                  onPress={() => setMntDeviceId('')}>
+                  <Text style={[styles.typeOptionText, { color: !mntDeviceId ? '#0A84FF' : colors.textSecondary }]}>Manual / varios</Text>
+                </TouchableOpacity>
+                {devices.map(device => (
+                  <TouchableOpacity
+                    key={device.id}
+                    style={[styles.typeOption, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }, mntDeviceId === device.id && { borderColor: '#0A84FF', backgroundColor: 'rgba(10,132,255,0.12)' }]}
+                    activeOpacity={0.75}
+                    onPress={() => {
+                      setMntDeviceId(device.id);
+                      setMntDevice(device.name);
+                      setMntLocation(device.location || '');
+                      if (mntFieldErrors.device) setMntFieldErrors(prev => ({ ...prev, device: '' }));
+                    }}>
+                    <Text style={[styles.typeOptionText, { color: mntDeviceId === device.id ? '#0A84FF' : colors.textSecondary }]} numberOfLines={1}>{device.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
               <TextInput 
-                placeholder="ej. Switch Core" 
+                placeholder="Selecciona un equipo o escribe uno o varios"
                 placeholderTextColor={colors.placeholder} 
                 style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }, mntFieldErrors.device && styles.inputError]} 
                 value={mntDevice} 
                 onChangeText={(val) => {
+                  if (devices.find(device => device.id === mntDeviceId)?.name !== val) setMntDeviceId('');
                   setMntDevice(val);
                   if (mntFieldErrors.device) setMntFieldErrors(prev => ({ ...prev, device: '' }));
                 }} 
@@ -794,7 +850,7 @@ export default function IncidentScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingTop: 45, paddingBottom: 110 },
+  scrollContent: { paddingTop: 24, paddingBottom: 110 },
   innerWrapper: { maxWidth: 1200, width: '100%', alignSelf: 'center' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18, flexWrap: 'wrap', gap: 10 },
   headerBadge: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#FF453A', letterSpacing: 1.5, marginBottom: 2 },

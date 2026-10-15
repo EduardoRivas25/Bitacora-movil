@@ -6,21 +6,38 @@ import {
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import GlassModal from '../../components/ui/GlassModal';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import * as api from '../../services/api';
-import { Device, Building, Subnet } from '../../types';
+import { Device, Building, Subnet, Incident, Maintenance, DeviceConfig } from '../../types';
 import { 
   validateIPv4, validateMAC, formatMACInput, 
   validateGPS, validateRequired 
 } from '../../utils/validators';
+import { canManageDevices, isAdministrator } from '../../utils/permissions';
+import { confirmDestructiveAction, showUserNotice } from '../../utils/destructiveConfirmation';
 
 const CATEGORIES = ['Todos', 'Switches', 'Routers', 'Servidores', 'Access Points', 'Workstations', 'Firewalls'];
+const DEVICE_SORT_OPTIONS = [
+  { value: 'newest', label: 'Más recientes' },
+  { value: 'oldest', label: 'Más antiguos' },
+  { value: 'name_asc', label: 'Nombre A-Z' },
+  { value: 'name_desc', label: 'Nombre Z-A' },
+  { value: 'ip_asc', label: 'Dirección IP' },
+] as const;
+
+type DeviceSortOption = typeof DEVICE_SORT_OPTIONS[number]['value'];
 
 export default function DeviceListScreen() {
   const { colors, isDark } = useTheme();
+  const { user } = useAuth();
+  const navigation = useNavigation<any>();
   const { width } = useWindowDimensions();
+  const canEditDevices = canManageDevices(user);
+  const canDeleteRecords = isAdministrator(user);
+  const canManageBuildings = isAdministrator(user);
   const isTablet = width > 768;
   const isSmallMobile = width < 380;
   const isDesktop = width >= 1024;
@@ -32,8 +49,19 @@ export default function DeviceListScreen() {
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('Todos');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
+  const [selectedManufacturer, setSelectedManufacturer] = useState('');
+  const [selectedBuilding, setSelectedBuilding] = useState('');
+  const [selectedSubnet, setSelectedSubnet] = useState('');
+  const [sortOrder, setSortOrder] = useState<DeviceSortOption>('newest');
   const [showModal, setShowModal] = useState(false);
   const [editingDeviceId, setEditingDeviceId] = useState<string | null>(null);
+  const [detailDevice, setDetailDevice] = useState<Device | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
+  const [deviceIncidents, setDeviceIncidents] = useState<Incident[]>([]);
+  const [deviceMaintenances, setDeviceMaintenances] = useState<Maintenance[]>([]);
+  const [deviceConfigs, setDeviceConfigs] = useState<DeviceConfig[]>([]);
 
   // Formulario Dispositivo
   const [devName, setDevName] = useState('');
@@ -85,6 +113,41 @@ export default function DeviceListScreen() {
 
   useFocusEffect(useCallback(() => { loadData(true); }, [loadData]));
 
+  const loadDeviceDetails = async (device: Device) => {
+    setDetailDevice(device);
+    setDetailLoading(true);
+    setDetailError('');
+    try {
+      const [incidents, maintenances, configs] = await Promise.all([
+        api.fetchIncidents(),
+        api.fetchMaintenances(),
+        api.fetchConfigs(),
+      ]);
+      const normalizedName = device.name.trim().toLocaleLowerCase();
+      setDeviceIncidents(incidents.filter(incident =>
+        incident.device_id === device.id ||
+        incident.affected_devices?.some(affectedDevice => affectedDevice.id === device.id),
+      ));
+      setDeviceMaintenances(maintenances.filter(maintenance => {
+        if (maintenance.device_id) return maintenance.device_id === device.id;
+        return (maintenance.device_name || '').trim().toLocaleLowerCase() === normalizedName &&
+          (!maintenance.location || !device.location ||
+            maintenance.location.trim().toLocaleLowerCase() === device.location.trim().toLocaleLowerCase());
+      }));
+      setDeviceConfigs(configs.filter(config => config.device_id === device.id));
+    } catch (error) {
+      console.error('No se pudieron cargar los datos relacionados del dispositivo:', error);
+      setDetailError('No se pudo cargar toda la información relacionada. Revisa la conexión e inténtalo de nuevo.');
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const closeDeviceDetails = () => {
+    setDetailDevice(null);
+    setDetailError('');
+  };
+
   const handleOpenAddDevice = () => {
     setEditingDeviceId(null);
     setDevName(''); setDevMac(''); setDevBrand(''); setDevLocation('');
@@ -110,12 +173,14 @@ export default function DeviceListScreen() {
   };
 
   const handleOpenNewBuildingModal = () => {
+    if (!canManageBuildings) return;
     setNewBldError(''); setNewBldName(''); setNewBldCode('');
     setNewBldLat(devLat || '19.4326'); setNewBldLng(devLng || '-99.1332'); setNewBldDept('');
     setShowNewBuildingModal(true);
   };
 
   const handleSaveNewBuilding = async () => {
+    if (!canManageBuildings) return;
     if (isSubmittingBld) return;
     setNewBldError('');
     
@@ -166,26 +231,95 @@ export default function DeviceListScreen() {
   };
 
   const filteredDevices = devices.filter((dev) => {
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.trim().toLowerCase();
+    const name = (dev.name || '').toLowerCase();
+    const manufacturer = (dev.manufacturer || '').toLowerCase();
     const matchesSearch = !q || (
-      (dev.name || '').toLowerCase().includes(q) ||
-      (dev.ipv4_address || '').includes(q) ||
+      name.includes(q) ||
+      (dev.ipv4_address || '').toLowerCase().includes(q) ||
       (dev.mac_address || '').toLowerCase().includes(q) ||
-      (dev.manufacturer || '').toLowerCase().includes(q)
+      manufacturer.includes(q) ||
+      (dev.location || '').toLowerCase().includes(q) ||
+      (dev.subnet_name || '').toLowerCase().includes(q) ||
+      (dev.building_name || '').toLowerCase().includes(q)
     );
 
-    if (!matchesSearch) return false;
-    if (selectedCategory === 'Todos') return true;
-    if (selectedCategory === 'Switches') return dev.name.toLowerCase().includes('switch');
-    if (selectedCategory === 'Routers') return dev.name.toLowerCase().includes('router');
-    if (selectedCategory === 'Servidores') return dev.name.toLowerCase().includes('servidor') || (dev.manufacturer || '').includes('HP');
-    if (selectedCategory === 'Access Points') return dev.name.toLowerCase().includes('point') || dev.name.toLowerCase().includes('unifi');
-    if (selectedCategory === 'Workstations') return dev.name.toLowerCase().includes('imac') || dev.name.toLowerCase().includes('pc');
-    if (selectedCategory === 'Firewalls') return dev.name.toLowerCase().includes('firewall') || dev.name.toLowerCase().includes('fortigate');
-    return true;
+    const matchesCategory =
+      selectedCategory === 'Todos' ||
+      (selectedCategory === 'Switches' && name.includes('switch')) ||
+      (selectedCategory === 'Routers' && name.includes('router')) ||
+      (selectedCategory === 'Servidores' && (name.includes('servidor') || manufacturer.includes('hp'))) ||
+      (selectedCategory === 'Access Points' && (name.includes('point') || name.includes('unifi'))) ||
+      (selectedCategory === 'Workstations' && (name.includes('imac') || name.includes('pc'))) ||
+      (selectedCategory === 'Firewalls' && (name.includes('firewall') || name.includes('fortigate')));
+
+    return matchesSearch &&
+      matchesCategory &&
+      (!selectedManufacturer || (dev.manufacturer || '').trim() === selectedManufacturer) &&
+      (!selectedBuilding || dev.building_id === selectedBuilding) &&
+      (!selectedSubnet || dev.subnet_id === selectedSubnet);
+  }).sort((a, b) => {
+    switch (sortOrder) {
+      case 'oldest':
+        return getDeviceTimestamp(a.created_at) - getDeviceTimestamp(b.created_at);
+      case 'name_asc':
+        return a.name.localeCompare(b.name, 'es', { sensitivity: 'base' });
+      case 'name_desc':
+        return b.name.localeCompare(a.name, 'es', { sensitivity: 'base' });
+      case 'ip_asc':
+        return compareIPv4Addresses(a.ipv4_address, b.ipv4_address);
+      case 'newest':
+      default:
+        return getDeviceTimestamp(b.created_at) - getDeviceTimestamp(a.created_at);
+    }
   });
 
+  const manufacturers = [...new Set(
+    devices.map(device => (device.manufacturer || '').trim()).filter(Boolean),
+  )].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+  const activeAdvancedFilters = [selectedManufacturer, selectedBuilding, selectedSubnet].filter(Boolean).length;
+  const renderFilterOptions = (
+    options: { label: string; value: string }[],
+    selectedValue: string,
+    onSelect: (value: string) => void,
+  ) => (
+    <View style={styles.filterOptions}>
+      {options.map(option => {
+        const isSelected = selectedValue === option.value;
+        return (
+          <TouchableOpacity
+            key={option.value || 'all'}
+            style={[
+              styles.filterOption,
+              { backgroundColor: colors.chipBg, borderColor: colors.chipBorder },
+              isSelected && { backgroundColor: colors.chipActiveBg, borderColor: colors.chipActiveBg },
+            ]}
+            activeOpacity={0.75}
+            onPress={() => onSelect(option.value)}>
+            <Text style={[
+              styles.filterOptionText,
+              { color: colors.textSecondary },
+              isSelected && { color: colors.chipActiveText },
+            ]}>{option.label}</Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+  const selectSortOrder = (value: string) => {
+    const option = DEVICE_SORT_OPTIONS.find(candidate => candidate.value === value);
+    if (option) setSortOrder(option.value);
+  };
+
+  const resetAdvancedFilters = () => {
+    setSelectedManufacturer('');
+    setSelectedBuilding('');
+    setSelectedSubnet('');
+    setSortOrder('newest');
+  };
+
   const handleSaveDevice = async () => {
+    if (!canEditDevices) return;
     if (isSubmitting) return;
     setModalError('');
     const errors: { [key: string]: string } = {};
@@ -242,13 +376,22 @@ export default function DeviceListScreen() {
     }
   };
 
-  const handleDeleteDevice = async (id: string) => {
+  const handleDeleteDevice = async (id: string, name: string) => {
+    if (!canDeleteRecords) return;
+    const confirmed = await confirmDestructiveAction(
+      'Eliminar dispositivo',
+      `¿Seguro que quieres eliminar “${name}”? Esta acción no se puede deshacer.`,
+    );
+    if (!confirmed) return;
+
     const prevDevices = [...devices];
     setDevices(prev => prev.filter(d => d.id !== id));
     try {
       await api.deleteDevice(id);
     } catch (err) {
+      console.error('Error eliminando dispositivo:', err);
       setDevices(prevDevices);
+      showUserNotice('No se pudo eliminar', 'El dispositivo sigue en el inventario. Revisa la conexión o sus registros relacionados e inténtalo de nuevo.');
     }
   };
 
@@ -284,10 +427,21 @@ export default function DeviceListScreen() {
               <Text style={[styles.headerTitle, { color: colors.textPrimary }, isSmallMobile && { fontSize: 22 }]}>Dispositivos</Text>
               <Text style={[styles.headerSubtitle, { color: colors.textTertiary }]}>{devices.length} Equipos registrados en la infraestructura</Text>
             </View>
-            <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.buttonBg }]} activeOpacity={0.8} onPress={handleOpenAddDevice}>
-              <Feather name="plus" size={17} color={colors.buttonText} />
-              <Text style={[styles.addButtonText, { color: colors.buttonText }]}>Nuevo Equipo</Text>
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={[styles.portsButton, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('InventarioPuertos')}>
+                <Feather name="server" size={15} color="#0A84FF" />
+                <Text style={styles.portsButtonText}>Puertos</Text>
+              </TouchableOpacity>
+              {canEditDevices && (
+                <TouchableOpacity style={[styles.addButton, { backgroundColor: colors.buttonBg }]} activeOpacity={0.8} onPress={handleOpenAddDevice}>
+                  <Feather name="plus" size={17} color={colors.buttonText} />
+                  <Text style={[styles.addButtonText, { color: colors.buttonText }]}>Nuevo Equipo</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
 
           <View style={[styles.searchBar, { backgroundColor: colors.searchBg, borderColor: colors.searchBorder }]}>
@@ -330,6 +484,27 @@ export default function DeviceListScreen() {
             })}
           </ScrollView>
 
+          <View style={styles.resultsToolbar}>
+            <Text style={[styles.resultsCount, { color: colors.textSecondary }]}>
+              {filteredDevices.length} de {devices.length} equipos
+            </Text>
+            <TouchableOpacity
+              style={[
+                styles.filtersButton,
+                { backgroundColor: colors.chipBg, borderColor: colors.chipBorder },
+                activeAdvancedFilters > 0 && { borderColor: '#0A84FF' },
+              ]}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel={`Filtros y orden${activeAdvancedFilters ? `, ${activeAdvancedFilters} filtros activos` : ''}`}
+              onPress={() => setShowFiltersModal(true)}>
+              <Feather name="sliders" size={14} color={activeAdvancedFilters ? '#0A84FF' : colors.textSecondary} />
+              <Text style={[styles.filtersButtonText, { color: activeAdvancedFilters ? '#0A84FF' : colors.textSecondary }]}>
+                Filtros y orden{activeAdvancedFilters > 0 ? ` (${activeAdvancedFilters})` : ''}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.deviceList}>
             {filteredDevices.map((dev) => { 
               const icon = getDeviceIcon(dev.name); 
@@ -345,18 +520,36 @@ export default function DeviceListScreen() {
                       <Feather name={icon} size={19} color="#0A84FF" />
                     </View>
                     <View style={styles.deviceTitleBlock}>
-                      <View style={styles.titleWithStatus}>
-                        <Text style={[styles.deviceName, { color: colors.textPrimary }]} numberOfLines={1}>{dev.name}</Text>
-                        <View style={styles.statusDot} />
-                      </View>
-                      <Text style={[styles.manufacturerText, { color: colors.textTertiary }]} numberOfLines={1}>{dev.manufacturer} • {dev.location}</Text>
+                      <TouchableOpacity
+                        activeOpacity={0.75}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Ver ficha de ${dev.name}`}
+                        onPress={() => void loadDeviceDetails(dev)}>
+                        <View style={styles.titleWithStatus}>
+                          <Text style={[styles.deviceName, { color: colors.textPrimary }]} numberOfLines={1}>{dev.name}</Text>
+                          <View style={styles.statusDot} />
+                        </View>
+                        <Text style={[styles.manufacturerText, { color: colors.textTertiary }]} numberOfLines={1}>{dev.manufacturer} • {dev.location}</Text>
+                      </TouchableOpacity>
                     </View>
-                    <TouchableOpacity style={styles.actionButton} activeOpacity={0.7} onPress={() => handleOpenEditDevice(dev)}>
-                      <Feather name="edit-2" size={15} color="#FFD60A" />
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Abrir ficha de ${dev.name}`}
+                      onPress={() => void loadDeviceDetails(dev)}>
+                      <Feather name="info" size={16} color="#0A84FF" />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.actionButton} activeOpacity={0.7} onPress={() => handleDeleteDevice(dev.id)}>
-                      <Feather name="trash-2" size={15} color="#FF453A" />
-                    </TouchableOpacity>
+                    {canEditDevices && (
+                      <TouchableOpacity style={styles.actionButton} activeOpacity={0.7} onPress={() => handleOpenEditDevice(dev)}>
+                        <Feather name="edit-2" size={15} color="#FFD60A" />
+                      </TouchableOpacity>
+                    )}
+                    {canDeleteRecords && (
+                      <TouchableOpacity style={styles.actionButton} activeOpacity={0.7} onPress={() => void handleDeleteDevice(dev.id, dev.name)}>
+                        <Feather name="trash-2" size={15} color="#FF453A" />
+                      </TouchableOpacity>
+                    )}
                   </View>
                   
                   <View style={styles.specsContainer}>
@@ -443,10 +636,12 @@ export default function DeviceListScreen() {
 
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 4 }}>
             <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Edificio / Ubicación Física *</Text>
-            <TouchableOpacity onPress={handleOpenNewBuildingModal} activeOpacity={0.7} style={styles.addBldSmallBtn}>
-              <Feather name="plus" size={12} color="#0A84FF" />
-              <Text style={styles.addBldSmallBtnText}>Añadir Ubicación</Text>
-            </TouchableOpacity>
+            {canManageBuildings && (
+              <TouchableOpacity onPress={handleOpenNewBuildingModal} activeOpacity={0.7} style={styles.addBldSmallBtn}>
+                <Feather name="plus" size={12} color="#0A84FF" />
+                <Text style={styles.addBldSmallBtnText}>Añadir Ubicación</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <View style={styles.buildingSelector}>
             {buildings.map((bld) => (
@@ -473,6 +668,192 @@ export default function DeviceListScreen() {
           </TouchableOpacity>
         </GlassModal>
 
+        <GlassModal
+          visible={showFiltersModal}
+          onClose={() => setShowFiltersModal(false)}
+          title="Filtros y orden"
+          subtitle="Combina criterios para encontrar equipos">
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Ordenar por</Text>
+          {renderFilterOptions(
+            DEVICE_SORT_OPTIONS.map(option => ({ label: option.label, value: option.value })),
+            sortOrder,
+            selectSortOrder,
+          )}
+
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Fabricante</Text>
+          {renderFilterOptions(
+            [{ label: 'Todos', value: '' }, ...manufacturers.map(manufacturer => ({ label: manufacturer, value: manufacturer }))],
+            selectedManufacturer,
+            setSelectedManufacturer,
+          )}
+
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Edificio</Text>
+          {renderFilterOptions(
+            [{ label: 'Todos', value: '' }, ...buildings.map(building => ({ label: building.name, value: building.id }))],
+            selectedBuilding,
+            setSelectedBuilding,
+          )}
+
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Subred</Text>
+          {renderFilterOptions(
+            [{ label: 'Todas', value: '' }, ...subnets.map(subnet => ({ label: subnet.name, value: subnet.id }))],
+            selectedSubnet,
+            setSelectedSubnet,
+          )}
+
+          <View style={styles.filterActions}>
+            <TouchableOpacity
+              style={[styles.filterResetButton, { borderColor: colors.cardBorder }]}
+              activeOpacity={0.75}
+              onPress={resetAdvancedFilters}>
+              <Text style={[styles.filterResetText, { color: colors.textSecondary }]}>Restablecer</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.filterApplyButton, { backgroundColor: colors.buttonBg }]}
+              activeOpacity={0.8}
+              onPress={() => setShowFiltersModal(false)}>
+              <Text style={[styles.filterApplyText, { color: colors.buttonText }]}>Ver {filteredDevices.length} equipos</Text>
+            </TouchableOpacity>
+          </View>
+        </GlassModal>
+
+        <GlassModal
+          visible={detailDevice !== null}
+          onClose={closeDeviceDetails}
+          title={detailDevice?.name || 'Ficha del dispositivo'}
+          subtitle="Información completa y actividad relacionada">
+          {detailDevice && (
+            <>
+              <View style={styles.detailHero}>
+                <View style={styles.detailHeroIcon}>
+                  <Feather name={getDeviceIcon(detailDevice.name)} size={24} color="#0A84FF" />
+                </View>
+                <View style={styles.detailHeroCopy}>
+                  <Text style={[styles.detailHeroTitle, { color: colors.textPrimary }]}>{detailDevice.name}</Text>
+                  <Text style={[styles.detailHeroSubtitle, { color: colors.textSecondary }]}>
+                    {detailDevice.manufacturer || 'Fabricante no especificado'} · {detailDevice.location || 'Ubicación no especificada'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.detailSection}>
+                <Text style={[styles.detailSectionTitle, { color: colors.textPrimary }]}>Identificación y red</Text>
+                <View style={styles.detailGrid}>
+                  <DetailValue label="Dirección IPv4" value={detailDevice.ipv4_address} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue label="Dirección MAC" value={detailDevice.mac_address} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue label="Red" value={detailDevice.network_name || 'Sin red asignada'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue label="Subred" value={detailDevice.subnet_name || 'Sin subred asignada'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                </View>
+              </View>
+
+              <View style={styles.detailSection}>
+                <Text style={[styles.detailSectionTitle, { color: colors.textPrimary }]}>Ubicación</Text>
+                <View style={styles.detailGrid}>
+                  <DetailValue label="Edificio" value={detailDevice.building_name || 'No asignado'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue label="Área o departamento" value={detailDevice.department_name || 'No asignado'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue label="Ubicación física" value={detailDevice.location || 'No especificada'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue
+                    label="Coordenadas GPS"
+                    value={detailDevice.latitude != null && detailDevice.longitude != null
+                      ? `${detailDevice.latitude}, ${detailDevice.longitude}`
+                      : 'No registradas'}
+                    color={colors.textPrimary}
+                    secondaryColor={colors.textSecondary}
+                  />
+                  <DetailValue label="Registrado" value={formatDeviceDate(detailDevice.created_at)} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue label="Última actualización" value={formatDeviceDate(detailDevice.updated_at)} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                </View>
+              </View>
+
+              <View style={styles.detailSection}>
+                <Text style={[styles.detailSectionTitle, { color: colors.textPrimary }]}>Descripción</Text>
+                <Text style={[styles.detailDescription, { color: colors.textSecondary }]}>
+                  {detailDevice.description || 'Sin descripción u observaciones.'}
+                </Text>
+              </View>
+
+              {detailLoading ? (
+                <View style={styles.detailLoading}>
+                  <ActivityIndicator size="small" color="#0A84FF" />
+                  <Text style={[styles.detailDescription, { color: colors.textSecondary }]}>Cargando incidentes, mantenimientos y respaldos...</Text>
+                </View>
+              ) : detailError ? (
+                <View style={styles.detailError}>
+                  <Feather name="alert-circle" size={16} color="#FF453A" />
+                  <Text style={styles.detailErrorText}>{detailError}</Text>
+                  <TouchableOpacity onPress={() => void loadDeviceDetails(detailDevice)} style={styles.detailRetryButton}>
+                    <Text style={styles.detailRetryText}>Reintentar</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <>
+                  <View style={styles.detailSection}>
+                    <Text style={[styles.detailSectionTitle, { color: colors.textPrimary }]}>
+                      Incidentes ({deviceIncidents.length})
+                    </Text>
+                    {deviceIncidents.length ? deviceIncidents.slice(0, 4).map(incident => (
+                      <View key={incident.id} style={[styles.relatedRecord, { borderColor: colors.divider }]}>
+                        <View style={styles.relatedRecordIcon}>
+                          <Feather name="alert-triangle" size={14} color={incident.status === 'resolved' ? '#30D158' : '#FF9F0A'} />
+                        </View>
+                        <View style={styles.relatedRecordCopy}>
+                          <Text style={[styles.relatedRecordTitle, { color: colors.textPrimary }]} numberOfLines={1}>{incident.title}</Text>
+                          <Text style={[styles.relatedRecordMeta, { color: colors.textSecondary }]}>
+                            {incident.status === 'resolved' ? 'Resuelto' : incident.status === 'in_progress' ? 'En progreso' : 'Abierto'} · {incident.severity}
+                          </Text>
+                        </View>
+                      </View>
+                    )) : <Text style={[styles.detailDescription, { color: colors.textSecondary }]}>No hay incidentes relacionados.</Text>}
+                  </View>
+
+                  <View style={styles.detailSection}>
+                    <Text style={[styles.detailSectionTitle, { color: colors.textPrimary }]}>
+                      Mantenimientos ({deviceMaintenances.length})
+                    </Text>
+                    {deviceMaintenances.some(maintenance => !maintenance.device_id) && (
+                      <Text style={[styles.relatedRecordMeta, { color: colors.textSecondary, marginBottom: 8 }]}>
+                        Algunos registros anteriores se relacionan por nombre y ubicación.
+                      </Text>
+                    )}
+                    {deviceMaintenances.length ? deviceMaintenances.slice(0, 4).map(maintenance => (
+                      <View key={maintenance.id} style={[styles.relatedRecord, { borderColor: colors.divider }]}>
+                        <View style={styles.relatedRecordIcon}>
+                          <Feather name="tool" size={14} color="#0A84FF" />
+                        </View>
+                        <View style={styles.relatedRecordCopy}>
+                          <Text style={[styles.relatedRecordTitle, { color: colors.textPrimary }]} numberOfLines={1}>{maintenance.title}</Text>
+                          <Text style={[styles.relatedRecordMeta, { color: colors.textSecondary }]}>
+                            {maintenance.scheduled_date} · {maintenance.status === 'completed' ? 'Completado' : maintenance.status === 'in_progress' ? 'En progreso' : 'Programado'}
+                          </Text>
+                        </View>
+                      </View>
+                    )) : <Text style={[styles.detailDescription, { color: colors.textSecondary }]}>No hay mantenimientos relacionados.</Text>}
+                  </View>
+
+                  <View style={styles.detailSection}>
+                    <Text style={[styles.detailSectionTitle, { color: colors.textPrimary }]}>
+                      Configuraciones guardadas ({deviceConfigs.length})
+                    </Text>
+                    {deviceConfigs.length ? deviceConfigs.slice(0, 4).map(config => (
+                      <View key={config.id} style={[styles.relatedRecord, { borderColor: colors.divider }]}>
+                        <View style={styles.relatedRecordIcon}>
+                          <Feather name="file-text" size={14} color="#BF5AF2" />
+                        </View>
+                        <View style={styles.relatedRecordCopy}>
+                          <Text style={[styles.relatedRecordTitle, { color: colors.textPrimary }]} numberOfLines={1}>{config.name}</Text>
+                          <Text style={[styles.relatedRecordMeta, { color: colors.textSecondary }]} numberOfLines={1}>
+                            {config.file_name} · {config.file_size || 'Tamaño no disponible'}
+                          </Text>
+                        </View>
+                      </View>
+                    )) : <Text style={[styles.detailDescription, { color: colors.textSecondary }]}>No hay configuraciones guardadas.</Text>}
+                  </View>
+                </>
+              )}
+            </>
+          )}
+        </GlassModal>
+
         {/* Modal Nuevo Edificio */}
         <GlassModal visible={showNewBuildingModal} onClose={() => setShowNewBuildingModal(false)} title="Nueva Ubicación Física" subtitle="Registra un edificio con coordenadas GPS">
           {newBldError !== '' && (
@@ -496,14 +877,66 @@ export default function DeviceListScreen() {
   );
 }
 
+function DetailValue({
+  label,
+  value,
+  color,
+  secondaryColor,
+}: {
+  label: string;
+  value: string;
+  color: string;
+  secondaryColor: string;
+}) {
+  return (
+    <View style={styles.detailValue}>
+      <Text style={[styles.detailValueLabel, { color: secondaryColor }]}>{label}</Text>
+      <Text style={[styles.detailValueText, { color }]} selectable>{value || 'No especificado'}</Text>
+    </View>
+  );
+}
+
+function formatDeviceDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'No disponible' : date.toLocaleString();
+}
+
+function getDeviceTimestamp(value: string) {
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function compareIPv4Addresses(first = '', second = '') {
+  const firstSegments = first.split('.');
+  const secondSegments = second.split('.');
+  const firstParts = firstSegments.map(Number);
+  const secondParts = secondSegments.map(Number);
+  const isValidIPv4 = (segments: string[], parts: number[]) =>
+    segments.length === 4 &&
+    segments.every(segment => /^\d{1,3}$/.test(segment)) &&
+    parts.every(part => Number.isInteger(part) && part >= 0 && part <= 255);
+
+  if (!isValidIPv4(firstSegments, firstParts) || !isValidIPv4(secondSegments, secondParts)) {
+    return first.localeCompare(second, 'en', { numeric: true, sensitivity: 'base' });
+  }
+
+  for (let index = 0; index < 4; index += 1) {
+    if (firstParts[index] !== secondParts[index]) return firstParts[index] - secondParts[index];
+  }
+  return 0;
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingTop: 45, paddingBottom: 110 },
+  scrollContent: { paddingTop: 24, paddingBottom: 110 },
   innerWrapper: { maxWidth: 1200, width: '100%', alignSelf: 'center' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18, flexWrap: 'wrap', gap: 10 },
   headerBadge: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#30D158', letterSpacing: 1.5, marginBottom: 2 },
   headerTitle: { fontFamily: 'Poppins_700Bold', fontSize: 26, color: '#FFFFFF', letterSpacing: 0.3 },
   headerSubtitle: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: 'rgba(255, 255, 255, 0.45)', marginTop: 2 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  portsButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 12, borderWidth: 1, gap: 5 },
+  portsButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11, color: '#0A84FF' },
   addButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, gap: 5 },
   addButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 12.5, color: '#000000' },
   searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 14, gap: 10 },
@@ -513,6 +946,18 @@ const styles = StyleSheet.create({
   categoryChipActive: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
   categoryChipText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.7)' },
   categoryChipTextActive: { color: '#000000' },
+  resultsToolbar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: -8, marginBottom: 12, gap: 10 },
+  resultsCount: { fontFamily: 'Poppins_400Regular', fontSize: 11.5 },
+  filtersButton: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 12, paddingVertical: 8, borderWidth: 1, borderRadius: 12 },
+  filtersButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11 },
+  filterOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginBottom: 16 },
+  filterOption: { paddingHorizontal: 11, paddingVertical: 7, borderWidth: 1, borderRadius: 18, maxWidth: '100%' },
+  filterOptionText: { fontFamily: 'Poppins_400Regular', fontSize: 11 },
+  filterActions: { flexDirection: 'row', gap: 9, marginTop: 4 },
+  filterResetButton: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderWidth: 1, borderRadius: 12 },
+  filterResetText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5 },
+  filterApplyButton: { flex: 1.5, alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12 },
+  filterApplyText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5 },
   emptyText: { fontFamily: 'Poppins_400Regular', fontSize: 13, color: 'rgba(255, 255, 255, 0.4)', fontStyle: 'italic', paddingVertical: 16, textAlign: 'center', width: '100%' },
   deviceList: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   deviceCard: { padding: 16, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
@@ -524,6 +969,28 @@ const styles = StyleSheet.create({
   statusDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#30D158' },
   manufacturerText: { fontFamily: 'Poppins_400Regular', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.45)', marginTop: 1 },
   actionButton: { padding: 5, marginLeft: 2 },
+  detailHero: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 16, backgroundColor: 'rgba(10, 132, 255, 0.08)', borderWidth: 1, borderColor: 'rgba(10, 132, 255, 0.16)', marginBottom: 18 },
+  detailHeroIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10, 132, 255, 0.12)' },
+  detailHeroCopy: { flex: 1 },
+  detailHeroTitle: { fontFamily: 'Poppins_700Bold', fontSize: 15 },
+  detailHeroSubtitle: { fontFamily: 'Poppins_400Regular', fontSize: 11.5, marginTop: 3 },
+  detailSection: { marginBottom: 18 },
+  detailSectionTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 13, marginBottom: 9 },
+  detailGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  detailValue: { width: '48%', minWidth: 130, padding: 10, borderRadius: 11, backgroundColor: 'rgba(255, 255, 255, 0.04)' },
+  detailValueLabel: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, marginBottom: 4 },
+  detailValueText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5 },
+  detailDescription: { fontFamily: 'Poppins_400Regular', fontSize: 12, lineHeight: 18 },
+  detailLoading: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 12 },
+  detailError: { padding: 12, borderRadius: 12, backgroundColor: 'rgba(255, 69, 58, 0.08)', borderWidth: 1, borderColor: 'rgba(255, 69, 58, 0.2)', marginBottom: 14, gap: 8 },
+  detailErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 11.5, color: '#FF453A' },
+  detailRetryButton: { alignSelf: 'flex-start', paddingVertical: 5 },
+  detailRetryText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: '#0A84FF' },
+  relatedRecord: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingVertical: 9, borderBottomWidth: 1 },
+  relatedRecordIcon: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255, 255, 255, 0.05)' },
+  relatedRecordCopy: { flex: 1 },
+  relatedRecordTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5 },
+  relatedRecordMeta: { fontFamily: 'Poppins_400Regular', fontSize: 10, marginTop: 2 },
   specsContainer: { flexDirection: 'row', gap: 8, marginBottom: 12 },
   specBadge: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)', paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, gap: 6 },
   specLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 9.5, color: 'rgba(255, 255, 255, 0.4)' },

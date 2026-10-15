@@ -18,6 +18,8 @@ import {
   Maintenance,
   DeviceConfig,
   RecentActivity,
+  AuditLogRecord,
+  UserAccessRecord,
 } from '../types';
 import { hydrateIncident, packIncident } from '../utils/incidentRecord';
 
@@ -480,7 +482,22 @@ export async function updateBuilding(id: string, data: Partial<Pick<Building, 'n
 }
 
 export async function deleteBuilding(id: string) {
-  await insforge.database.from('departments').delete().eq('building_id', id);
+  const { data: linkedDevices, error: devicesError } = await insforge.database
+    .from('devices')
+    .select('id')
+    .eq('building_id', id)
+    .limit(1);
+  if (devicesError) throw devicesError;
+  if (linkedDevices?.length) {
+    throw new Error('No se puede eliminar el edificio mientras tenga dispositivos asignados. Reasígnalos primero.');
+  }
+
+  const { error: departmentsError } = await insforge.database
+    .from('departments')
+    .delete()
+    .eq('building_id', id);
+  if (departmentsError) throw departmentsError;
+
   const { error } = await insforge.database.from('buildings').delete().eq('id', id);
   if (error) throw error;
   invalidateCache('buildings', 'devices');
@@ -683,6 +700,7 @@ export async function createMaintenance(data: {
   title: string;
   type: 'preventive' | 'firmware' | 'cleaning' | 'ups_battery' | 'audit';
   type_label: string;
+  device_id?: string;
   device_name: string;
   location: string;
   scheduled_date: string;
@@ -697,6 +715,7 @@ export async function createMaintenance(data: {
       title: sanitize(data.title),
       type: data.type,
       type_label: sanitize(data.type_label),
+      ...(data.device_id ? { device_id: data.device_id } : {}),
       device_name: sanitize(data.device_name),
       location: sanitize(data.location),
       scheduled_date: sanitize(data.scheduled_date),
@@ -796,6 +815,54 @@ export async function deleteConfig(id: string) {
   const { error } = await insforge.database.from('device_configs').delete().eq('id', id);
   if (error) throw error;
   invalidateCache('configs');
+}
+
+export async function fetchAuditLogs(limit = 100): Promise<AuditLogRecord[]> {
+  const safeLimit = Math.min(200, Math.max(1, Math.floor(limit)));
+  const { data, error } = await insforge.database
+    .from('audit_logs')
+    .select('id, table_name, record_id, operation, actor_id, actor_email, actor_role, changed_at, old_data, new_data')
+    .order('changed_at', { ascending: false })
+    .limit(safeLimit);
+
+  if (error) throw error;
+  return (data || []) as AuditLogRecord[];
+}
+
+export async function fetchManagedAccounts(): Promise<UserAccessRecord[]> {
+  const { data, error } = await insforge.database.rpc('list_app_users');
+  if (error) throw error;
+
+  return (data || []).map((record: {
+    user_id: string;
+    email: string | null;
+    role: UserAccessRecord['role'];
+    active: boolean;
+  }) => ({
+    id: record.user_id,
+    email: record.email || 'Correo no disponible',
+    role: record.role,
+    active: record.active,
+  }));
+}
+
+export async function setManagedAccountActive(userId: string, active: boolean): Promise<void> {
+  const { error } = await insforge.database.rpc('set_app_user_active', {
+    p_user_id: userId,
+    p_active: active,
+  });
+  if (error) throw error;
+}
+
+export async function setManagedAccountRole(
+  userId: string,
+  role: UserAccessRecord['role'],
+): Promise<void> {
+  const { error } = await insforge.database.rpc('set_app_user_role', {
+    p_user_id: userId,
+    p_role: role,
+  });
+  if (error) throw error;
 }
 
 // ============================================================

@@ -1,130 +1,161 @@
 import React, { useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Animated, Platform, useWindowDimensions } from 'react-native';
+import {
+  Animated,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createBottomTabNavigator, type BottomTabHeaderProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
 import DashboardScreen from '../screens/dashboard/DashboardScreen';
-import DeviceListScreen from '../screens/device/DeviceListScreen';
-import NetworkListScreen from '../screens/network/NetworkListScreen';
 import MapScreen from '../screens/map/MapScreen';
-import IncidentScreen from '../screens/incident/IncidentScreen';
 import ConfigScreen from '../screens/config/ConfigScreen';
+import AccountScreen from '../screens/account/AccountScreen';
 import SearchScreen from '../screens/search/SearchScreen';
-import ReportsScreen from '../screens/reports/ReportsScreen';
+import PortInventoryRouteScreen from '../screens/ports/PortInventoryRouteScreen';
+import { ControlCenterNavigator, InfrastructureNavigator } from './GroupedTabNavigators';
+import { useAuth } from '../contexts/AuthContext';
 
 const Tab = createBottomTabNavigator();
+
+const visibleItems = [
+  { route: 'Inicio', label: 'Inicio', icon: 'home' },
+  { route: 'Infraestructura', label: 'Infraestructura', icon: 'server' },
+  { route: 'Mapa', label: 'Mapa', icon: 'map-pin' },
+  { route: 'CentroControl', label: 'Centro de control', icon: 'activity' },
+  { route: 'Configuraciones', label: 'Configuraciones de equipos', icon: 'terminal' },
+  { route: 'Buscar', label: 'Buscar', icon: 'search' },
+] as const;
+
+function AccountIdentityHeader({ navigation }: BottomTabHeaderProps) {
+  const { colors, isDark } = useTheme();
+  const { user } = useAuth();
+  const accountName = user?.profile?.name?.trim() || user?.email?.split('@')[0] || 'Mi cuenta';
+
+  return (
+    <View style={[styles.identityHeader, { backgroundColor: colors.cardBg, borderBottomColor: colors.cardBorder }]}>
+      <View style={styles.identityContent}>
+        <Text style={[styles.brandName, { color: colors.textPrimary }]}>Bitácora Digital</Text>
+        <TouchableOpacity
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel={`Abrir mi cuenta, ${accountName}`}
+          onPress={() => navigation.navigate('Cuenta')}
+          style={[
+            styles.accountBubble,
+            {
+              backgroundColor: isDark ? 'rgba(10,132,255,0.16)' : 'rgba(10,132,255,0.10)',
+              borderColor: isDark ? 'rgba(10,132,255,0.34)' : 'rgba(10,132,255,0.24)',
+            },
+          ]}>
+          <Text style={styles.accountInitial}>{accountName.slice(0, 1).toUpperCase()}</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
 
 function CustomTabBar({ state, descriptors, navigation }: any) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { isDark } = useTheme();
   const isSmallMobile = width < 380;
-  const isDesktop = width > 1024;
-
   const horizontalMargin = isSmallMobile ? 12 : 20;
-  const effectiveWidth = Math.min(width - horizontalMargin, isDesktop ? 620 : 580);
-  const TAB_WIDTH = effectiveWidth / state.routes.length;
-  const indicatorSize = Math.min(42, Math.max(34, TAB_WIDTH - 4));
-  const iconSize = TAB_WIDTH < 48 ? 16 : 19;
+  const effectiveWidth = Math.min(width - horizontalMargin, 620);
+  const itemWidth = effectiveWidth / visibleItems.length;
+  const indicatorSize = Math.min(42, Math.max(32, itemWidth - 6));
+  const iconSize = itemWidth < 45 ? 16 : 19;
   const bottomInset = Platform.OS === 'ios' ? insets.bottom + 8 : 18;
-
-  const animatedValue = useRef(new Animated.Value(state.index)).current;
+  const currentRoute = state.routes[state.index]?.name;
+  const selectedVisibleIndex = visibleItems.findIndex(item =>
+    item.route === currentRoute || (currentRoute === 'InventarioPuertos' && item.route === 'Infraestructura'),
+  );
+  const indicatorValue = useRef(new Animated.Value(Math.max(0, selectedVisibleIndex))).current;
 
   useEffect(() => {
-    Animated.spring(animatedValue, {
-      toValue: state.index,
-      tension: 20,
-      friction: 7,
-      useNativeDriver: true,
-    }).start();
-  }, [state.index]);
+    if (selectedVisibleIndex >= 0) {
+      Animated.spring(indicatorValue, {
+        toValue: selectedVisibleIndex,
+        tension: 20,
+        friction: 7,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [selectedVisibleIndex]);
 
-  const indicatorPosition = animatedValue.interpolate({
-    inputRange: state.routes.map((_: any, index: number) => index),
-    outputRange: state.routes.map((_: any, index: number) => TAB_WIDTH * index),
+  const indicatorPosition = indicatorValue.interpolate({
+    inputRange: visibleItems.map((_, index) => index),
+    outputRange: visibleItems.map((_, index) => itemWidth * index),
   });
 
   return (
-    <View style={[styles.tabBarContainer, { width: effectiveWidth, left: (width - effectiveWidth) / 2, bottom: bottomInset }]}>
-      <BlurView 
-        intensity={isDark ? 50 : 70} 
-        tint={isDark ? 'dark' : 'light'} 
+    <View
+      style={[
+        styles.tabBarContainer,
+        { width: effectiveWidth, left: (width - effectiveWidth) / 2, bottom: bottomInset },
+      ]}>
+      <BlurView
+        intensity={isDark ? 50 : 70}
+        tint={isDark ? 'dark' : 'light'}
         style={[
           styles.blurBackground,
           {
-            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.85)',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'
-          }
-        ]} 
+            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.88)',
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+          },
+        ]}
       />
-      
       <View style={styles.contentContainer}>
-        <Animated.View
-          style={[
-            styles.indicatorWrapper,
-            { width: TAB_WIDTH, transform: [{ translateX: indicatorPosition }] }
-          ]}
-        >
-          <View 
+        {selectedVisibleIndex >= 0 && (
+          <Animated.View
+            pointerEvents="none"
             style={[
-              styles.circularIndicator, 
-              { 
-                width: indicatorSize, 
-                height: indicatorSize, 
-                borderRadius: indicatorSize / 2,
-                backgroundColor: isDark ? '#FFFFFF' : '#111827',
-                shadowColor: isDark ? '#FFFFFF' : '#000000',
-              }
-            ]} 
-          />
-        </Animated.View>
+              styles.indicatorWrapper,
+              { width: itemWidth, transform: [{ translateX: indicatorPosition }] },
+            ]}>
+            <View
+              style={[
+                styles.circularIndicator,
+                {
+                  width: indicatorSize,
+                  height: indicatorSize,
+                  borderRadius: indicatorSize / 2,
+                  backgroundColor: isDark ? '#FFFFFF' : '#111827',
+                  shadowColor: isDark ? '#FFFFFF' : '#000000',
+                },
+              ]}
+            />
+          </Animated.View>
+        )}
 
-        {state.routes.map((route: any, index: number) => {
-          const { options } = descriptors[route.key];
-          const isFocused = state.index === index;
-
-          const onPress = () => {
-            const event = navigation.emit({
-              type: 'tabPress',
-              target: route.key,
-              canPreventDefault: true,
-            });
-
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
-          };
-
-          let iconName: keyof typeof Feather.glyphMap = 'home';
-          if (route.name === 'Inicio') iconName = 'home';
-          else if (route.name === 'Dispositivos') iconName = 'cpu';
-          else if (route.name === 'Redes') iconName = 'wifi';
-          else if (route.name === 'Mapa') iconName = 'map-pin';
-          else if (route.name === 'Incidentes') iconName = 'alert-triangle';
-          else if (route.name === 'Reportes') iconName = 'file-text';
-          else if (route.name === 'Configuraciones') iconName = 'terminal';
-          else if (route.name === 'Buscar') iconName = 'search';
-
-          const activeColor = isDark ? '#000000' : '#FFFFFF';
-          const inactiveColor = isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)';
-
+        {visibleItems.map(item => {
+          const route = state.routes.find((entry: any) => entry.name === item.route);
+          const options = route ? descriptors[route.key]?.options : undefined;
+          const isFocused = currentRoute === item.route;
           return (
             <TouchableOpacity
-              key={index}
-              activeOpacity={1}
-              onPress={onPress}
+              key={item.route}
+              activeOpacity={0.75}
+              onPress={() => {
+                if (!route) return;
+                const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+                if (!isFocused && !event.defaultPrevented) navigation.navigate(item.route);
+              }}
               accessibilityRole="tab"
-              accessibilityLabel={options.tabBarAccessibilityLabel ?? route.name}
+              accessibilityLabel={options?.tabBarAccessibilityLabel ?? item.label}
               accessibilityState={{ selected: isFocused }}
-              style={styles.tabItem}
-            >
-              <Feather 
-                name={iconName} 
-                size={iconSize} 
-                color={isFocused ? activeColor : inactiveColor} 
+              style={styles.tabItem}>
+              <Feather
+                name={item.icon as keyof typeof Feather.glyphMap}
+                size={iconSize}
+                color={isFocused ? (isDark ? '#000000' : '#FFFFFF') : 'rgba(128,128,128,0.7)'}
               />
             </TouchableOpacity>
           );
@@ -135,24 +166,68 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
 }
 
 export default function BottomTabNavigator() {
+  const { colors } = useTheme();
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
-    >
+      screenOptions={{
+        headerShown: true,
+        header: (props) => <AccountIdentityHeader {...props} />,
+        headerShadowVisible: false,
+        headerStyle: { backgroundColor: colors.cardBg },
+        tabBarHideOnKeyboard: true,
+      }}>
       <Tab.Screen name="Inicio" component={DashboardScreen} />
-      <Tab.Screen name="Dispositivos" component={DeviceListScreen} />
-      <Tab.Screen name="Redes" component={NetworkListScreen} />
+      <Tab.Screen name="Infraestructura" component={InfrastructureNavigator} />
       <Tab.Screen name="Mapa" component={MapScreen} />
-      <Tab.Screen name="Incidentes" component={IncidentScreen} />
-      <Tab.Screen name="Reportes" component={ReportsScreen} />
+      <Tab.Screen name="CentroControl" component={ControlCenterNavigator} />
       <Tab.Screen name="Configuraciones" component={ConfigScreen} />
       <Tab.Screen name="Buscar" component={SearchScreen} />
+      <Tab.Screen name="InventarioPuertos" component={PortInventoryRouteScreen} options={{ tabBarButton: () => null }} />
+      <Tab.Screen name="Cuenta" component={AccountScreen} options={{ tabBarButton: () => null }} />
     </Tab.Navigator>
   );
 }
 
 const styles = StyleSheet.create({
+  identityHeader: {
+    width: '100%',
+    height: 62,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'center',
+  },
+  identityContent: {
+    width: '100%',
+    maxWidth: 1120,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  brandName: {
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 14,
+  },
+  accountBubble: {
+    minWidth: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+    shadowColor: '#0A84FF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.16,
+    shadowRadius: 5,
+    elevation: 2,
+  },
+  accountInitial: {
+    color: '#0A84FF',
+    fontFamily: 'Poppins_700Bold',
+    fontSize: 16,
+  },
   tabBarContainer: {
     position: 'absolute',
     height: 68,

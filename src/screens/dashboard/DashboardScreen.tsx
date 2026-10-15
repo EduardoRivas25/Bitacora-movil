@@ -16,13 +16,34 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { getAccountRole, getRequestedAccountRole } from '../../services/auth';
+import { getAccountRole } from '../../services/auth';
 import ThemeToggle from '../../components/ThemeToggle';
-import { fetchDashboardStats, fetchRecentActivities, DashboardStats } from '../../services/api';
-import { RecentActivity } from '../../types';
+import { fetchDashboardStats, fetchRecentActivities, fetchIncidents, fetchMaintenances, DashboardStats } from '../../services/api';
+import { Incident, Maintenance, RecentActivity } from '../../types';
 
 const LOGO_DARK = require('../../../assets/logobitacoraredes.png');
 const LOGO_LIGHT = require('../../../assets/logobitacoraredesmodoclaro.png');
+
+type ActionablePending = {
+  id: string;
+  title: string;
+  detail: string;
+  status: string;
+  icon: keyof typeof Feather.glyphMap;
+  color: string;
+  priority: number;
+  date: number;
+};
+
+function getLocalDateKey(date = new Date()) {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function getMaintenanceTimestamp(date: string) {
+  const timestamp = new Date(`${date}T00:00:00`).getTime();
+  return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp;
+}
 
 export default function DashboardScreen() {
   const { width } = useWindowDimensions();
@@ -31,14 +52,13 @@ export default function DashboardScreen() {
   const isTablet = width >= 600 && width < 1024;
   const isDesktop = width >= 1024;
   const navigation = useNavigation<any>();
-  const { signOut, user, authMethod } = useAuth();
+  const { signOut, user, authMethod, authorizationError } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const appLogo = isDark ? LOGO_DARK : LOGO_LIGHT;
   const accountName = user?.profile?.name?.trim() || user?.email || 'Usuario';
   const accountRole = getAccountRole(user);
-  const requestedRole = getRequestedAccountRole(user);
-  const accountRoleLabel = accountRole || (requestedRole ? `${requestedRole} solicitado` : 'Rol no asignado');
+  const accountRoleLabel = accountRole || 'Rol no asignado';
   const authMethodLabel = authMethod === 'google'
     ? 'Google'
     : authMethod === 'apple'
@@ -49,23 +69,32 @@ export default function DashboardScreen() {
 
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [activities, setActivities] = useState<RecentActivity[]>([]);
+  const [openIncidents, setOpenIncidents] = useState<Incident[]>([]);
+  const [pendingMaintenances, setPendingMaintenances] = useState<Maintenance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   const loadData = useCallback(async (isSilent = false) => {
     try {
-      if (!isSilent && !stats) setLoading(true);
-      const [dashStats, recentActs] = await Promise.all([
+      if (!isSilent) setLoading(true);
+      const [dashStats, recentActs, incidents, maintenances] = await Promise.all([
         fetchDashboardStats(),
         fetchRecentActivities(),
+        fetchIncidents(),
+        fetchMaintenances(),
       ]);
       setStats(dashStats);
       setActivities(recentActs);
+      setOpenIncidents(incidents.filter(incident => incident.status !== 'resolved'));
+      setPendingMaintenances(maintenances.filter(maintenance => maintenance.status !== 'completed'));
+      setLoadError('');
     } catch (err) {
       console.error('Error cargando dashboard:', err);
+      setLoadError('No se pudo cargar la información del inicio.');
     } finally {
       setLoading(false);
     }
-  }, [stats]);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -77,13 +106,42 @@ export default function DashboardScreen() {
 
   const handleActivityPress = (actId: string) => {
     if (actId.startsWith('inc-') || actId.startsWith('mnt-')) {
-      navigation.navigate('Incidentes');
+      navigation.navigate('CentroControl', { screen: 'SeguimientoIncidentes' });
     } else if (actId.startsWith('cfg-')) {
       navigation.navigate('Configuraciones');
     } else if (actId.startsWith('dev-')) {
-      navigation.navigate('Dispositivos');
+      navigation.navigate('Infraestructura', { screen: 'InventarioDispositivos' });
     }
   };
+
+  const today = getLocalDateKey();
+  const todayTimestamp = getMaintenanceTimestamp(today);
+  const actionableItems: ActionablePending[] = [
+    ...openIncidents.map(incident => ({
+      id: `incident-${incident.id}`,
+      title: incident.title,
+      detail: incident.device_name || incident.location || 'Equipo o ubicación sin especificar',
+      status: incident.status === 'in_progress' ? 'En progreso' : 'Abierto',
+      icon: 'alert-triangle' as const,
+      color: incident.severity === 'critical' ? '#FF453A' : incident.severity === 'high' ? '#FF9F0A' : '#FFD60A',
+      priority: incident.severity === 'critical' ? 0 : incident.severity === 'high' ? 1 : 2,
+      date: new Date(incident.event_at || incident.created_at).getTime() || 0,
+    })),
+    ...pendingMaintenances.map(maintenance => {
+      const scheduledTimestamp = getMaintenanceTimestamp(maintenance.scheduled_date);
+      const isOverdue = maintenance.status !== 'completed' && scheduledTimestamp < todayTimestamp;
+      return {
+        id: `maintenance-${maintenance.id}`,
+        title: maintenance.title,
+        detail: `${maintenance.device_name || 'Equipo sin especificar'} · ${maintenance.scheduled_date || 'Sin fecha'}`,
+        status: isOverdue ? 'Atrasado' : maintenance.status === 'in_progress' ? 'En progreso' : 'Programado',
+        icon: 'tool' as const,
+        color: isOverdue ? '#FF453A' : '#0A84FF',
+        priority: isOverdue ? 0 : maintenance.status === 'in_progress' ? 1 : 3,
+        date: scheduledTimestamp,
+      };
+    }),
+  ].sort((first, second) => first.priority - second.priority || first.date - second.date);
 
   useFocusEffect(
     useCallback(() => {
@@ -103,10 +161,27 @@ export default function DashboardScreen() {
     return (
       <LinearGradient colors={gradientColors} style={styles.container}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color="#0A84FF" />
-          <Text style={{ color: subtitleColor, fontFamily: 'Poppins_400Regular', marginTop: 12 }}>
-            Cargando datos...
-          </Text>
+          {loadError ? (
+            <>
+              <Feather name="alert-circle" size={28} color="#FF9F0A" />
+              <Text style={{ color: textColor, fontFamily: 'Poppins_600SemiBold', marginTop: 12, textAlign: 'center' }}>
+                {loadError}
+              </Text>
+              <TouchableOpacity
+                style={{ marginTop: 16, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0A84FF' }}
+                activeOpacity={0.8}
+                onPress={() => void loadData(false)}>
+                <Text style={{ color: '#FFFFFF', fontFamily: 'Poppins_600SemiBold' }}>Reintentar</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <ActivityIndicator size="large" color="#0A84FF" />
+              <Text style={{ color: subtitleColor, fontFamily: 'Poppins_400Regular', marginTop: 12 }}>
+                Cargando datos...
+              </Text>
+            </>
+          )}
         </View>
       </LinearGradient>
     );
@@ -124,6 +199,22 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.innerWrapper}>
+          {!!authorizationError && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14, padding: 12, borderRadius: 12, backgroundColor: isDark ? 'rgba(255,69,58,0.12)' : 'rgba(255,69,58,0.08)' }}>
+              <Feather name="shield" size={17} color="#FF453A" />
+              <Text style={{ flex: 1, color: textColor, fontFamily: 'Poppins_400Regular' }}>{authorizationError}</Text>
+            </View>
+          )}
+          {!!loadError && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14, padding: 12, borderRadius: 12, backgroundColor: isDark ? 'rgba(255,159,10,0.12)' : 'rgba(255,159,10,0.10)' }}>
+              <Text style={{ flex: 1, color: textColor, fontFamily: 'Poppins_400Regular' }}>
+                {loadError} Se muestran los últimos datos disponibles.
+              </Text>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => void loadData(false)}>
+                <Text style={{ color: '#0A84FF', fontFamily: 'Poppins_600SemiBold' }}>Reintentar</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerBrand}>
@@ -218,7 +309,7 @@ export default function DashboardScreen() {
                   }
                 ]}
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate('Redes')}
+                onPress={() => navigation.navigate('Infraestructura', { screen: 'RedesInternas' })}
               >
                 <Text style={[styles.metricActionText, { color: textColor }]}>Ver redes</Text>
                 <Feather name="chevron-right" size={13} color={textColor} />
@@ -246,7 +337,7 @@ export default function DashboardScreen() {
                   }
                 ]}
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate('Redes')}
+                onPress={() => navigation.navigate('Infraestructura', { screen: 'RedesInternas' })}
               >
                 <Text style={[styles.metricActionText, { color: textColor }]}>Ver VLANs</Text>
                 <Feather name="chevron-right" size={13} color={textColor} />
@@ -274,7 +365,7 @@ export default function DashboardScreen() {
                   }
                 ]}
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate('Dispositivos')}
+                onPress={() => navigation.navigate('Infraestructura', { screen: 'InventarioDispositivos' })}
               >
                 <Text style={[styles.metricActionText, { color: textColor }]}>Inventario</Text>
                 <Feather name="chevron-right" size={13} color={textColor} />
@@ -304,12 +395,78 @@ export default function DashboardScreen() {
                   }
                 ]}
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate('Incidentes')}
+                onPress={() => navigation.navigate('CentroControl', { screen: 'SeguimientoIncidentes' })}
               >
                 <Text style={[styles.metricActionText, { color: textColor }]}>Atender</Text>
                 <Feather name="chevron-right" size={13} color={textColor} />
               </TouchableOpacity>
             </BlurView>
+          </View>
+
+          <View style={styles.pendingSection}>
+            <View style={styles.pendingHeader}>
+              <View style={styles.pendingHeadingGroup}>
+                <Text style={[styles.sectionTitle, { color: textColor }]}>Pendientes accionables</Text>
+                <Text style={[styles.pendingSummary, { color: subtitleColor }]}>
+                  {openIncidents.length} incidentes · {pendingMaintenances.length} mantenimientos
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={[styles.pendingOpenAll, { backgroundColor: isDark ? 'rgba(10, 132, 255, 0.12)' : 'rgba(10, 132, 255, 0.08)' }]}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel="Abrir incidentes y mantenimientos"
+                onPress={() => navigation.navigate('CentroControl', { screen: 'SeguimientoIncidentes' })}>
+                <Text style={styles.pendingOpenAllText}>Ver bitácora</Text>
+                <Feather name="arrow-up-right" size={13} color="#0A84FF" />
+              </TouchableOpacity>
+            </View>
+
+            {actionableItems.length > 0 ? (
+              <View style={styles.pendingList}>
+                {actionableItems.slice(0, 5).map(item => (
+                  <TouchableOpacity
+                    key={item.id}
+                    activeOpacity={0.75}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.title}. ${item.status}. Abrir bitácora`}
+                    onPress={() => navigation.navigate('CentroControl', { screen: 'SeguimientoIncidentes' })}>
+                    <BlurView
+                      intensity={blurIntensity}
+                      tint={blurTint}
+                      style={[styles.pendingCard, { backgroundColor: cardBgColor, borderColor: cardBorderColor }]}>
+                      <View style={[styles.pendingIcon, { backgroundColor: `${item.color}18` }]}>
+                        <Feather name={item.icon} size={15} color={item.color} />
+                      </View>
+                      <View style={styles.pendingCopy}>
+                        <Text style={[styles.pendingTitle, { color: textColor }]} numberOfLines={1}>{item.title}</Text>
+                        <Text style={[styles.pendingDetail, { color: subtitleColor }]} numberOfLines={1}>{item.detail}</Text>
+                      </View>
+                      <View style={styles.pendingAction}>
+                        <Text style={[styles.pendingStatus, { color: item.color }]} numberOfLines={1}>{item.status}</Text>
+                        <Feather name="chevron-right" size={14} color={subtitleColor} />
+                      </View>
+                    </BlurView>
+                  </TouchableOpacity>
+                ))}
+                {actionableItems.length > 5 && (
+                  <TouchableOpacity
+                    style={styles.pendingMoreButton}
+                    activeOpacity={0.75}
+                    onPress={() => navigation.navigate('CentroControl', { screen: 'SeguimientoIncidentes' })}>
+                    <Text style={styles.pendingMoreText}>Ver los {actionableItems.length - 5} pendientes restantes</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : (
+              <View style={[styles.pendingEmptyCard, { backgroundColor: cardBgColor, borderColor: cardBorderColor }]}>
+                <Feather name="check-circle" size={20} color="#30D158" />
+                <View style={styles.pendingCopy}>
+                  <Text style={[styles.pendingTitle, { color: textColor }]}>Todo al día</Text>
+                  <Text style={[styles.pendingDetail, { color: subtitleColor }]}>No hay incidentes ni mantenimientos pendientes.</Text>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* ⚡ Acciones Rápidas */}
@@ -326,7 +483,7 @@ export default function DashboardScreen() {
                 }
               ]}
               activeOpacity={0.8}
-              onPress={() => navigation.navigate('Redes')}
+              onPress={() => navigation.navigate('Infraestructura', { screen: 'RedesInternas' })}
             >
               <View style={[styles.quickActionIconBg, { backgroundColor: 'rgba(10, 132, 255, 0.15)' }]}>
                 <Feather name="plus" size={19} color="#0A84FF" />
@@ -347,7 +504,7 @@ export default function DashboardScreen() {
                 }
               ]}
               activeOpacity={0.8}
-              onPress={() => navigation.navigate('Dispositivos')}
+              onPress={() => navigation.navigate('Infraestructura', { screen: 'InventarioDispositivos' })}
             >
               <View style={[styles.quickActionIconBg, { backgroundColor: 'rgba(48, 209, 88, 0.15)' }]}>
                 <Feather name="hard-drive" size={19} color="#30D158" />
@@ -496,6 +653,23 @@ const styles = StyleSheet.create({
   metricCardValue: { fontFamily: 'Poppins_700Bold', fontSize: 26, marginBottom: 10 },
   metricAction: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6, paddingHorizontal: 9, borderRadius: 9, borderWidth: 1 },
   metricActionText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5 },
+  pendingSection: { marginBottom: 24 },
+  pendingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 10 },
+  pendingHeadingGroup: { flex: 1 },
+  pendingSummary: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, marginTop: 2 },
+  pendingOpenAll: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10 },
+  pendingOpenAllText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#0A84FF' },
+  pendingList: { gap: 8 },
+  pendingCard: { flexDirection: 'row', alignItems: 'center', padding: 11, borderRadius: 14, overflow: 'hidden', borderWidth: 1, gap: 10 },
+  pendingEmptyCard: { flexDirection: 'row', alignItems: 'center', padding: 14, borderRadius: 14, borderWidth: 1, gap: 10 },
+  pendingIcon: { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  pendingCopy: { flex: 1, minWidth: 0 },
+  pendingTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 12 },
+  pendingDetail: { fontFamily: 'Poppins_400Regular', fontSize: 10, marginTop: 2 },
+  pendingAction: { flexDirection: 'row', alignItems: 'center', gap: 3, maxWidth: '34%' },
+  pendingStatus: { fontFamily: 'Poppins_600SemiBold', fontSize: 9.5 },
+  pendingMoreButton: { alignSelf: 'flex-start', paddingVertical: 5, paddingHorizontal: 3 },
+  pendingMoreText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#0A84FF' },
   sectionHeader: { marginBottom: 10 },
   sectionTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 15, letterSpacing: 0.3 },
   quickActionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },

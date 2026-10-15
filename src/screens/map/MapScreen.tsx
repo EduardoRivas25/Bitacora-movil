@@ -8,8 +8,7 @@ import {
   TextInput,
   useWindowDimensions, 
   ActivityIndicator,
-  Platform,
-  Alert
+  Platform
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -21,9 +20,14 @@ import * as api from '../../services/api';
 import { Device, Building } from '../../types';
 import { validateGPS, validateRequired } from '../../utils/validators';
 import { useTheme, ThemeColors } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { isAdministrator } from '../../utils/permissions';
+import { confirmDestructiveAction, showUserNotice } from '../../utils/destructiveConfirmation';
 
 export default function MapScreen() {
   const { colors, isDark } = useTheme();
+  const { user } = useAuth();
+  const canManageBuildings = isAdministrator(user);
   const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
@@ -76,6 +80,7 @@ export default function MapScreen() {
   };
 
   const handleOpenAddBuilding = () => {
+    if (!canManageBuildings) return;
     setEditingBuildingId(null);
     setBldName('');
     setBldCode('');
@@ -90,6 +95,7 @@ export default function MapScreen() {
   };
 
   const handleOpenEditBuilding = (building: Building) => {
+    if (!canManageBuildings) return;
     setEditingBuildingId(building.id);
     setBldName(building.name);
     setBldCode(building.code);
@@ -102,6 +108,7 @@ export default function MapScreen() {
   };
 
   const handleSaveBuilding = async () => {
+    if (!canManageBuildings) return;
     if (isSubmitting) return;
     setBldError('');
     const errors: { [key: string]: string } = {};
@@ -163,6 +170,13 @@ export default function MapScreen() {
   };
 
   const handleDeleteBuilding = async (id: string, name: string) => {
+    if (!canManageBuildings) return;
+    const confirmed = await confirmDestructiveAction(
+      'Eliminar edificio',
+      `¿Seguro que quieres eliminar “${name}”? También se eliminarán sus áreas. Esta acción no se puede deshacer.`,
+    );
+    if (!confirmed) return;
+
     // Actualización optimista instantánea (0ms)
     const prevBuildings = [...buildings];
     setBuildings(prev => prev.filter(b => b.id !== id));
@@ -172,7 +186,7 @@ export default function MapScreen() {
     } catch (err: any) {
       console.error(err);
       setBuildings(prevBuildings);
-      Alert.alert('Error', err?.message || 'No se pudo eliminar el edificio');
+      showUserNotice('No se pudo eliminar el edificio', err?.message || 'El edificio sigue en el mapa. Revisa si tiene áreas o dispositivos asociados.');
     }
   };
 
@@ -212,10 +226,12 @@ export default function MapScreen() {
                 <Text style={styles.resetViewBtnText}>Ver Todos</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.addBuildingBtn} activeOpacity={0.8} onPress={handleOpenAddBuilding}>
-              <Feather name="plus" size={13} color={colors.buttonText} />
-              <Text style={styles.addBuildingBtnText}>Nuevo Edificio</Text>
-            </TouchableOpacity>
+            {canManageBuildings && (
+              <TouchableOpacity style={styles.addBuildingBtn} activeOpacity={0.8} onPress={handleOpenAddBuilding}>
+                <Feather name="plus" size={13} color={colors.buttonText} />
+                <Text style={styles.addBuildingBtnText}>Nuevo Edificio</Text>
+              </TouchableOpacity>
+            )}
             <View style={styles.counterBadge}>
               <Feather name="map-pin" size={12} color="#0A84FF" />
               <Text style={styles.counterText}>{mappedCount} equipos • {buildings.length} ubicaciones</Text>
@@ -316,22 +332,26 @@ export default function MapScreen() {
                         <View style={styles.bldBadge}>
                           <Text style={styles.bldBadgeText}>{bld.code}</Text>
                         </View>
-                        <TouchableOpacity
-                          style={[styles.deleteBldBtn, { marginRight: 8 }]}
-                          accessibilityLabel={`Editar ${bld.name}`}
-                          onPress={() => handleOpenEditBuilding(bld)}
-                          activeOpacity={0.7}
-                        >
-                          <Feather name="edit-2" size={13} color="#FFD60A" />
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          style={styles.deleteBldBtn} 
-                          accessibilityLabel={`Eliminar ${bld.name}`}
-                          onPress={() => handleDeleteBuilding(bld.id, bld.name)}
-                          activeOpacity={0.7}
-                        >
-                          <Feather name="trash-2" size={13} color="#FF453A" />
-                        </TouchableOpacity>
+                        {canManageBuildings && (
+                          <>
+                            <TouchableOpacity
+                              style={[styles.deleteBldBtn, { marginRight: 8 }]}
+                              accessibilityLabel={`Editar ${bld.name}`}
+                              onPress={() => handleOpenEditBuilding(bld)}
+                              activeOpacity={0.7}
+                            >
+                              <Feather name="edit-2" size={13} color="#FFD60A" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.deleteBldBtn}
+                              accessibilityLabel={`Eliminar ${bld.name}`}
+                              onPress={() => handleDeleteBuilding(bld.id, bld.name)}
+                              activeOpacity={0.7}
+                            >
+                              <Feather name="trash-2" size={13} color="#FF453A" />
+                            </TouchableOpacity>
+                          </>
+                        )}
                       </View>
                       <Text style={styles.bldName} numberOfLines={1}>{bld.name}</Text>
                       <Text style={styles.bldGps}>GPS: {bld.latitude.toFixed(4)}, {bld.longitude.toFixed(4)}</Text>
