@@ -1,13 +1,13 @@
 import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TouchableOpacity, 
-  TextInput, 
-  useWindowDimensions, 
-  Platform, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  useWindowDimensions,
+  Platform,
   ActivityIndicator,
   Alert,
 } from 'react-native';
@@ -83,7 +83,7 @@ export default function ConfigScreen() {
   const filteredDevices = useMemo(() => {
     if (!deviceSearchQuery.trim()) return devices;
     const q = deviceSearchQuery.toLowerCase().trim();
-    return devices.filter(d => 
+    return devices.filter(d =>
       d.name.toLowerCase().includes(q) ||
       d.ipv4_address.toLowerCase().includes(q) ||
       d.location.toLowerCase().includes(q) ||
@@ -202,8 +202,8 @@ export default function ConfigScreen() {
     try {
       setIsSaving(true);
       const fileName = uploadedFileName || `${configName.toLowerCase().replace(/[^a-z0-9]/g, '-')}.cfg`;
-      const sizeStr = uploadedFileSize !== '0 KB' 
-        ? uploadedFileSize 
+      const sizeStr = uploadedFileSize !== '0 KB'
+        ? uploadedFileSize
         : `${((configContent.length) / 1024).toFixed(1)} KB`;
 
       const created = await api.createConfig({
@@ -421,9 +421,9 @@ export default function ConfigScreen() {
         />
       )}
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={[
-          styles.scrollContent, 
+          styles.scrollContent,
           { paddingHorizontal: isDesktop ? '6%' : isTablet ? '4%' : 16 }
         ]}
         showsVerticalScrollIndicator={false}
@@ -440,8 +440,8 @@ export default function ConfigScreen() {
             </View>
 
             {/* Botón Nuevo en Blanco */}
-            <TouchableOpacity 
-              style={styles.newConfigBtn} 
+            <TouchableOpacity
+              style={styles.newConfigBtn}
               activeOpacity={0.8}
               onPress={handleClearEditor}
             >
@@ -453,13 +453,13 @@ export default function ConfigScreen() {
           {/* Notificación flotante de estado */}
           {statusMsg && (
             <View style={[
-              styles.toastBanner, 
+              styles.toastBanner,
               statusMsg.type === 'error' ? styles.toastError : styles.toastSuccess
             ]}>
-              <Feather 
-                name={statusMsg.type === 'error' ? 'alert-circle' : 'check-circle'} 
-                size={16} 
-                color={statusMsg.type === 'error' ? '#FF453A' : '#30D158'} 
+              <Feather
+                name={statusMsg.type === 'error' ? 'alert-circle' : 'check-circle'}
+                size={16}
+                color={statusMsg.type === 'error' ? '#FF453A' : '#30D158'}
               />
               <Text style={[styles.toastText, { color: colors.textPrimary }]}>{statusMsg.text}</Text>
             </View>
@@ -467,425 +467,425 @@ export default function ConfigScreen() {
 
           {/* Layout 2 Columnas */}
           <View style={[styles.mainLayout, isDesktop && styles.mainLayoutDesktop]}>
-          
-          {/* COLUMNA IZQUIERDA: Formulario de Carga y Lista de Backups */}
-          <View style={[styles.leftColumn, isDesktop && styles.leftColumnDesktop]}>
-            
-            {/* Tarjeta: Cargar Archivo y Metadatos */}
-            <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.glassCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
-              <View style={styles.cardHeaderRow}>
-                <Text style={[styles.cardSectionTitle, { color: colors.textPrimary }]}>
-                  {selectedConfig ? 'Editar Configuración Guardada' : 'Cargar o Crear Configuración'}
-                </Text>
-                {selectedConfig && (
-                  <View style={styles.editingBadge}>
-                    <Text style={styles.editingBadgeText}>Modo Edición</Text>
-                  </View>
-                )}
-              </View>
 
-              {/* 🎯 SECCIÓN: Selector Completo de Dispositivos en BD */}
-              <View style={styles.deviceSectionWrapper}>
-                <View style={styles.deviceSectionHeader}>
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Dispositivo asociado en BD ({devices.length} disponibles) *</Text>
-                  <TouchableOpacity 
-                    style={styles.toggleDropdownBtn}
-                    onPress={() => setShowDeviceDropdown(!showDeviceDropdown)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.toggleDropdownText}>
-                      {showDeviceDropdown ? 'Ocultar lista' : 'Ver todos'}
-                    </Text>
-                    <Feather name={showDeviceDropdown ? "chevron-up" : "chevron-down"} size={14} color="#0A84FF" />
-                  </TouchableOpacity>
+            {/* COLUMNA IZQUIERDA: Formulario de Carga y Lista de Backups */}
+            <View style={[styles.leftColumn, isDesktop && styles.leftColumnDesktop]}>
+
+              {/* Tarjeta: Cargar Archivo y Metadatos */}
+              <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.glassCard, { backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={[styles.cardSectionTitle, { color: colors.textPrimary }]}>
+                    {selectedConfig ? 'Editar Configuración Guardada' : 'Cargar o Crear Configuración'}
+                  </Text>
+                  {selectedConfig && (
+                    <View style={styles.editingBadge}>
+                      <Text style={styles.editingBadgeText}>Modo Edición</Text>
+                    </View>
+                  )}
                 </View>
 
-                {/* Tarjeta Resumen del Dispositivo Seleccionado */}
-                {currentDevice ? (
-                  <View style={[
-                    styles.selectedDeviceCard, 
-                    { 
-                      backgroundColor: isDark ? 'rgba(10, 132, 255, 0.08)' : 'rgba(10, 132, 255, 0.06)',
-                      borderColor: isDark ? 'rgba(10, 132, 255, 0.25)' : 'rgba(10, 132, 255, 0.2)' 
-                    }
-                  ]}>
-                    <View style={styles.selectedDeviceIconBadge}>
-                      <Feather name={getDeviceIcon(currentDevice.name)} size={18} color="#0A84FF" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.selectedDeviceName, { color: colors.textPrimary }]}>{currentDevice.name}</Text>
-                      <Text style={[styles.selectedDeviceMeta, { color: colors.textSecondary }]}>
-                        IPv4: <Text style={{ color: '#0A84FF', fontWeight: '600' }}>{currentDevice.ipv4_address}</Text> • {currentDevice.location || 'Sin ubicación'}
+                {/* 🎯 SECCIÓN: Selector Completo de Dispositivos en BD */}
+                <View style={styles.deviceSectionWrapper}>
+                  <View style={styles.deviceSectionHeader}>
+                    <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Dispositivo asociado en BD ({devices.length} disponibles) *</Text>
+                    <TouchableOpacity
+                      style={styles.toggleDropdownBtn}
+                      onPress={() => setShowDeviceDropdown(!showDeviceDropdown)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={styles.toggleDropdownText}>
+                        {showDeviceDropdown ? 'Ocultar lista' : 'Ver todos'}
                       </Text>
-                    </View>
-                    <View style={[styles.deviceTypeBadge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)' }]}>
-                      <Text style={[styles.deviceTypeBadgeText, { color: colors.textSecondary }]}>{currentDevice.manufacturer || 'Red'}</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.noDeviceBanner}>
-                    <Text style={[styles.noDeviceText, { color: colors.textSecondary }]}>No hay dispositivos en la base de datos.</Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('Infraestructura', { screen: 'InventarioDispositivos' })}>
-                      <Text style={styles.addDeviceLink}>+ Registrar Dispositivo</Text>
+                      <Feather name={showDeviceDropdown ? "chevron-up" : "chevron-down"} size={14} color="#0A84FF" />
                     </TouchableOpacity>
                   </View>
-                )}
 
-                {/* Lista Expandible de Dispositivos en BD */}
-                {showDeviceDropdown && (
-                  <View style={[styles.deviceDropdownContainer, { backgroundColor: isDark ? 'rgba(20, 20, 26, 0.98)' : 'rgba(245, 245, 247, 0.98)', borderColor: colors.cardBorder }]}>
-                    <View style={[styles.deviceSearchBox, { backgroundColor: colors.searchBg, borderColor: colors.searchBorder }]}>
-                      <Feather name="search" size={14} color={colors.textTertiary} style={{ marginRight: 8 }} />
-                      <TextInput
-                        placeholder="Buscar por nombre, IP o ubicación..."
-                        placeholderTextColor={colors.placeholder}
-                        style={[styles.deviceSearchInput, { color: colors.textPrimary }]}
-                        value={deviceSearchQuery}
-                        onChangeText={setDeviceSearchQuery}
-                      />
-                      {deviceSearchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setDeviceSearchQuery('')}>
-                          <Feather name="x" size={14} color={colors.textSecondary} />
-                        </TouchableOpacity>
-                      )}
+                  {/* Tarjeta Resumen del Dispositivo Seleccionado */}
+                  {currentDevice ? (
+                    <View style={[
+                      styles.selectedDeviceCard,
+                      {
+                        backgroundColor: isDark ? 'rgba(10, 132, 255, 0.08)' : 'rgba(10, 132, 255, 0.06)',
+                        borderColor: isDark ? 'rgba(10, 132, 255, 0.25)' : 'rgba(10, 132, 255, 0.2)'
+                      }
+                    ]}>
+                      <View style={styles.selectedDeviceIconBadge}>
+                        <Feather name={getDeviceIcon(currentDevice.name)} size={18} color="#0A84FF" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.selectedDeviceName, { color: colors.textPrimary }]}>{currentDevice.name}</Text>
+                        <Text style={[styles.selectedDeviceMeta, { color: colors.textSecondary }]}>
+                          IPv4: <Text style={{ color: '#0A84FF', fontWeight: '600' }}>{currentDevice.ipv4_address}</Text> • {currentDevice.location || 'Sin ubicación'}
+                        </Text>
+                      </View>
+                      <View style={[styles.deviceTypeBadge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)' }]}>
+                        <Text style={[styles.deviceTypeBadgeText, { color: colors.textSecondary }]}>{currentDevice.manufacturer || 'Red'}</Text>
+                      </View>
                     </View>
+                  ) : (
+                    <View style={styles.noDeviceBanner}>
+                      <Text style={[styles.noDeviceText, { color: colors.textSecondary }]}>No hay dispositivos en la base de datos.</Text>
+                      <TouchableOpacity onPress={() => navigation.navigate('Infraestructura', { screen: 'InventarioDispositivos' })}>
+                        <Text style={styles.addDeviceLink}>+ Registrar Dispositivo</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
 
-                    <ScrollView style={styles.deviceDropdownList} nestedScrollEnabled>
-                      {filteredDevices.map(dev => {
+                  {/* Lista Expandible de Dispositivos en BD */}
+                  {showDeviceDropdown && (
+                    <View style={[styles.deviceDropdownContainer, { backgroundColor: isDark ? 'rgba(20, 20, 26, 0.98)' : 'rgba(245, 245, 247, 0.98)', borderColor: colors.cardBorder }]}>
+                      <View style={[styles.deviceSearchBox, { backgroundColor: colors.searchBg, borderColor: colors.searchBorder }]}>
+                        <Feather name="search" size={14} color={colors.textTertiary} style={{ marginRight: 8 }} />
+                        <TextInput
+                          placeholder="Buscar por nombre, IP o ubicación..."
+                          placeholderTextColor={colors.placeholder}
+                          style={[styles.deviceSearchInput, { color: colors.textPrimary }]}
+                          value={deviceSearchQuery}
+                          onChangeText={setDeviceSearchQuery}
+                        />
+                        {deviceSearchQuery.length > 0 && (
+                          <TouchableOpacity onPress={() => setDeviceSearchQuery('')}>
+                            <Feather name="x" size={14} color={colors.textSecondary} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+
+                      <ScrollView style={styles.deviceDropdownList} nestedScrollEnabled>
+                        {filteredDevices.map(dev => {
+                          const isSelected = selectedDeviceId === dev.id;
+                          return (
+                            <TouchableOpacity
+                              key={dev.id}
+                              style={[styles.deviceDropdownItem, isSelected && styles.deviceDropdownItemActive]}
+                              onPress={() => {
+                                setSelectedDeviceId(dev.id);
+                                setShowDeviceDropdown(false);
+                              }}
+                            >
+                              <Feather
+                                name={getDeviceIcon(dev.name)}
+                                size={14}
+                                color={isSelected ? '#0A84FF' : colors.textTertiary}
+                                style={{ marginRight: 10 }}
+                              />
+                              <View style={{ flex: 1 }}>
+                                <Text style={[styles.deviceDropdownName, { color: colors.textPrimary }]}>
+                                  {dev.name}
+                                </Text>
+                                <Text style={[styles.deviceDropdownSub, { color: colors.textSecondary }]}>
+                                  {dev.ipv4_address} • {dev.location}
+                                </Text>
+                              </View>
+                              {isSelected && <Feather name="check" size={16} color="#0A84FF" />}
+                            </TouchableOpacity>
+                          );
+                        })}
+                        {filteredDevices.length === 0 && (
+                          <Text style={[styles.noDeviceFound, { color: colors.textTertiary }]}>No se encontraron dispositivos con "{deviceSearchQuery}"</Text>
+                        )}
+                      </ScrollView>
+                    </View>
+                  )}
+
+                  {/* Chips rápidos horizontales si el dropdown está cerrado */}
+                  {!showDeviceDropdown && devices.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.deviceChipsRow}>
+                      {devices.map(dev => {
                         const isSelected = selectedDeviceId === dev.id;
                         return (
                           <TouchableOpacity
                             key={dev.id}
-                            style={[styles.deviceDropdownItem, isSelected && styles.deviceDropdownItemActive]}
-                            onPress={() => {
-                              setSelectedDeviceId(dev.id);
-                              setShowDeviceDropdown(false);
-                            }}
+                            style={[
+                              styles.deviceChip,
+                              { backgroundColor: colors.chipBg, borderColor: colors.chipBorder },
+                              isSelected && { backgroundColor: colors.chipActiveBg, borderColor: colors.chipActiveBg }
+                            ]}
+                            onPress={() => setSelectedDeviceId(dev.id)}
                           >
-                            <Feather 
-                              name={getDeviceIcon(dev.name)} 
-                              size={14} 
-                              color={isSelected ? '#0A84FF' : colors.textTertiary} 
-                              style={{ marginRight: 10 }}
+                            <Feather
+                              name={getDeviceIcon(dev.name)}
+                              size={12}
+                              color={isSelected ? colors.chipActiveText : '#0A84FF'}
                             />
-                            <View style={{ flex: 1 }}>
-                              <Text style={[styles.deviceDropdownName, { color: colors.textPrimary }]}>
-                                {dev.name}
-                              </Text>
-                              <Text style={[styles.deviceDropdownSub, { color: colors.textSecondary }]}>
-                                {dev.ipv4_address} • {dev.location}
-                              </Text>
-                            </View>
-                            {isSelected && <Feather name="check" size={16} color="#0A84FF" />}
+                            <Text style={[
+                              styles.deviceChipText,
+                              { color: colors.textSecondary },
+                              isSelected && { color: colors.chipActiveText }
+                            ]}>
+                              {dev.name}
+                            </Text>
                           </TouchableOpacity>
                         );
                       })}
-                      {filteredDevices.length === 0 && (
-                        <Text style={[styles.noDeviceFound, { color: colors.textTertiary }]}>No se encontraron dispositivos con "{deviceSearchQuery}"</Text>
-                      )}
                     </ScrollView>
+                  )}
+                </View>
+
+                {/* Nombre y Descripción */}
+                <View style={styles.formRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Nombre de la configuración *</Text>
+                    <TextInput
+                      placeholder="ej. Backup VLANs & Ruteo"
+                      placeholderTextColor={colors.placeholder}
+                      style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
+                      value={configName}
+                      onChangeText={setConfigName}
+                    />
                   </View>
-                )}
-
-                {/* Chips rápidos horizontales si el dropdown está cerrado */}
-                {!showDeviceDropdown && devices.length > 0 && (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.deviceChipsRow}>
-                    {devices.map(dev => {
-                      const isSelected = selectedDeviceId === dev.id;
-                      return (
-                        <TouchableOpacity
-                          key={dev.id}
-                          style={[
-                            styles.deviceChip, 
-                            { backgroundColor: colors.chipBg, borderColor: colors.chipBorder },
-                            isSelected && { backgroundColor: colors.chipActiveBg, borderColor: colors.chipActiveBg }
-                          ]}
-                          onPress={() => setSelectedDeviceId(dev.id)}
-                        >
-                          <Feather 
-                            name={getDeviceIcon(dev.name)} 
-                            size={12} 
-                            color={isSelected ? colors.chipActiveText : '#0A84FF'} 
-                          />
-                          <Text style={[
-                            styles.deviceChipText, 
-                            { color: colors.textSecondary },
-                            isSelected && { color: colors.chipActiveText }
-                          ]}>
-                            {dev.name}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </ScrollView>
-                )}
-              </View>
-
-              {/* Nombre y Descripción */}
-              <View style={styles.formRow}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Nombre de la configuración *</Text>
-                  <TextInput
-                    placeholder="ej. Backup VLANs & Ruteo"
-                    placeholderTextColor={colors.placeholder}
-                    style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
-                    value={configName}
-                    onChangeText={setConfigName}
-                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Descripción</Text>
+                    <TextInput
+                      placeholder="ej. Backup de enlaces troncales"
+                      placeholderTextColor={colors.placeholder}
+                      style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
+                      value={configDesc}
+                      onChangeText={setConfigDesc}
+                    />
+                  </View>
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Descripción</Text>
-                  <TextInput
-                    placeholder="ej. Backup de enlaces troncales"
-                    placeholderTextColor={colors.placeholder}
-                    style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.textPrimary }]}
-                    value={configDesc}
-                    onChangeText={setConfigDesc}
+
+                {/* Dropzone de Archivo Real con soporte Drag & Drop */}
+                <TouchableOpacity
+                  style={[
+                    styles.dropzone,
+                    { borderColor: colors.cardBorder, backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)' },
+                    uploadedFileName && styles.dropzoneActive,
+                    isDragging && styles.dropzoneDragging
+                  ]}
+                  activeOpacity={0.7}
+                  onPress={handleOpenFilePicker}
+                  {...(Platform.OS === 'web' ? {
+                    onDragOver: (e: any) => { e.preventDefault(); setIsDragging(true); },
+                    onDragLeave: () => setIsDragging(false),
+                    onDrop: handleWebDrop,
+                  } as any : {})}
+                >
+                  <Feather
+                    name={uploadedFileName ? "check-circle" : "upload-cloud"}
+                    size={26}
+                    color={uploadedFileName ? "#30D158" : "#0A84FF"}
                   />
-                </View>
-              </View>
+                  <Text style={[styles.dropzoneTitle, { color: colors.textPrimary }]}>
+                    {uploadedFileName ? `Archivo: ${uploadedFileName}` : 'Subir archivo o arrastrar aquí'}
+                  </Text>
+                  <Text style={[styles.dropzoneSubtitle, { color: colors.textSecondary }]}>
+                    Archivos soportados: .txt, .cfg, .bak, .conf, .rsc, .sh (Se cargará en la consola lateral)
+                  </Text>
+                </TouchableOpacity>
 
-              {/* Dropzone de Archivo Real con soporte Drag & Drop */}
-              <TouchableOpacity 
-                style={[
-                  styles.dropzone, 
-                  { borderColor: colors.cardBorder, backgroundColor: isDark ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 0, 0, 0.02)' },
-                  uploadedFileName && styles.dropzoneActive,
-                  isDragging && styles.dropzoneDragging
-                ]}
-                activeOpacity={0.7}
-                onPress={handleOpenFilePicker}
-                {...(Platform.OS === 'web' ? {
-                  onDragOver: (e: any) => { e.preventDefault(); setIsDragging(true); },
-                  onDragLeave: () => setIsDragging(false),
-                  onDrop: handleWebDrop,
-                } as any : {})}
-              >
-                <Feather 
-                  name={uploadedFileName ? "check-circle" : "upload-cloud"} 
-                  size={26} 
-                  color={uploadedFileName ? "#30D158" : "#0A84FF"} 
-                />
-                <Text style={[styles.dropzoneTitle, { color: colors.textPrimary }]}>
-                  {uploadedFileName ? `Archivo: ${uploadedFileName}` : 'Subir archivo o arrastrar aquí'}
-                </Text>
-                <Text style={[styles.dropzoneSubtitle, { color: colors.textSecondary }]}>
-                  Archivos soportados: .txt, .cfg, .bak, .conf, .rsc, .sh (Se cargará en la consola lateral)
-                </Text>
-              </TouchableOpacity>
+                {/* Botones de Guardar */}
+                <View style={styles.saveButtonsRow}>
+                  {selectedConfig ? (
+                    <>
+                      <TouchableOpacity
+                        style={[styles.actionButton, styles.updateBtn, isSaving && { opacity: 0.6 }]}
+                        activeOpacity={0.8}
+                        onPress={handleUpdateExistingConfig}
+                        disabled={isSaving}
+                      >
+                        <Feather name="save" size={15} color="#FFFFFF" />
+                        <Text style={styles.actionButtonText}>
+                          {isSaving ? 'Guardando...' : 'Guardar Cambios en BD'}
+                        </Text>
+                      </TouchableOpacity>
 
-              {/* Botones de Guardar */}
-              <View style={styles.saveButtonsRow}>
-                {selectedConfig ? (
-                  <>
-                    <TouchableOpacity 
-                      style={[styles.actionButton, styles.updateBtn, isSaving && { opacity: 0.6 }]}
-                      activeOpacity={0.8}
-                      onPress={handleUpdateExistingConfig}
-                      disabled={isSaving}
-                    >
-                      <Feather name="save" size={15} color="#FFFFFF" />
-                      <Text style={styles.actionButtonText}>
-                        {isSaving ? 'Guardando...' : 'Guardar Cambios en BD'}
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity 
-                      style={[styles.actionButton, styles.saveAsNewBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+                      <TouchableOpacity
+                        style={[styles.actionButton, styles.saveAsNewBtn, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]}
+                        activeOpacity={0.8}
+                        onPress={handleSaveNewConfig}
+                        disabled={isSaving}
+                      >
+                        <Feather name="plus-circle" size={15} color={colors.textPrimary} />
+                        <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>Guardar como Nuevo</Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    <TouchableOpacity
+                      style={[styles.actionButton, styles.createBtn, isSaving && { opacity: 0.6 }]}
                       activeOpacity={0.8}
                       onPress={handleSaveNewConfig}
                       disabled={isSaving}
                     >
-                      <Feather name="plus-circle" size={15} color={colors.textPrimary} />
-                      <Text style={[styles.actionButtonText, { color: colors.textPrimary }]}>Guardar como Nuevo</Text>
+                      <Feather name="database" size={15} color="#FFFFFF" />
+                      <Text style={styles.actionButtonText}>
+                        {isSaving ? 'Guardando en BD...' : 'Guardar en Base de Datos'}
+                      </Text>
                     </TouchableOpacity>
-                  </>
-                ) : (
-                  <TouchableOpacity 
-                    style={[styles.actionButton, styles.createBtn, isSaving && { opacity: 0.6 }]}
-                    activeOpacity={0.8}
-                    onPress={handleSaveNewConfig}
-                    disabled={isSaving}
-                  >
-                    <Feather name="database" size={15} color="#FFFFFF" />
-                    <Text style={styles.actionButtonText}>
-                      {isSaving ? 'Guardando en BD...' : 'Guardar en Base de Datos'}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </BlurView>
+                  )}
+                </View>
+              </BlurView>
 
-            {/* Tarjeta: Backups Guardados en BD */}
-            <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.glassCard, { marginTop: 20, backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
-              <View style={styles.cardHeaderRow}>
-                <Text style={[styles.cardSectionTitle, { color: colors.textPrimary }]}>Backups en Base de Datos</Text>
-                <Text style={[styles.badgeCount, { color: colors.textTertiary }]}>{configs.length} guardados</Text>
-              </View>
-
-              <View style={styles.backupList}>
-                {configs.map((cfg) => {
-                  const isViewing = selectedConfig?.id === cfg.id;
-
-                  return (
-                    <TouchableOpacity 
-                      key={cfg.id} 
-                      style={[
-                        styles.backupItem, 
-                        { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.cardBorder },
-                        isViewing && styles.backupItemActive
-                      ]}
-                      activeOpacity={0.7}
-                      onPress={() => handleSelectSavedBackup(cfg)}
-                    >
-                      <View style={styles.backupItemLeft}>
-                        <View style={[styles.cfgIconBadge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }, isViewing && styles.cfgIconBadgeActive]}>
-                          <Feather 
-                            name="file-text" 
-                            size={16} 
-                            color={isViewing ? '#0A84FF' : colors.textSecondary} 
-                          />
-                        </View>
-                        <View style={{ flex: 1, paddingRight: 8 }}>
-                          <Text style={[styles.backupName, { color: colors.textPrimary }]} numberOfLines={1}>{cfg.name}</Text>
-                          <Text style={[styles.backupMeta, { color: colors.textSecondary }]}>
-                            Dispositivo: {cfg.device_name} • {cfg.file_name} ({cfg.file_size || 'N/A'})
-                          </Text>
-                        </View>
-                      </View>
-
-                      <View style={styles.backupActions}>
-                        <TouchableOpacity 
-                          style={[styles.actionPill, isViewing ? styles.actionPillActive : styles.actionPillView]}
-                          activeOpacity={0.7}
-                          onPress={() => handleSelectSavedBackup(cfg)}
-                        >
-                          <Text style={[styles.actionPillText, isViewing ? { color: '#FFFFFF' } : { color: '#0A84FF' }]}>
-                            {isViewing ? 'Viendo' : 'Ver'}
-                          </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity 
-                          style={[styles.actionPill, styles.actionPillDelete]}
-                          activeOpacity={0.7}
-                          onPress={() => handleDeleteConfig(cfg.id)}
-                        >
-                          <Feather name="trash-2" size={13} color="#FF453A" />
-                        </TouchableOpacity>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-
-                {configs.length === 0 && (
-                  <View style={styles.emptyBackups}>
-                    <Feather name="folder" size={32} color={colors.textTertiary} />
-                    <Text style={[styles.emptyBackupsText, { color: colors.textTertiary }]}>
-                      No hay configuraciones guardadas en la base de datos.
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </BlurView>
-          </View>
-
-          {/* COLUMNA DERECHA: Consola Terminal y Editor Interactivo */}
-          <View style={[styles.rightColumn, isDesktop && styles.rightColumnDesktop]}>
-            <View style={[styles.terminalWindow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-              
-              {/* Barra Superior estilo Terminal macOS */}
-              <View style={[styles.terminalHeader, { backgroundColor: colors.card, borderColor: colors.divider }]}>
-                <View style={styles.macButtons}>
-                  <View style={[styles.macDot, { backgroundColor: '#FF5F56' }]} />
-                  <View style={[styles.macDot, { backgroundColor: '#FFBD2E' }]} />
-                  <View style={[styles.macDot, { backgroundColor: '#27C93F' }]} />
+              {/* Tarjeta: Backups Guardados en BD */}
+              <BlurView intensity={colors.blurIntensity} tint={colors.blurTint} style={[styles.glassCard, { marginTop: 20, backgroundColor: colors.cardBg, borderColor: colors.cardBorder }]}>
+                <View style={styles.cardHeaderRow}>
+                  <Text style={[styles.cardSectionTitle, { color: colors.textPrimary }]}>Backups en Base de Datos</Text>
+                  <Text style={[styles.badgeCount, { color: colors.textTertiary }]}>{configs.length} guardados</Text>
                 </View>
 
-                <View style={styles.terminalTitleBlock}>
-                  <Feather name="terminal" size={13} color="#0A84FF" style={{ marginRight: 6 }} />
-                  <Text style={[styles.terminalTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-                    {uploadedFileName || selectedConfig?.file_name || 'editor-consola.cfg'}
+                <View style={styles.backupList}>
+                  {configs.map((cfg) => {
+                    const isViewing = selectedConfig?.id === cfg.id;
+
+                    return (
+                      <TouchableOpacity
+                        key={cfg.id}
+                        style={[
+                          styles.backupItem,
+                          { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: colors.cardBorder },
+                          isViewing && styles.backupItemActive
+                        ]}
+                        activeOpacity={0.7}
+                        onPress={() => handleSelectSavedBackup(cfg)}
+                      >
+                        <View style={styles.backupItemLeft}>
+                          <View style={[styles.cfgIconBadge, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)' }, isViewing && styles.cfgIconBadgeActive]}>
+                            <Feather
+                              name="file-text"
+                              size={16}
+                              color={isViewing ? '#0A84FF' : colors.textSecondary}
+                            />
+                          </View>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <Text style={[styles.backupName, { color: colors.textPrimary }]} numberOfLines={1}>{cfg.name}</Text>
+                            <Text style={[styles.backupMeta, { color: colors.textSecondary }]}>
+                              Dispositivo: {cfg.device_name} • {cfg.file_name} ({cfg.file_size || 'N/A'})
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View style={styles.backupActions}>
+                          <TouchableOpacity
+                            style={[styles.actionPill, isViewing ? styles.actionPillActive : styles.actionPillView]}
+                            activeOpacity={0.7}
+                            onPress={() => handleSelectSavedBackup(cfg)}
+                          >
+                            <Text style={[styles.actionPillText, isViewing ? { color: '#FFFFFF' } : { color: '#0A84FF' }]}>
+                              {isViewing ? 'Viendo' : 'Ver'}
+                            </Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            style={[styles.actionPill, styles.actionPillDelete]}
+                            activeOpacity={0.7}
+                            onPress={() => handleDeleteConfig(cfg.id)}
+                          >
+                            <Feather name="trash-2" size={13} color="#FF453A" />
+                          </TouchableOpacity>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+
+                  {configs.length === 0 && (
+                    <View style={styles.emptyBackups}>
+                      <Feather name="folder" size={32} color={colors.textTertiary} />
+                      <Text style={[styles.emptyBackupsText, { color: colors.textTertiary }]}>
+                        No hay configuraciones guardadas en la base de datos.
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </BlurView>
+            </View>
+
+            {/* COLUMNA DERECHA: Consola Terminal y Editor Interactivo */}
+            <View style={[styles.rightColumn, isDesktop && styles.rightColumnDesktop]}>
+              <View style={[styles.terminalWindow, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+
+                {/* Barra Superior estilo Terminal macOS */}
+                <View style={[styles.terminalHeader, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+                  <View style={styles.macButtons}>
+                    <View style={[styles.macDot, { backgroundColor: '#FF5F56' }]} />
+                    <View style={[styles.macDot, { backgroundColor: '#FFBD2E' }]} />
+                    <View style={[styles.macDot, { backgroundColor: '#27C93F' }]} />
+                  </View>
+
+                  <View style={styles.terminalTitleBlock}>
+                    <Feather name="terminal" size={13} color="#0A84FF" style={{ marginRight: 6 }} />
+                    <Text style={[styles.terminalTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+                      {uploadedFileName || selectedConfig?.file_name || 'editor-consola.cfg'}
+                    </Text>
+                  </View>
+
+                  <View style={styles.terminalControls}>
+                    {configContent.length > 0 && (
+                      <TouchableOpacity
+                        style={[styles.terminalBtn, { backgroundColor: colors.chipBg }]}
+                        onPress={() => void handleCopyCode()}
+                        activeOpacity={0.7}
+                      >
+                        <Feather name={copiedSuccess ? "check" : "copy"} size={12} color={colors.textPrimary} />
+                        <Text style={[styles.terminalBtnText, { color: colors.textPrimary }]}>{copiedSuccess ? "¡Copiado!" : "Copiar"}</Text>
+                      </TouchableOpacity>
+                    )}
+
+                    <TouchableOpacity
+                      style={[styles.terminalBtn, styles.clearBtn]}
+                      onPress={handleClearEditor}
+                      activeOpacity={0.7}
+                    >
+                      <Feather name="trash" size={12} color={colors.textPrimary} />
+                      <Text style={[styles.terminalBtnText, { color: colors.textPrimary }]}>Limpiar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Barra Informativa de Estado del Editor */}
+                <View style={[styles.terminalSubHeader, { backgroundColor: colors.chipBg, borderColor: colors.divider }]}>
+                  <Text style={[styles.terminalMetaText, { color: colors.textSecondary }]}>
+                    {lineCount} líneas • {((configContent.length) / 1024).toFixed(1)} KB • Dispositivo: {currentDevice?.name || 'No asignado'}
+                  </Text>
+                  <Text style={[styles.terminalHintText, { color: colors.textTertiary }]}>
+                    ✏️ Puedes escribir o editar comandos directamente aquí
                   </Text>
                 </View>
 
-                <View style={styles.terminalControls}>
-                  {configContent.length > 0 && (
-                    <TouchableOpacity 
-                      style={[styles.terminalBtn, { backgroundColor: colors.chipBg }]}
-                      onPress={() => void handleCopyCode()}
-                      activeOpacity={0.7}
+                {/* Editor en Consola */}
+                <View style={[styles.terminalBody, { backgroundColor: colors.card }]}>
+                  {/* Columna de Números de Línea */}
+                  <View style={[styles.lineNumbersCol, { backgroundColor: colors.chipBg, borderColor: colors.divider }]}>
+                    {Array.from({ length: Math.max(lineCount, 15) }).map((_, idx) => (
+                      <Text key={idx} style={[styles.lineNumberText, { color: colors.textTertiary }]}>
+                        {idx + 1}
+                      </Text>
+                    ))}
+                  </View>
+
+                  {/* Área de Texto Editable */}
+                  <TextInput
+                    placeholder="! Escribe o pega aquí los comandos de configuración CLI (Cisco, MikroTik, Fortinet, etc.)&#10;! O sube un archivo desde la columna izquierda&#10;hostname Router-Principal&#10;interface GigabitEthernet0/1&#10; ip address 10.0.10.1 255.255.255.0&#10; no shutdown&#10;end"
+                    placeholderTextColor={colors.placeholder}
+                    multiline
+                    style={[styles.terminalTextArea, { color: colors.textPrimary }]}
+                    value={configContent}
+                    onChangeText={setConfigContent}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </View>
+
+                {/* Pie de Terminal con Acciones Rápidas */}
+                <View style={[styles.terminalFooter, { backgroundColor: colors.card, borderColor: colors.divider }]}>
+                  <Text style={[styles.terminalFooterInfo, { color: colors.textSecondary }]}>
+                    {selectedConfig ? `Editando: ${selectedConfig.name}` : 'Documento nuevo sin guardar'}
+                  </Text>
+                  {selectedConfig && (
+                    <TouchableOpacity
+                      style={styles.quickSaveBtn}
+                      onPress={handleUpdateExistingConfig}
+                      activeOpacity={0.8}
                     >
-                      <Feather name={copiedSuccess ? "check" : "copy"} size={12} color={colors.textPrimary} />
-                      <Text style={[styles.terminalBtnText, { color: colors.textPrimary }]}>{copiedSuccess ? "¡Copiado!" : "Copiar"}</Text>
+                      <Feather name="check" size={13} color="#FFFFFF" />
+                      <Text style={styles.quickSaveBtnText}>Guardar en BD</Text>
                     </TouchableOpacity>
                   )}
-
-                  <TouchableOpacity 
-                    style={[styles.terminalBtn, styles.clearBtn]}
-                    onPress={handleClearEditor}
-                    activeOpacity={0.7}
-                  >
-                    <Feather name="trash" size={12} color={colors.textPrimary} />
-                    <Text style={[styles.terminalBtnText, { color: colors.textPrimary }]}>Limpiar</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              {/* Barra Informativa de Estado del Editor */}
-              <View style={[styles.terminalSubHeader, { backgroundColor: colors.chipBg, borderColor: colors.divider }]}>
-                <Text style={[styles.terminalMetaText, { color: colors.textSecondary }]}>
-                  {lineCount} líneas • {((configContent.length) / 1024).toFixed(1)} KB • Dispositivo: {currentDevice?.name || 'No asignado'}
-                </Text>
-                <Text style={[styles.terminalHintText, { color: colors.textTertiary }]}>
-                  ✏️ Puedes escribir o editar comandos directamente aquí
-                </Text>
-              </View>
-
-              {/* Editor en Consola */}
-              <View style={[styles.terminalBody, { backgroundColor: colors.card }]}>
-                {/* Columna de Números de Línea */}
-                <View style={[styles.lineNumbersCol, { backgroundColor: colors.chipBg, borderColor: colors.divider }]}>
-                  {Array.from({ length: Math.max(lineCount, 15) }).map((_, idx) => (
-                    <Text key={idx} style={[styles.lineNumberText, { color: colors.textTertiary }]}>
-                      {idx + 1}
-                    </Text>
-                  ))}
                 </View>
 
-                {/* Área de Texto Editable */}
-                <TextInput
-                  placeholder="! Escribe o pega aquí los comandos de configuración CLI (Cisco, MikroTik, Fortinet, etc.)&#10;! O sube un archivo desde la columna izquierda&#10;hostname Router-Principal&#10;interface GigabitEthernet0/1&#10; ip address 10.0.10.1 255.255.255.0&#10; no shutdown&#10;end"
-                  placeholderTextColor={colors.placeholder}
-                  multiline
-                  style={[styles.terminalTextArea, { color: colors.textPrimary }]}
-                  value={configContent}
-                  onChangeText={setConfigContent}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
               </View>
-
-              {/* Pie de Terminal con Acciones Rápidas */}
-              <View style={[styles.terminalFooter, { backgroundColor: colors.card, borderColor: colors.divider }]}>
-                <Text style={[styles.terminalFooterInfo, { color: colors.textSecondary }]}>
-                  {selectedConfig ? `Editando: ${selectedConfig.name}` : 'Documento nuevo sin guardar'}
-                </Text>
-                {selectedConfig && (
-                  <TouchableOpacity 
-                    style={styles.quickSaveBtn}
-                    onPress={handleUpdateExistingConfig}
-                    activeOpacity={0.8}
-                  >
-                    <Feather name="check" size={13} color="#FFFFFF" />
-                    <Text style={styles.quickSaveBtnText}>Guardar en BD</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-
             </View>
-          </View>
 
-        </View>
+          </View>
         </View>
       </ScrollView>
     </LinearGradient>

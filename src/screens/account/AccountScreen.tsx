@@ -13,6 +13,7 @@ import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useOnboarding } from '../../contexts/OnboardingContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { getAccountRole } from '../../services/auth';
 import * as api from '../../services/api';
@@ -22,6 +23,7 @@ import PasswordRecoveryScreen from '../auth/PasswordRecoveryScreen';
 
 export default function AccountScreen() {
   const { colors, isDark } = useTheme();
+  const { resetOnboarding } = useOnboarding();
   const navigation = useNavigation<any>();
   const { user, authMethod, updateProfile, authorizationError } = useAuth();
   const [profileName, setProfileName] = useState(user?.profile?.name || '');
@@ -486,6 +488,34 @@ export default function AccountScreen() {
             </View>
             <ThemeToggle style={styles.accountThemeToggle} size={18} />
           </View>
+
+          {/* Subtarjeta: Ver tutorial de nuevo */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => void resetOnboarding()}
+            style={[
+              styles.subItemCard,
+              {
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
+                borderColor: isDark ? colors.cardBorder : '#E2E8F0',
+              },
+            ]}>
+            <View
+              style={[
+                styles.securityIconBox,
+                {
+                  backgroundColor: isDark ? 'rgba(139, 92, 246, 0.12)' : '#EDE9FE',
+                  borderColor: isDark ? 'rgba(139, 92, 246, 0.25)' : '#DDD6FE',
+                },
+              ]}>
+              <Feather name="play-circle" size={15} color={isDark ? '#A78BFA' : '#7C3AED'} />
+            </View>
+            <View style={styles.securityCopy}>
+              <Text style={[styles.securityLabel, { color: colors.textSecondary }]}>Ayuda</Text>
+              <Text style={[styles.securityValue, { color: colors.textPrimary }]}>Ver tutorial de la app</Text>
+            </View>
+            <Feather name="chevron-right" size={16} color={colors.textTertiary} />
+          </TouchableOpacity>
         </View>
 
         {/* Sección: Seguridad */}

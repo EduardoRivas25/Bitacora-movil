@@ -111,6 +111,19 @@ export default function LoginScreen() {
     return true;
   };
 
+  const handleBackToLogin = () => {
+    setIsRegister(false);
+    setPendingVerificationEmail('');
+    setVerificationCode('');
+    setName('');
+    setEmail('');
+    setPassword('');
+    setConfirmPassword('');
+    setErrorMsg('');
+    setFieldErrors({});
+    setShowTerms(false);
+  };
+
   const handleSubmit = async () => {
     setErrorMsg('');
     if (pendingVerificationEmail) {
@@ -165,6 +178,7 @@ export default function LoginScreen() {
   const handleSocialAuth = async (provider: string) => {
     if (!termsAccepted) {
       setErrorMsg('Debes aceptar los términos y condiciones para continuar.');
+      setShowTerms(true);
       return;
     }
     setErrorMsg('');
@@ -192,6 +206,8 @@ export default function LoginScreen() {
     setShowTerms(false);
     setErrorMsg('');
     setFieldErrors({});
+    setPendingVerificationEmail('');
+    setVerificationCode('');
   };
 
   const isSmallMobile = width < 380;
@@ -241,6 +257,27 @@ export default function LoginScreen() {
             },
           ]}
         >
+          {(isRegister || Boolean(pendingVerificationEmail)) && (
+            <TouchableOpacity
+              style={[
+                styles.backToHomeHeaderButton,
+                {
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
+                  borderColor: inputBorderColor,
+                }
+              ]}
+              onPress={handleBackToLogin}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Volver al inicio"
+            >
+              <Feather name="arrow-left" size={15} color={colors.text} />
+              <Text style={[styles.backToHomeHeaderText, { color: colors.text }]}>
+                Volver al inicio
+              </Text>
+            </TouchableOpacity>
+          )}
+
           <Text style={[styles.title, isSmallMobile && { fontSize: 22, lineHeight: 28 }, { color: colors.text }]}>
             {pendingVerificationEmail ? 'Verifica tu correo' : isRegister ? 'Crear cuenta\nen Bitácora Digital' : 'Bienvenido a\nBitácora Digital'}
           </Text>
@@ -267,49 +304,119 @@ export default function LoginScreen() {
             </View>
           )}
 
-          {pendingVerificationEmail !== '' && (
-            <View style={styles.inputWrapper}>
-              <Text style={{ color: colors.text, marginBottom: 10 }}>
-                Escribe el código de seis dígitos enviado a {pendingVerificationEmail}.
+          {pendingVerificationEmail !== '' ? (
+            <View style={styles.verificationCardContent}>
+              <Text style={[styles.verificationDesc, { color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }]}>
+                Escribe el código de seis dígitos enviado a:{'\n'}
+                <Text style={{ fontFamily: 'Poppins_600SemiBold', color: colors.text }}>
+                  {pendingVerificationEmail}
+                </Text>
               </Text>
-              <TextInput
-                placeholder="Código de verificación"
-                placeholderTextColor={placeholderColor}
-                keyboardType="number-pad"
-                maxLength={6}
-                value={verificationCode}
-                onChangeText={setVerificationCode}
-                style={[styles.input, { backgroundColor: inputBgColor, borderColor: inputBorderColor, color: colors.text }]}
-              />
-            </View>
-          )}
 
-          {isRegister && (
-            <>
               <View style={styles.inputWrapper}>
                 <TextInput
-                  placeholder="Nombre completo"
+                  placeholder="Código de 6 dígitos"
                   placeholderTextColor={placeholderColor}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  value={verificationCode}
+                  onChangeText={setVerificationCode}
                   style={[
-                    styles.input, 
-                    { backgroundColor: inputBgColor, borderColor: inputBorderColor, color: colors.text },
-                    fieldErrors.name && styles.inputError
+                    styles.input,
+                    styles.verificationCodeInput,
+                    verificationCode.length > 0 && styles.verificationCodeInputFilled,
+                    { backgroundColor: inputBgColor, borderColor: inputBorderColor, color: colors.text }
                   ]}
-                  autoCapitalize="words"
-                  value={name}
-                  onChangeText={(val) => {
-                    setName(val);
-                    if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: '' }));
-                  }}
+                  autoFocus
                 />
-                {fieldErrors.name && <Text style={styles.fieldErrorText}>{fieldErrors.name}</Text>}
               </View>
 
-            </>
-          )}
+              <TouchableOpacity
+                style={[
+                  styles.button, 
+                  { backgroundColor: colors.text, marginTop: 4 },
+                  isLoading && { opacity: 0.6 }
+                ]}
+                activeOpacity={0.8}
+                onPress={handleSubmit}
+                disabled={isLoading}
+              >
+                <Text style={[styles.buttonText, { color: colors.background }]}>
+                  {isLoading ? 'Verificando...' : 'Verificar correo'}
+                </Text>
+              </TouchableOpacity>
 
-          {!pendingVerificationEmail && (
+              <TouchableOpacity
+                style={[
+                  styles.cancelVerificationButton,
+                  { borderColor: inputBorderColor, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)' }
+                ]}
+                activeOpacity={0.7}
+                onPress={handleBackToLogin}
+              >
+                <Feather name="arrow-left" size={16} color={colors.text} style={{ marginRight: 6 }} />
+                <Text style={[styles.cancelVerificationText, { color: colors.text }]}>
+                  Volver al inicio de sesión
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.dividerContainer}>
+                <View style={[styles.dividerLine, { backgroundColor: inputBorderColor }]} />
+                <Text style={[styles.dividerText, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.5)' }]}>
+                  o continuar con
+                </Text>
+                <View style={[styles.dividerLine, { backgroundColor: inputBorderColor }]} />
+              </View>
+
+              <View style={styles.socialContainer}>
+                <TouchableOpacity 
+                  style={[styles.socialButton, { 
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                    borderColor: inputBorderColor
+                  }]} 
+                  activeOpacity={0.8} 
+                  onPress={() => handleSocialAuth('Google')}
+                >
+                  <Ionicons name="logo-google" size={18} color={colors.text} style={styles.socialIcon} />
+                  <Text style={[styles.socialButtonText, { color: colors.text }]}>Google</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.socialButton, { 
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                    borderColor: inputBorderColor
+                  }]} 
+                  activeOpacity={0.8} 
+                  onPress={() => handleSocialAuth('Apple')}
+                >
+                  <Ionicons name="logo-apple" size={18} color={colors.text} style={styles.socialIcon} />
+                  <Text style={[styles.socialButtonText, { color: colors.text }]}>Apple</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
             <>
+              {isRegister && (
+                <View style={styles.inputWrapper}>
+                  <TextInput
+                    placeholder="Nombre completo"
+                    placeholderTextColor={placeholderColor}
+                    style={[
+                      styles.input, 
+                      { backgroundColor: inputBgColor, borderColor: inputBorderColor, color: colors.text },
+                      fieldErrors.name && styles.inputError
+                    ]}
+                    autoCapitalize="words"
+                    value={name}
+                    onChangeText={(val) => {
+                      setName(val);
+                      if (fieldErrors.name) setFieldErrors(prev => ({ ...prev, name: '' }));
+                    }}
+                  />
+                  {fieldErrors.name && <Text style={styles.fieldErrorText}>{fieldErrors.name}</Text>}
+                </View>
+              )}
+
               <View style={styles.checkboxRow}>
                 <TouchableOpacity
                   accessibilityRole="checkbox"
@@ -347,159 +454,157 @@ export default function LoginScreen() {
                 </Text>
               )}
               {fieldErrors.terms && <Text style={styles.fieldErrorText}>{fieldErrors.terms}</Text>}
-            </>
-          )}
 
-          <View style={styles.inputWrapper}>
-            <TextInput
-              placeholder="correo@dominio.com"
-              placeholderTextColor={placeholderColor}
-              style={[
-                styles.input, 
-                { backgroundColor: inputBgColor, borderColor: inputBorderColor, color: colors.text },
-                fieldErrors.email && styles.inputError
-              ]}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={(val) => {
-                setEmail(val);
-                if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: '' }));
-              }}
-            />
-            {fieldErrors.email && <Text style={styles.fieldErrorText}>{fieldErrors.email}</Text>}
-          </View>
-
-          <View style={styles.inputWrapper}>
-            <View style={styles.passwordContainer}>
-              <TextInput
-                placeholder="Contraseña (mínimo 6 caracteres)"
-                placeholderTextColor={placeholderColor}
-                secureTextEntry={!showPassword}
-                style={[
-                  styles.input, 
-                  styles.passwordInput, 
-                  { backgroundColor: inputBgColor, borderColor: inputBorderColor, color: colors.text },
-                  fieldErrors.password && styles.inputError
-                ]}
-                value={password}
-                onChangeText={(val) => {
-                  setPassword(val);
-                  if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: '' }));
-                }}
-              />
-              <TouchableOpacity style={styles.eyeButton} activeOpacity={0.7} onPress={() => setShowPassword(!showPassword)}>
-                <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color={placeholderColor} />
-              </TouchableOpacity>
-            </View>
-            {fieldErrors.password && <Text style={styles.fieldErrorText}>{fieldErrors.password}</Text>}
-          </View>
-
-          {isRegister && (
-            <View style={styles.inputWrapper}>
-              <View style={styles.passwordContainer}>
+              <View style={styles.inputWrapper}>
                 <TextInput
-                  placeholder="Confirmar contraseña"
+                  placeholder="correo@dominio.com"
                   placeholderTextColor={placeholderColor}
-                  secureTextEntry={!showConfirmPassword}
                   style={[
                     styles.input, 
-                    styles.passwordInput, 
                     { backgroundColor: inputBgColor, borderColor: inputBorderColor, color: colors.text },
-                    fieldErrors.confirmPassword && styles.inputError
+                    fieldErrors.email && styles.inputError
                   ]}
-                  value={confirmPassword}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  value={email}
                   onChangeText={(val) => {
-                    setConfirmPassword(val);
-                    if (fieldErrors.confirmPassword) setFieldErrors(prev => ({ ...prev, confirmPassword: '' }));
+                    setEmail(val);
+                    if (fieldErrors.email) setFieldErrors(prev => ({ ...prev, email: '' }));
                   }}
                 />
-                <TouchableOpacity style={styles.eyeButton} activeOpacity={0.7} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                  <Feather name={showConfirmPassword ? 'eye' : 'eye-off'} size={20} color={placeholderColor} />
+                {fieldErrors.email && <Text style={styles.fieldErrorText}>{fieldErrors.email}</Text>}
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    placeholder="Contraseña (mínimo 6 caracteres)"
+                    placeholderTextColor={placeholderColor}
+                    secureTextEntry={!showPassword}
+                    style={[
+                      styles.input, 
+                      styles.passwordInput, 
+                      { backgroundColor: inputBgColor, borderColor: inputBorderColor, color: colors.text },
+                      fieldErrors.password && styles.inputError
+                    ]}
+                    value={password}
+                    onChangeText={(val) => {
+                      setPassword(val);
+                      if (fieldErrors.password) setFieldErrors(prev => ({ ...prev, password: '' }));
+                    }}
+                  />
+                  <TouchableOpacity style={styles.eyeButton} activeOpacity={0.7} onPress={() => setShowPassword(!showPassword)}>
+                    <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color={placeholderColor} />
+                  </TouchableOpacity>
+                </View>
+                {fieldErrors.password && <Text style={styles.fieldErrorText}>{fieldErrors.password}</Text>}
+              </View>
+
+              {isRegister && (
+                <View style={styles.inputWrapper}>
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      placeholder="Confirmar contraseña"
+                      placeholderTextColor={placeholderColor}
+                      secureTextEntry={!showConfirmPassword}
+                      style={[
+                        styles.input, 
+                        styles.passwordInput, 
+                        { backgroundColor: inputBgColor, borderColor: inputBorderColor, color: colors.text },
+                        fieldErrors.confirmPassword && styles.inputError
+                      ]}
+                      value={confirmPassword}
+                      onChangeText={(val) => {
+                        setConfirmPassword(val);
+                        if (fieldErrors.confirmPassword) setFieldErrors(prev => ({ ...prev, confirmPassword: '' }));
+                      }}
+                    />
+                    <TouchableOpacity style={styles.eyeButton} activeOpacity={0.7} onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                      <Feather name={showConfirmPassword ? 'eye' : 'eye-off'} size={20} color={placeholderColor} />
+                    </TouchableOpacity>
+                  </View>
+                  {fieldErrors.confirmPassword && <Text style={styles.fieldErrorText}>{fieldErrors.confirmPassword}</Text>}
+                </View>
+              )}
+
+              {!isRegister && (
+                <TouchableOpacity style={styles.forgotPassword} onPress={() => setShowRecovery(true)}>
+                  <Text style={[styles.forgotPasswordText, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }]}>
+                    ¿Olvidaste tu contraseña?
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                accessibilityRole="button"
+                style={styles.termsButton}
+                onPress={() => setShowTerms(true)}>
+                <Feather name="file-text" size={14} color="#0A84FF" />
+                <Text style={styles.termsButtonText}>Leer términos y condiciones</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.button, 
+                  { backgroundColor: colors.text },
+                  isRegister && { marginTop: 10 }, 
+                  isLoading && { opacity: 0.6 }
+                ]}
+                activeOpacity={0.8}
+                onPress={handleSubmit}
+                disabled={isLoading}
+              >
+                <Text style={[styles.buttonText, { color: colors.background }]}>
+                  {isLoading ? 'Validando...' : isRegister ? 'Crear cuenta' : 'Iniciar Sesión'}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.dividerContainer}>
+                <View style={[styles.dividerLine, { backgroundColor: inputBorderColor }]} />
+                <Text style={[styles.dividerText, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.5)' }]}>
+                  {isRegister ? 'o registrarse con' : 'o continuar con'}
+                </Text>
+                <View style={[styles.dividerLine, { backgroundColor: inputBorderColor }]} />
+              </View>
+
+              <View style={styles.socialContainer}>
+                <TouchableOpacity 
+                  style={[styles.socialButton, { 
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                    borderColor: inputBorderColor
+                  }]} 
+                  activeOpacity={0.8} 
+                  onPress={() => handleSocialAuth('Google')}
+                >
+                  <Ionicons name="logo-google" size={18} color={colors.text} style={styles.socialIcon} />
+                  <Text style={[styles.socialButtonText, { color: colors.text }]}>Google</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.socialButton, { 
+                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                    borderColor: inputBorderColor
+                  }]} 
+                  activeOpacity={0.8} 
+                  onPress={() => handleSocialAuth('Apple')}
+                >
+                  <Ionicons name="logo-apple" size={18} color={colors.text} style={styles.socialIcon} />
+                  <Text style={[styles.socialButtonText, { color: colors.text }]}>Apple</Text>
                 </TouchableOpacity>
               </View>
-              {fieldErrors.confirmPassword && <Text style={styles.fieldErrorText}>{fieldErrors.confirmPassword}</Text>}
-            </View>
+
+              <View style={styles.toggleContainer}>
+                <Text style={[styles.toggleText, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }]}>
+                  {isRegister ? '¿Ya tienes una cuenta?' : '¿No tienes una cuenta?'}
+                </Text>
+                <TouchableOpacity activeOpacity={0.7} onPress={toggleMode}>
+                  <Text style={[styles.toggleLink, { color: colors.text }]}>
+                    {isRegister ? ' Inicia sesión' : ' Regístrate'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
           )}
-
-          {!isRegister && (
-            <TouchableOpacity style={styles.forgotPassword} onPress={() => setShowRecovery(true)}>
-              <Text style={[styles.forgotPasswordText, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }]}>
-                ¿Olvidaste tu contraseña?
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {!pendingVerificationEmail && (
-            <TouchableOpacity
-              accessibilityRole="button"
-              style={styles.termsButton}
-              onPress={() => setShowTerms(true)}>
-              <Feather name="file-text" size={14} color="#0A84FF" />
-              <Text style={styles.termsButtonText}>Leer términos y condiciones</Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={[
-              styles.button, 
-              { backgroundColor: colors.text },
-              isRegister && { marginTop: 10 }, 
-              isLoading && { opacity: 0.6 }
-            ]}
-            activeOpacity={0.8}
-            onPress={handleSubmit}
-            disabled={isLoading}
-          >
-            <Text style={[styles.buttonText, { color: colors.background }]}>
-              {isLoading ? 'Validando...' : pendingVerificationEmail ? 'Verificar correo' : isRegister ? 'Crear cuenta' : 'Iniciar Sesión'}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.dividerContainer}>
-            <View style={[styles.dividerLine, { backgroundColor: inputBorderColor }]} />
-            <Text style={[styles.dividerText, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.5)' }]}>
-              {isRegister ? 'o registrarse con' : 'o continuar con'}
-            </Text>
-            <View style={[styles.dividerLine, { backgroundColor: inputBorderColor }]} />
-          </View>
-
-          <View style={styles.socialContainer}>
-            <TouchableOpacity 
-              style={[styles.socialButton, { 
-                backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                borderColor: inputBorderColor
-              }]} 
-              activeOpacity={0.8} 
-              onPress={() => handleSocialAuth('Google')}
-            >
-              <Ionicons name="logo-google" size={18} color={colors.text} style={styles.socialIcon} />
-              <Text style={[styles.socialButtonText, { color: colors.text }]}>Google</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.socialButton, { 
-                backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                borderColor: inputBorderColor
-              }]} 
-              activeOpacity={0.8} 
-              onPress={() => handleSocialAuth('Apple')}
-            >
-              <Ionicons name="logo-apple" size={18} color={colors.text} style={styles.socialIcon} />
-              <Text style={[styles.socialButtonText, { color: colors.text }]}>Apple</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.toggleContainer}>
-            <Text style={[styles.toggleText, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }]}>
-              {isRegister ? '¿Ya tienes una cuenta?' : '¿No tienes una cuenta?'}
-            </Text>
-            <TouchableOpacity activeOpacity={0.7} onPress={toggleMode}>
-              <Text style={[styles.toggleLink, { color: colors.text }]}>
-                {isRegister ? ' Inicia sesión' : ' Regístrate'}
-              </Text>
-            </TouchableOpacity>
-          </View>
         </BlurView>
       </ScrollView>
       <Modal visible={showTerms} transparent animationType="fade" onRequestClose={() => setShowTerms(false)}>
@@ -677,4 +782,55 @@ const styles = StyleSheet.create({
   toggleContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 5 },
   toggleText: { fontFamily: 'Poppins_400Regular', fontSize: 13 },
   toggleLink: { fontFamily: 'Poppins_600SemiBold', fontSize: 13 },
+  backToHomeHeaderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+    gap: 6,
+  },
+  backToHomeHeaderText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 12.5,
+  },
+  verificationCardContent: {
+    width: '100%',
+    alignItems: 'stretch',
+  },
+  verificationDesc: {
+    fontFamily: 'Poppins_400Regular',
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  verificationCodeInput: {
+    textAlign: 'center',
+    fontSize: 15,
+    fontFamily: 'Poppins_400Regular',
+    letterSpacing: 0,
+    paddingVertical: 14,
+  },
+  verificationCodeInputFilled: {
+    fontSize: 22,
+    letterSpacing: 8,
+    fontFamily: 'Poppins_700Bold',
+  },
+  cancelVerificationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingVertical: 14,
+    marginTop: 12,
+  },
+  cancelVerificationText: {
+    fontFamily: 'Poppins_600SemiBold',
+    fontSize: 13.5,
+  },
 });
