@@ -9,6 +9,7 @@ import { useTheme } from '../contexts/ThemeContext';
 
 import LoginScreen from '../screens/auth/LoginScreen';
 import BottomTabNavigator from './BottomTabNavigator';
+import { navigationRef } from './navigationRef';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -24,6 +25,7 @@ export default function AppNavigator() {
     <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <NavigationContainer
+        ref={navigationRef}
         theme={{
           dark: isDark,
           colors: {
