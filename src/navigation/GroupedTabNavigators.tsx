@@ -48,15 +48,15 @@ function SectionTabBar({ state, descriptors, navigation }: any) {
               styles.sectionTab,
               isSmallMobile && styles.sectionTabSmall,
               focused && {
-                backgroundColor: isDark ? '#FFFFFF' : '#111827',
+                backgroundColor: isDark ? '#FFFFFF' : '#DCE5EE',
                 shadowColor: isDark ? '#FFFFFF' : '#000000',
               },
             ]}>
-            {icon ? <Feather name={icon} size={isSmallMobile ? 13 : 14} color={focused ? (isDark ? '#111827' : '#FFFFFF') : colors.textSecondary} /> : null}
+            {icon ? <Feather name={icon} size={isSmallMobile ? 13 : 14} color={focused ? (isDark ? '#111827' : '#0F172A') : colors.textSecondary} /> : null}
             <Text style={[
               styles.sectionTabText,
               isSmallMobile && styles.sectionTabTextSmall,
-              { color: focused ? (isDark ? '#111827' : '#FFFFFF') : colors.textSecondary },
+              { color: focused ? (isDark ? '#111827' : '#0F172A') : colors.textSecondary },
             ]} numberOfLines={1}>
               {options?.title ?? route.name}
             </Text>

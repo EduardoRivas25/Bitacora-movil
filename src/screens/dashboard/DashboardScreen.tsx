@@ -149,11 +149,11 @@ export default function DashboardScreen() {
     }, [loadData])
   );
 
-  const gradientColors: [string, string] = isDark ? ['#050505', '#121212'] : ['#F8FAFC', '#E2E8F0'];
+  const gradientColors: [string, string] = isDark ? ['#050505', '#121212'] : ['#FFFFFF', '#FFFFFF'];
   const textColor = isDark ? '#FFFFFF' : '#111827';
-  const subtitleColor = isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.5)';
-  const cardBgColor = isDark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.7)';
-  const cardBorderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
+  const subtitleColor = isDark ? 'rgba(255, 255, 255, 0.45)' : '#475569';
+  const cardBgColor = isDark ? 'rgba(0, 0, 0, 0.5)' : '#E2EAF2';
+  const cardBorderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#9AAABD';
   const blurTint = isDark ? 'dark' : 'light';
   const blurIntensity = isDark ? 30 : 60;
 
@@ -222,8 +222,8 @@ export default function DashboardScreen() {
                 styles.logoContainer, 
                 isSmallMobile && { width: 44, height: 44 },
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)'
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D7E1EB',
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#9AAABD'
                 }
               ]}>
                 <Image 
@@ -254,8 +254,8 @@ export default function DashboardScreen() {
                 style={[
                   styles.searchHeaderButton,
                   {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#D7E1EB',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#9AAABD',
                   }
                 ]}
                 activeOpacity={0.8}
@@ -268,8 +268,8 @@ export default function DashboardScreen() {
                 style={[
                   styles.themeHeaderButton,
                   {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#D7E1EB',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#9AAABD',
                   }
                 ]}
                 size={17}
@@ -304,8 +304,8 @@ export default function DashboardScreen() {
                 style={[
                   styles.metricAction,
                   {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D2DDE8',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#9AAABD',
                   }
                 ]}
                 activeOpacity={0.7}
@@ -332,8 +332,8 @@ export default function DashboardScreen() {
                 style={[
                   styles.metricAction,
                   {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D2DDE8',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#9AAABD',
                   }
                 ]}
                 activeOpacity={0.7}
@@ -360,8 +360,8 @@ export default function DashboardScreen() {
                 style={[
                   styles.metricAction,
                   {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D2DDE8',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#9AAABD',
                   }
                 ]}
                 activeOpacity={0.7}
@@ -390,8 +390,8 @@ export default function DashboardScreen() {
                 style={[
                   styles.metricAction,
                   {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D2DDE8',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#9AAABD',
                   }
                 ]}
                 activeOpacity={0.7}
@@ -478,7 +478,7 @@ export default function DashboardScreen() {
               style={[
                 styles.quickActionCard,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.8)',
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#D7E1EB',
                   borderColor: cardBorderColor,
                 }
               ]}
@@ -499,7 +499,7 @@ export default function DashboardScreen() {
               style={[
                 styles.quickActionCard,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.8)',
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#D7E1EB',
                   borderColor: cardBorderColor,
                 }
               ]}
@@ -520,7 +520,7 @@ export default function DashboardScreen() {
               style={[
                 styles.quickActionCard,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(255, 255, 255, 0.8)',
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#D7E1EB',
                   borderColor: cardBorderColor,
                 }
               ]}

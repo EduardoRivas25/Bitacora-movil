@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, 
   useWindowDimensions, Platform, ActivityIndicator
@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import GlassModal from '../../components/ui/GlassModal';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import * as api from '../../services/api';
 import { Network, Subnet } from '../../types';
@@ -24,6 +24,7 @@ import { confirmDestructiveAction, showUserNotice } from '../../utils/destructiv
 
 export default function NetworkListScreen() {
   const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { user } = useAuth();
   const canWriteNetworks = canManageNetworks(user);
   const canDeleteRecords = isAdministrator(user);
@@ -551,58 +552,58 @@ export default function NetworkListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingTop: 24, paddingBottom: 110 },
   innerWrapper: { maxWidth: 1200, width: '100%', alignSelf: 'center' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 },
   headerBadge: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#0A84FF', letterSpacing: 1.5, marginBottom: 2 },
-  headerTitle: { fontFamily: 'Poppins_700Bold', fontSize: 26, color: '#FFFFFF', letterSpacing: 0.3 },
-  headerSubtitle: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: 'rgba(255, 255, 255, 0.45)', marginTop: 2 },
-  addButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, gap: 5 },
-  addButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 12.5, color: '#000000' },
+  headerTitle: { fontFamily: 'Poppins_700Bold', fontSize: 26, color: colors.textPrimary, letterSpacing: 0.3 },
+  headerSubtitle: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: colors.textTertiary, marginTop: 2 },
+  addButton: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.buttonBg, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 12, gap: 5 },
+  addButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 12.5, color: colors.buttonText },
   networkList: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
-  networkCard: { padding: 18, borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
+  networkCard: { padding: 18, borderRadius: 22, overflow: 'hidden', borderWidth: 1, borderColor: colors.cardBorder, backgroundColor: colors.cardBg },
   cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
   networkInfo: { flex: 1 },
   networkTitleContainer: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 5 },
-  networkName: { fontFamily: 'Poppins_700Bold', fontSize: 16.5, color: '#FFFFFF' },
+  networkName: { fontFamily: 'Poppins_700Bold', fontSize: 16.5, color: colors.textPrimary },
   cidrBadge: { backgroundColor: 'rgba(10, 132, 255, 0.15)', borderWidth: 1, borderColor: 'rgba(10, 132, 255, 0.3)', paddingHorizontal: 9, paddingVertical: 2.5, borderRadius: 7 },
   cidrText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: '#0A84FF' },
-  networkDesc: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: 'rgba(255, 255, 255, 0.5)' },
-  statsRow: { flexDirection: 'row', gap: 12, paddingVertical: 10, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)', marginBottom: 12 },
+  networkDesc: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: colors.textSecondary },
+  statsRow: { flexDirection: 'row', gap: 12, paddingVertical: 10, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.cardBorder, marginBottom: 12 },
   statItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  statText: { fontFamily: 'Poppins_400Regular', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.7)' },
+  statText: { fontFamily: 'Poppins_400Regular', fontSize: 11.5, color: colors.textSecondary },
   actionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   expandButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 5 },
-  expandButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 12.5, color: '#FFFFFF' },
+  expandButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 12.5, color: colors.textPrimary },
   cardControlButtons: { flexDirection: 'row', gap: 6 },
-  iconActionButton: { width: 32, height: 32, borderRadius: 9, backgroundColor: 'rgba(255, 255, 255, 0.05)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' },
-  subnetsContainer: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', gap: 8 },
+  iconActionButton: { width: 32, height: 32, borderRadius: 9, backgroundColor: colors.chipBg, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.cardBorder },
+  subnetsContainer: { marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderColor: colors.cardBorder, gap: 8 },
   subnetHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  subnetSectionTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: 'rgba(255, 255, 255, 0.4)', letterSpacing: 1 },
+  subnetSectionTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: colors.textSecondary, letterSpacing: 1 },
   addSubnetSmallBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   addSubnetSmallText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: '#0A84FF' },
-  emptySubnetText: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: 'rgba(255, 255, 255, 0.4)', fontStyle: 'italic', paddingVertical: 6 },
-  subnetItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.03)', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.05)' },
+  emptySubnetText: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: colors.textSecondary, fontStyle: 'italic', paddingVertical: 6 },
+  subnetItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.chipBg, borderRadius: 12, padding: 10, borderWidth: 1, borderColor: colors.cardBorder },
   subnetMain: { flex: 1, paddingRight: 8 },
   subnetTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-  subnetName: { fontFamily: 'Poppins_600SemiBold', fontSize: 12.5, color: '#FFFFFF' },
+  subnetName: { fontFamily: 'Poppins_600SemiBold', fontSize: 12.5, color: colors.textPrimary },
   subnetCidrBadge: { backgroundColor: 'rgba(191, 90, 242, 0.15)', paddingHorizontal: 5, paddingVertical: 1.5, borderRadius: 5 },
   subnetCidrText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#BF5AF2' },
-  subnetDesc: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, color: 'rgba(255, 255, 255, 0.45)' },
+  subnetDesc: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, color: colors.textTertiary },
   subnetSide: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   deviceCountBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(48, 209, 88, 0.1)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7 },
   deviceCountText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#30D158' },
   deleteSubnetBtn: { padding: 5 },
-  inputLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.7)', marginBottom: 5 },
-  input: { fontFamily: 'Poppins_400Regular', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderRadius: 13, padding: 12, color: '#FFFFFF', fontSize: 13.5, marginBottom: 12, ...Platform.select({ web: { outlineStyle: 'none' } }) as any },
+  inputLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: colors.textSecondary, marginBottom: 5 },
+  input: { fontFamily: 'Poppins_400Regular', backgroundColor: colors.chipBg, borderWidth: 1, borderColor: colors.cardBorder, borderRadius: 13, padding: 12, color: colors.textPrimary, fontSize: 13.5, marginBottom: 12, ...Platform.select({ web: { outlineStyle: 'none' } }) as any },
   inputError: { borderColor: '#FF453A', backgroundColor: 'rgba(255, 69, 58, 0.06)' },
   fieldErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, color: '#FF453A', marginTop: -8, marginBottom: 10, marginLeft: 4 },
   modalErrorContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 69, 58, 0.12)', borderWidth: 1, borderColor: 'rgba(255, 69, 58, 0.3)', borderRadius: 11, padding: 10, marginBottom: 14, gap: 8 },
   modalErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: '#FF453A', flex: 1 },
   formRow: { flexDirection: 'row', gap: 10 },
   textArea: { height: 60, textAlignVertical: 'top' },
-  modalSubmitButton: { backgroundColor: '#FFFFFF', paddingVertical: 14, borderRadius: 13, alignItems: 'center', marginTop: 8 },
-  modalSubmitButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 13.5, color: '#000000' },
+  modalSubmitButton: { backgroundColor: colors.buttonBg, paddingVertical: 14, borderRadius: 13, alignItems: 'center', marginTop: 8 },
+  modalSubmitButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 13.5, color: colors.buttonText },
 });

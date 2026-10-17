@@ -40,7 +40,7 @@ function AccountIdentityHeader({ navigation }: BottomTabHeaderProps) {
   const accountName = user?.profile?.name?.trim() || user?.email?.split('@')[0] || 'Mi cuenta';
 
   return (
-    <View style={[styles.identityHeader, { backgroundColor: colors.cardBg, borderBottomColor: colors.cardBorder }]}>
+    <View style={[styles.identityHeader, { backgroundColor: colors.background, borderBottomColor: colors.cardBorder }]}>
       <View style={styles.identityContent}>
         <Text style={[styles.brandName, { color: colors.textPrimary }]}>Bitácora Digital</Text>
         <TouchableOpacity
@@ -51,7 +51,7 @@ function AccountIdentityHeader({ navigation }: BottomTabHeaderProps) {
           style={[
             styles.accountBubble,
             {
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E9EFF5',
               borderColor: isDark ? 'rgba(255, 255, 255, 0.18)' : '#CBD5E1',
             },
           ]}>
@@ -109,8 +109,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         style={[
           styles.blurBackground,
           {
-            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.88)',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(226, 234, 242, 0.97)',
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(100, 116, 139, 0.38)',
           },
         ]}
       />
@@ -129,7 +129,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                   width: indicatorSize,
                   height: indicatorSize,
                   borderRadius: indicatorSize / 2,
-                  backgroundColor: isDark ? '#FFFFFF' : '#111827',
+                  backgroundColor: isDark ? '#FFFFFF' : '#DCE5EE',
                   shadowColor: isDark ? '#FFFFFF' : '#000000',
                 },
               ]}
@@ -157,7 +157,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               <Feather
                 name={item.icon as keyof typeof Feather.glyphMap}
                 size={iconSize}
-                color={isFocused ? (isDark ? '#000000' : '#FFFFFF') : 'rgba(128,128,128,0.7)'}
+                color={isFocused ? (isDark ? '#000000' : '#0F172A') : 'rgba(128,128,128,0.7)'}
               />
             </TouchableOpacity>
           );

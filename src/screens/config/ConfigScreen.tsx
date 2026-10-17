@@ -17,7 +17,7 @@ import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import * as Clipboard from 'expo-clipboard';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import * as api from '../../services/api';
 import { DeviceConfig, Device } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
@@ -26,6 +26,7 @@ import { confirmDestructiveAction } from '../../utils/destructiveConfirmation';
 
 export default function ConfigScreen() {
   const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
   const isDesktop = width > 900;
@@ -892,7 +893,7 @@ export default function ConfigScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   container: {
     flex: 1,
   },
@@ -923,13 +924,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 26,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     letterSpacing: 0.3,
   },
   headerSubtitle: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.45)',
+    color: colors.textTertiary,
     marginTop: 2,
   },
   newConfigBtn: {
@@ -946,7 +947,7 @@ const styles = StyleSheet.create({
   newConfigBtnText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 12,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   toastBanner: {
     flexDirection: 'row',
@@ -968,14 +969,14 @@ const styles = StyleSheet.create({
   toastText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 12,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     flex: 1,
   },
   utilityItemText: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
     lineHeight: 18,
-    color: 'rgba(255, 255, 255, 0.55)',
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   mainLayout: {
@@ -1003,8 +1004,8 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.cardBg,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -1015,7 +1016,7 @@ const styles = StyleSheet.create({
   cardSectionTitle: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 15,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   editingBadge: {
     backgroundColor: 'rgba(255, 159, 10, 0.15)',
@@ -1033,7 +1034,7 @@ const styles = StyleSheet.create({
   badgeCount: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: colors.textSecondary,
   },
   deviceSectionWrapper: {
     marginBottom: 16,
@@ -1078,16 +1079,16 @@ const styles = StyleSheet.create({
   selectedDeviceName: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 13,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   selectedDeviceMeta: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: colors.textSecondary,
     marginTop: 1,
   },
   deviceTypeBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: colors.chipBg,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -1095,12 +1096,12 @@ const styles = StyleSheet.create({
   deviceTypeBadgeText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: colors.textSecondary,
   },
   deviceDropdownContainer: {
     backgroundColor: 'rgba(20, 20, 26, 0.95)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: colors.cardBorder,
     borderRadius: 14,
     padding: 10,
     marginBottom: 12,
@@ -1108,9 +1109,9 @@ const styles = StyleSheet.create({
   deviceSearchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.chipBg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: colors.cardBorder,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -1120,7 +1121,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     ...Platform.select({
       web: { outlineStyle: 'none' },
     }) as any,
@@ -1142,20 +1143,20 @@ const styles = StyleSheet.create({
   deviceDropdownName: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: colors.textPrimary,
   },
   deviceDropdownNameActive: {
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   deviceDropdownSub: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.45)',
+    color: colors.textTertiary,
   },
   noDeviceFound: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: colors.textSecondary,
     textAlign: 'center',
     paddingVertical: 12,
   },
@@ -1173,7 +1174,7 @@ const styles = StyleSheet.create({
   noDeviceText: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: colors.textSecondary,
   },
   addDeviceLink: {
     fontFamily: 'Poppins_600SemiBold',
@@ -1190,22 +1191,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.chipBg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: colors.cardBorder,
     marginRight: 8,
   },
   deviceChipActive: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#FFFFFF',
+    backgroundColor: colors.buttonBg,
+    borderColor: colors.buttonBg,
   },
   deviceChipText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: colors.textSecondary,
   },
   deviceChipTextActive: {
-    color: '#000000',
+    color: colors.buttonText,
   },
   formRow: {
     flexDirection: 'row',
@@ -1215,17 +1216,17 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.65)',
+    color: colors.textSecondary,
     marginBottom: 5,
   },
   input: {
     fontFamily: 'Poppins_400Regular',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: colors.chipBg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: colors.cardBorder,
     borderRadius: 12,
     padding: 12,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     fontSize: 13,
     marginBottom: 12,
     ...Platform.select({
@@ -1234,13 +1235,13 @@ const styles = StyleSheet.create({
   },
   dropzone: {
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: colors.cardBorder,
     borderStyle: 'dashed',
     borderRadius: 16,
     padding: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: colors.chipBg,
     marginBottom: 14,
   },
   dropzoneActive: {
@@ -1254,14 +1255,14 @@ const styles = StyleSheet.create({
   dropzoneTitle: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 13,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
     marginTop: 6,
     textAlign: 'center',
   },
   dropzoneSubtitle: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: colors.textSecondary,
     marginTop: 2,
     textAlign: 'center',
   },
@@ -1285,14 +1286,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#30D158',
   },
   saveAsNewBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: colors.chipBg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: colors.cardBorder,
   },
   actionButtonText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 13,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   backupList: {
     gap: 8,
@@ -1303,9 +1304,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 12,
     borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: colors.chipBg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: colors.cardBorder,
   },
   backupItemActive: {
     borderColor: '#0A84FF',
@@ -1320,7 +1321,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: colors.chipBg,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
@@ -1331,12 +1332,12 @@ const styles = StyleSheet.create({
   backupName: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 13,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   backupMeta: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.45)',
+    color: colors.textTertiary,
     marginTop: 1,
   },
   backupActions: {
@@ -1377,19 +1378,19 @@ const styles = StyleSheet.create({
   emptyBackupsText: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   terminalWindow: {
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: '#0A0A0E',
+    backgroundColor: colors.cardBg,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: colors.cardBorder,
     minHeight: 560,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.6,
+    shadowOpacity: isDark ? 0.6 : 0.12,
     shadowRadius: 24,
   },
   terminalHeader: {
@@ -1398,9 +1399,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#121218',
+    backgroundColor: colors.card,
     borderBottomWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: colors.cardBorder,
   },
   macButtons: {
     flexDirection: 'row',
@@ -1420,7 +1421,7 @@ const styles = StyleSheet.create({
   terminalTitle: {
     fontFamily: 'monospace',
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: colors.textSecondary,
   },
   terminalControls: {
     flexDirection: 'row',
@@ -1430,7 +1431,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: colors.chipBg,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -1441,7 +1442,7 @@ const styles = StyleSheet.create({
   terminalBtnText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 10,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
   terminalSubHeader: {
     flexDirection: 'row',
@@ -1449,38 +1450,38 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: colors.chipBg,
     borderBottomWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: colors.cardBorder,
   },
   terminalMetaText: {
     fontFamily: 'monospace',
     fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: colors.textSecondary,
   },
   terminalHintText: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.35)',
+    color: colors.textTertiary,
   },
   terminalBody: {
     flexDirection: 'row',
     minHeight: 460,
-    backgroundColor: '#0A0A0E',
+    backgroundColor: colors.card,
   },
   lineNumbersCol: {
     width: 44,
     paddingVertical: 14,
     paddingRight: 10,
     borderRightWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderColor: colors.cardBorder,
+    backgroundColor: colors.chipBg,
     alignItems: 'flex-end',
   },
   lineNumberText: {
     fontFamily: 'monospace',
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.25)',
+    color: colors.textTertiary,
     lineHeight: 20,
   },
   terminalTextArea: {
@@ -1501,14 +1502,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 10,
-    backgroundColor: '#121218',
+    backgroundColor: colors.card,
     borderTopWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: colors.cardBorder,
   },
   terminalFooterInfo: {
     fontFamily: 'Poppins_400Regular',
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.45)',
+    color: colors.textTertiary,
   },
   quickSaveBtn: {
     flexDirection: 'row',
@@ -1522,6 +1523,6 @@ const styles = StyleSheet.create({
   quickSaveBtnText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 11,
-    color: '#FFFFFF',
+    color: colors.textPrimary,
   },
 });
