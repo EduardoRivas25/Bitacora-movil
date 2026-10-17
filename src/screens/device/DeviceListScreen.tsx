@@ -543,7 +543,7 @@ export default function DeviceListScreen() {
                     </TouchableOpacity>
                     {canEditDevices && (
                       <TouchableOpacity style={styles.actionButton} activeOpacity={0.7} onPress={() => handleOpenEditDevice(dev)}>
-                        <Feather name="edit-2" size={15} color="#FFD60A" />
+                        <Feather name="edit-2" size={15} color={isDark ? '#FFD60A' : '#766000'} />
                       </TouchableOpacity>
                     )}
                     {canDeleteRecords && (
@@ -795,7 +795,7 @@ export default function DeviceListScreen() {
                     {deviceIncidents.length ? deviceIncidents.slice(0, 4).map(incident => (
                       <View key={incident.id} style={[styles.relatedRecord, { borderColor: colors.divider }]}>
                         <View style={styles.relatedRecordIcon}>
-                          <Feather name="alert-triangle" size={14} color={incident.status === 'resolved' ? '#30D158' : '#FF9F0A'} />
+                          <Feather name="alert-triangle" size={14} color={incident.status === 'resolved' ? (isDark ? '#30D158' : '#176B3C') : (isDark ? '#FF9F0A' : '#915400')} />
                         </View>
                         <View style={styles.relatedRecordCopy}>
                           <Text style={[styles.relatedRecordTitle, { color: colors.textPrimary }]} numberOfLines={1}>{incident.title}</Text>

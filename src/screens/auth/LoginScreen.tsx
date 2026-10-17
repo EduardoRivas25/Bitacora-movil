@@ -690,8 +690,8 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
             <View style={styles.termsDraftNotice}>
-              <Feather name="alert-triangle" size={16} color="#FF9F0A" />
-              <Text style={styles.termsDraftNoticeText}>
+              <Feather name="alert-triangle" size={16} color={theme === 'dark' ? '#FF9F0A' : '#915400'} />
+              <Text style={[styles.termsDraftNoticeText, theme === 'light' && { color: '#915400' }]}>
                 Borrador pendiente de revisión y aprobación institucional. No sustituye un aviso de privacidad.
               </Text>
             </View>

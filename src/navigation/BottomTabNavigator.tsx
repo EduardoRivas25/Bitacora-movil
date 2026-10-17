@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import {
   Animated,
+  Image,
   Platform,
   StyleSheet,
   Text,
@@ -24,6 +25,8 @@ import { ControlCenterNavigator, InfrastructureNavigator } from './GroupedTabNav
 import { useAuth } from '../contexts/AuthContext';
 
 const Tab = createBottomTabNavigator();
+const LOGO_DARK = require('../../assets/logobitacoraredes.png');
+const LOGO_LIGHT = require('../../assets/logobitacoraredesmodoclaro.png');
 
 const visibleItems = [
   { route: 'Inicio', label: 'Inicio', icon: 'home' },
@@ -42,7 +45,10 @@ function AccountIdentityHeader({ navigation }: BottomTabHeaderProps) {
   return (
     <View style={[styles.identityHeader, { backgroundColor: colors.background, borderBottomColor: colors.cardBorder }]}>
       <View style={styles.identityContent}>
-        <Text style={[styles.brandName, { color: colors.textPrimary }]}>Bitácora Digital</Text>
+        <View style={styles.brandIdentity}>
+          <Image source={isDark ? LOGO_DARK : LOGO_LIGHT} style={styles.brandLogo} resizeMode="contain" />
+          <Text style={[styles.brandName, { color: colors.textPrimary }]}>Bitácora Digital</Text>
+        </View>
         <TouchableOpacity
           activeOpacity={0.75}
           accessibilityRole="button"
@@ -51,11 +57,11 @@ function AccountIdentityHeader({ navigation }: BottomTabHeaderProps) {
           style={[
             styles.accountBubble,
             {
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E9EFF5',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.18)' : '#CBD5E1',
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#D8D8D8',
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.18)' : '#7A7A7A',
             },
           ]}>
-          <Text style={[styles.accountInitial, { color: isDark ? '#FFFFFF' : '#0F172A' }]}>
+          <Text style={[styles.accountInitial, { color: isDark ? '#FFFFFF' : '#171717' }]}>
             {accountName.slice(0, 1).toUpperCase()}
           </Text>
         </TouchableOpacity>
@@ -109,8 +115,8 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
         style={[
           styles.blurBackground,
           {
-            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(226, 234, 242, 0.97)',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(100, 116, 139, 0.38)',
+            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.55)' : 'rgba(232, 232, 232, 0.70)',
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(80, 80, 80, 0.38)',
           },
         ]}
       />
@@ -129,7 +135,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
                   width: indicatorSize,
                   height: indicatorSize,
                   borderRadius: indicatorSize / 2,
-                  backgroundColor: isDark ? '#FFFFFF' : '#DCE5EE',
+                  backgroundColor: isDark ? '#FFFFFF' : '#D2D2D2',
                   shadowColor: isDark ? '#FFFFFF' : '#000000',
                 },
               ]}
@@ -157,7 +163,7 @@ function CustomTabBar({ state, descriptors, navigation }: any) {
               <Feather
                 name={item.icon as keyof typeof Feather.glyphMap}
                 size={iconSize}
-                color={isFocused ? (isDark ? '#000000' : '#0F172A') : 'rgba(128,128,128,0.7)'}
+                color={isFocused ? (isDark ? '#000000' : '#171717') : 'rgba(95, 95, 95, 0.8)'}
               />
             </TouchableOpacity>
           );
@@ -207,12 +213,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
   },
+  brandIdentity: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  brandLogo: { width: 32, height: 32 },
   brandName: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 14,
   },
   accountBubble: {
-    minWidth: 38,
+    width: 38,
     height: 38,
     borderRadius: 19,
     borderWidth: 1.5,

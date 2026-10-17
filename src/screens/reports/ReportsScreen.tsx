@@ -34,6 +34,13 @@ const TONE_COLORS: Record<NonNullable<ReturnType<typeof getReportSummary>[number
   red: '#FF453A',
   muted: '#8E8E93',
 };
+const LIGHT_TONE_COLORS: typeof TONE_COLORS = {
+  blue: '#155E9B',
+  green: '#176B3C',
+  orange: '#915400',
+  red: '#B42318',
+  muted: '#555555',
+};
 
 function todayISO(): string {
   const now = new Date();
@@ -48,7 +55,7 @@ function validISODate(value: string): boolean {
 }
 
 export default function ReportsScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { width } = useWindowDimensions();
   const { user } = useAuth();
   const [area, setArea] = useState<ReportArea>('networks');
@@ -135,8 +142,8 @@ export default function ReportsScreen() {
         ) : null}
         {message ? (
           <View style={styles.successBanner}>
-            <Feather name="check-circle" size={17} color="#30D158" />
-            <Text style={styles.successText}>{message}</Text>
+            <Feather name="check-circle" size={17} color={isDark ? '#30D158' : '#176B3C'} />
+            <Text style={[styles.successText, !isDark && { color: '#176B3C' }]}>{message}</Text>
           </View>
         ) : null}
 
@@ -148,7 +155,7 @@ export default function ReportsScreen() {
             </View>
             <View style={styles.summaryGrid}>
               {summary.map(item => (
-                <View key={item.label} style={[styles.summaryItem, { borderLeftColor: TONE_COLORS[item.tone || 'blue'] }]}>
+                <View key={item.label} style={[styles.summaryItem, { borderLeftColor: (isDark ? TONE_COLORS : LIGHT_TONE_COLORS)[item.tone || 'blue'] }]}>
                   <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{item.value}</Text>
                   <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{item.label}</Text>
                 </View>

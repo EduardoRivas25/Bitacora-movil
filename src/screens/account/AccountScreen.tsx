@@ -76,10 +76,10 @@ export default function AccountScreen() {
   const isExternalProvider = authMethod === 'google' || authMethod === 'apple';
   const accountRole = getAccountRole(user);
 
-  // Paleta neutra acorde a la aplicación: sin tonos morados en modo oscuro
+  // La acción principal conserva contraste alto en ambos temas.
   const primaryBtnGradient = isDark
     ? (['#FFFFFF', '#F3F4F6'] as const)
-    : (['#0F172A', '#1E293B'] as const);
+    : (['#333333', '#222222'] as const);
 
   return (
     <LinearGradient colors={colors.gradient} style={styles.container}>
@@ -92,8 +92,8 @@ export default function AccountScreen() {
           style={[
             styles.backButton,
             {
-              backgroundColor: isDark ? colors.card : '#FFFFFF',
-              borderColor: isDark ? colors.cardBorder : '#CBD5E1',
+              backgroundColor: colors.card,
+              borderColor: colors.cardBorder,
             },
           ]}>
           <Feather name="arrow-left" size={14} color={colors.textPrimary} />
@@ -106,11 +106,11 @@ export default function AccountScreen() {
             style={[
               styles.headerIcon,
               {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#FFFFFF',
-                borderColor: isDark ? colors.cardBorder : '#CBD5E1',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#D8D8D8',
+                borderColor: colors.cardBorder,
               },
             ]}>
-            <Feather name="user" size={20} color={isDark ? '#FFFFFF' : '#0F172A'} />
+            <Feather name="user" size={20} color={colors.textPrimary} />
           </View>
           <Text style={[styles.title, { color: colors.textPrimary }]}>Mi cuenta</Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
@@ -123,28 +123,28 @@ export default function AccountScreen() {
           style={[
             styles.identityCard,
             {
-              backgroundColor: isDark ? colors.card : '#FFFFFF',
-              borderColor: isDark ? colors.cardBorder : '#CBD5E1',
+              backgroundColor: colors.card,
+              borderColor: colors.cardBorder,
             },
           ]}>
           <View style={styles.identityTop}>
             <LinearGradient
-              colors={isDark ? ['#242424', '#161616'] : ['#0F172A', '#1E293B']}
+              colors={isDark ? ['#242424', '#161616'] : ['#444444', '#292929']}
               style={[
                 styles.avatar,
-                { borderColor: isDark ? 'rgba(255,255,255,0.18)' : '#CBD5E1' },
+                { borderColor: isDark ? 'rgba(255,255,255,0.18)' : '#777777' },
               ]}>
               <Text style={styles.avatarText}>{accountName.slice(0, 1).toUpperCase()}</Text>
             </LinearGradient>
 
             <View style={styles.identityDetails}>
-              <Text style={[styles.identityEyebrow, { color: isDark ? 'rgba(255, 255, 255, 0.55)' : '#64748B' }]}>
+              <Text style={[styles.identityEyebrow, { color: isDark ? 'rgba(255, 255, 255, 0.55)' : colors.textTertiary }]}>
                 SESIÓN ACTIVA
               </Text>
-              <Text style={[styles.name, { color: isDark ? '#FFFFFF' : '#0F172A' }]} numberOfLines={1}>
+              <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
                 {accountName}
               </Text>
-              <Text style={[styles.email, { color: isDark ? 'rgba(255, 255, 255, 0.70)' : '#475569' }]} numberOfLines={1}>
+              <Text style={[styles.email, { color: isDark ? 'rgba(255, 255, 255, 0.70)' : colors.textSecondary }]} numberOfLines={1}>
                 {user?.email || 'Correo no disponible'}
               </Text>
             </View>
@@ -153,8 +153,8 @@ export default function AccountScreen() {
               style={[
                 styles.onlineIndicator,
                 {
-                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
-                  borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : '#10B981',
+                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#D8D8D8',
+                  borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : '#AAAAAA',
                 },
               ]}>
               <View style={styles.onlineDot} />
@@ -167,12 +167,12 @@ export default function AccountScreen() {
               style={[
                 styles.identityBadge,
                 {
-                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : '#ECFDF5',
-                  borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : '#059669',
+                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : '#D8D8D8',
+                  borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : '#AAAAAA',
                 },
               ]}>
-              <Feather name="shield" size={13} color={isDark ? '#34D399' : '#047857'} />
-              <Text style={[styles.identityBadgeText, { color: isDark ? '#34D399' : '#047857' }]}>
+              <Feather name="shield" size={13} color={isDark ? '#34D399' : colors.textPrimary} />
+              <Text style={[styles.identityBadgeText, { color: isDark ? '#34D399' : colors.textPrimary }]}>
                 {accountRole || 'Rol pendiente'}
               </Text>
             </View>
@@ -182,16 +182,16 @@ export default function AccountScreen() {
               style={[
                 styles.identityBadge,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F1F5F9',
-                  borderColor: isDark ? colors.cardBorder : '#CBD5E1',
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D8D8D8',
+                  borderColor: colors.cardBorder,
                 },
               ]}>
               <Feather
                 name={authMethod === 'google' ? 'globe' : authMethod === 'apple' ? 'smartphone' : 'mail'}
                 size={13}
-                color={isDark ? '#94A3B8' : '#334155'}
+                color={isDark ? '#94A3B8' : colors.textSecondary}
               />
-              <Text style={[styles.identityBadgeText, { color: isDark ? '#E2E8F0' : '#1E293B' }]}>
+              <Text style={[styles.identityBadgeText, { color: isDark ? '#E2E8F0' : colors.textPrimary }]}>
                 {providerLabel}
               </Text>
             </View>
@@ -228,20 +228,20 @@ export default function AccountScreen() {
           style={[
             styles.sectionCard,
             {
-              backgroundColor: isDark ? colors.card : '#FFFFFF',
-              borderColor: isDark ? colors.cardBorder : '#CBD5E1',
+              backgroundColor: colors.card,
+              borderColor: colors.cardBorder,
             },
           ]}>
-          <View style={[styles.sectionHeading, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0' }]}>
+          <View style={[styles.sectionHeading, { borderBottomColor: colors.divider }]}>
             <View
               style={[
                 styles.sectionIcon,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#F1F5F9',
-                  borderColor: isDark ? colors.cardBorder : '#CBD5E1',
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#D3D3D3',
+                  borderColor: colors.cardBorder,
                 },
               ]}>
-              <Feather name="user" size={17} color={isDark ? '#FFFFFF' : '#0F172A'} />
+              <Feather name="user" size={17} color={colors.textPrimary} />
             </View>
             <View style={styles.sectionHeadingCopy}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Perfil</Text>
@@ -253,19 +253,19 @@ export default function AccountScreen() {
 
           {/* Input: Nombre completo */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255, 255, 255, 0.90)' : '#1E293B' }]}>
+            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255, 255, 255, 0.90)' : colors.textPrimary }]}>
               Nombre completo
             </Text>
             <View
               style={[
                 styles.inputWrapper,
                 {
-                  backgroundColor: isDark ? colors.inputBg : (focusedField === 'name' ? '#FFFFFF' : '#F8FAFC'),
+                  backgroundColor: isDark ? colors.inputBg : (focusedField === 'name' ? '#F8F8F8' : colors.inputBg),
                   borderColor: focusedField === 'name'
-                    ? (isDark ? '#FFFFFF' : '#0F172A')
-                    : (isDark ? colors.inputBorder : '#CBD5E1'),
+                    ? (isDark ? '#FFFFFF' : '#555555')
+                    : colors.inputBorder,
                   ...(focusedField === 'name' && Platform.select({
-                    web: { boxShadow: isDark ? '0 0 0 2px rgba(255, 255, 255, 0.2)' : '0 0 0 3px rgba(15, 23, 42, 0.1)' } as any,
+                    web: { boxShadow: isDark ? '0 0 0 2px rgba(255, 255, 255, 0.2)' : '0 0 0 3px rgba(0, 0, 0, 0.1)' } as any,
                   })),
                 },
               ]}>
@@ -290,19 +290,19 @@ export default function AccountScreen() {
 
           {/* Input: Área de trabajo */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255, 255, 255, 0.90)' : '#1E293B' }]}>
+            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255, 255, 255, 0.90)' : colors.textPrimary }]}>
               Área de trabajo
             </Text>
             <View
               style={[
                 styles.inputWrapper,
                 {
-                  backgroundColor: isDark ? colors.inputBg : (focusedField === 'area' ? '#FFFFFF' : '#F8FAFC'),
+                  backgroundColor: isDark ? colors.inputBg : (focusedField === 'area' ? '#F8F8F8' : colors.inputBg),
                   borderColor: focusedField === 'area'
-                    ? (isDark ? '#FFFFFF' : '#0F172A')
-                    : (isDark ? colors.inputBorder : '#CBD5E1'),
+                    ? (isDark ? '#FFFFFF' : '#555555')
+                    : colors.inputBorder,
                   ...(focusedField === 'area' && Platform.select({
-                    web: { boxShadow: isDark ? '0 0 0 2px rgba(255, 255, 255, 0.2)' : '0 0 0 3px rgba(15, 23, 42, 0.1)' } as any,
+                    web: { boxShadow: isDark ? '0 0 0 2px rgba(255, 255, 255, 0.2)' : '0 0 0 3px rgba(0, 0, 0, 0.1)' } as any,
                   })),
                 },
               ]}>
@@ -327,15 +327,15 @@ export default function AccountScreen() {
 
           {/* Rol asignado (con permisos completos indicados, sin texto de solo lectura) */}
           <View style={styles.inputGroup}>
-            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255, 255, 255, 0.90)' : '#1E293B' }]}>
+            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255, 255, 255, 0.90)' : colors.textPrimary }]}>
               Rol asignado
             </Text>
             <View
               style={[
                 styles.readOnlyInputWrapper,
                 {
-                  backgroundColor: isDark ? colors.inputBg : '#F1F5F9',
-                  borderColor: isDark ? colors.inputBorder : '#CBD5E1',
+                  backgroundColor: isDark ? colors.inputBg : '#DEDEDE',
+                  borderColor: colors.inputBorder,
                 },
               ]}>
               <View
@@ -343,14 +343,14 @@ export default function AccountScreen() {
                   styles.roleFieldIconBox,
                   {
                     backgroundColor: accountRole === 'Administrador'
-                      ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5')
-                      : (isDark ? 'rgba(255, 255, 255, 0.08)' : '#EEF2FF'),
+                      ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#CFCFCF')
+                      : (isDark ? 'rgba(255, 255, 255, 0.08)' : '#CFCFCF'),
                   },
                 ]}>
                 <Feather
                   name="shield"
                   size={15}
-                  color={accountRole === 'Administrador' ? '#10B981' : (isDark ? '#E2E8F0' : '#475569')}
+                  color={isDark ? (accountRole === 'Administrador' ? '#10B981' : '#E2E8F0') : colors.textPrimary}
                 />
               </View>
               <Text style={[styles.readOnlyRoleText, { color: colors.textPrimary }]}>
@@ -361,20 +361,20 @@ export default function AccountScreen() {
                   styles.roleScopeBadge,
                   {
                     backgroundColor: accountRole === 'Administrador'
-                      ? (isDark ? 'rgba(16, 185, 129, 0.12)' : '#ECFDF5')
-                      : (isDark ? 'rgba(255, 255, 255, 0.08)' : '#F1F5F9'),
+                      ? (isDark ? 'rgba(16, 185, 129, 0.12)' : '#CFCFCF')
+                      : (isDark ? 'rgba(255, 255, 255, 0.08)' : '#CFCFCF'),
                     borderColor: accountRole === 'Administrador'
-                      ? (isDark ? 'rgba(16, 185, 129, 0.35)' : '#059669')
-                      : (isDark ? colors.cardBorder : '#CBD5E1'),
+                      ? (isDark ? 'rgba(16, 185, 129, 0.35)' : '#AAAAAA')
+                      : colors.cardBorder,
                   },
                 ]}>
                 <Text
                   style={[
                     styles.roleScopeBadgeText,
                     {
-                      color: accountRole === 'Administrador'
-                        ? (isDark ? '#34D399' : '#047857')
-                        : (isDark ? '#E2E8F0' : '#334155'),
+                      color: isDark
+                        ? (accountRole === 'Administrador' ? '#34D399' : '#E2E8F0')
+                        : colors.textPrimary,
                     },
                   ]}>
                   {accountRole === 'Administrador' ? 'Control total' : 'Operativo'}
@@ -439,20 +439,20 @@ export default function AccountScreen() {
           style={[
             styles.sectionCard,
             {
-              backgroundColor: isDark ? colors.card : '#FFFFFF',
-              borderColor: isDark ? colors.cardBorder : '#CBD5E1',
+              backgroundColor: colors.card,
+              borderColor: colors.cardBorder,
             },
           ]}>
-          <View style={[styles.sectionHeading, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0' }]}>
+          <View style={[styles.sectionHeading, { borderBottomColor: colors.divider }]}>
             <View
               style={[
                 styles.sectionIcon,
                 {
-                  backgroundColor: isDark ? 'rgba(245, 158, 11, 0.12)' : '#FEF3C7',
-                  borderColor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#FDE68A',
+                  backgroundColor: isDark ? 'rgba(245, 158, 11, 0.12)' : '#D3D3D3',
+                  borderColor: isDark ? 'rgba(245, 158, 11, 0.25)' : colors.cardBorder,
                 },
               ]}>
-              <Feather name="sliders" size={17} color={isDark ? '#FBBF24' : '#D97706'} />
+              <Feather name="sliders" size={17} color={isDark ? '#FBBF24' : colors.textPrimary} />
             </View>
             <View style={styles.sectionHeadingCopy}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Preferencias</Text>
@@ -466,19 +466,19 @@ export default function AccountScreen() {
             style={[
               styles.subItemCard,
               {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
-                borderColor: isDark ? colors.cardBorder : '#E2E8F0',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#DCDCDC',
+                borderColor: colors.cardBorder,
               },
             ]}>
             <View
               style={[
                 styles.securityIconBox,
                 {
-                  backgroundColor: isDark ? 'rgba(245, 158, 11, 0.12)' : '#FEF3C7',
-                  borderColor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#FDE68A',
+                  backgroundColor: isDark ? 'rgba(245, 158, 11, 0.12)' : '#CCCCCC',
+                  borderColor: isDark ? 'rgba(245, 158, 11, 0.25)' : '#AAAAAA',
                 },
               ]}>
-              <Feather name={isDark ? 'moon' : 'sun'} size={15} color={isDark ? '#FBBF24' : '#D97706'} />
+              <Feather name={isDark ? 'moon' : 'sun'} size={15} color={isDark ? '#FBBF24' : colors.textPrimary} />
             </View>
             <View style={styles.securityCopy}>
               <Text style={[styles.securityLabel, { color: colors.textSecondary }]}>Tema visual</Text>
@@ -496,19 +496,19 @@ export default function AccountScreen() {
             style={[
               styles.subItemCard,
               {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
-                borderColor: isDark ? colors.cardBorder : '#E2E8F0',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#DCDCDC',
+                borderColor: colors.cardBorder,
               },
             ]}>
             <View
               style={[
                 styles.securityIconBox,
                 {
-                  backgroundColor: isDark ? 'rgba(139, 92, 246, 0.12)' : '#EDE9FE',
-                  borderColor: isDark ? 'rgba(139, 92, 246, 0.25)' : '#DDD6FE',
+                  backgroundColor: isDark ? 'rgba(139, 92, 246, 0.12)' : '#CCCCCC',
+                  borderColor: isDark ? 'rgba(139, 92, 246, 0.25)' : '#AAAAAA',
                 },
               ]}>
-              <Feather name="play-circle" size={15} color={isDark ? '#A78BFA' : '#7C3AED'} />
+              <Feather name="play-circle" size={15} color={isDark ? '#A78BFA' : colors.textPrimary} />
             </View>
             <View style={styles.securityCopy}>
               <Text style={[styles.securityLabel, { color: colors.textSecondary }]}>Ayuda</Text>
@@ -523,20 +523,20 @@ export default function AccountScreen() {
           style={[
             styles.sectionCard,
             {
-              backgroundColor: isDark ? colors.card : '#FFFFFF',
-              borderColor: isDark ? colors.cardBorder : '#CBD5E1',
+              backgroundColor: colors.card,
+              borderColor: colors.cardBorder,
             },
           ]}>
-          <View style={[styles.sectionHeading, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0' }]}>
+          <View style={[styles.sectionHeading, { borderBottomColor: colors.divider }]}>
             <View
               style={[
                 styles.sectionIcon,
                 {
-                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5',
-                  borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : '#A7F3D0',
+                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#D3D3D3',
+                  borderColor: isDark ? 'rgba(16, 185, 129, 0.35)' : colors.cardBorder,
                 },
               ]}>
-              <Feather name="lock" size={17} color={isDark ? '#34D399' : '#059669'} />
+              <Feather name="lock" size={17} color={isDark ? '#34D399' : colors.textPrimary} />
             </View>
             <View style={styles.sectionHeadingCopy}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Seguridad</Text>
@@ -551,19 +551,19 @@ export default function AccountScreen() {
             style={[
               styles.subItemCard,
               {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
-                borderColor: isDark ? colors.cardBorder : '#E2E8F0',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#DCDCDC',
+                borderColor: colors.cardBorder,
               },
             ]}>
             <View
               style={[
                 styles.securityIconBox,
                 {
-                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : '#ECFDF5',
-                  borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0',
+                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : '#CCCCCC',
+                  borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#AAAAAA',
                 },
               ]}>
-              <Feather name="shield" size={14} color={isDark ? '#34D399' : '#059669'} />
+              <Feather name="shield" size={14} color={isDark ? '#34D399' : colors.textPrimary} />
             </View>
             <View style={styles.securityCopy}>
               <Text style={[styles.securityLabel, { color: colors.textSecondary }]}>Nivel de acceso y permisos</Text>
@@ -578,19 +578,19 @@ export default function AccountScreen() {
             style={[
               styles.subItemCard,
               {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
-                borderColor: isDark ? colors.cardBorder : '#E2E8F0',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#DCDCDC',
+                borderColor: colors.cardBorder,
               },
             ]}>
             <View
               style={[
                 styles.securityIconBox,
                 {
-                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : '#ECFDF5',
-                  borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0',
+                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.12)' : '#CCCCCC',
+                  borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#AAAAAA',
                 },
               ]}>
-              <Feather name="log-in" size={14} color={isDark ? '#34D399' : '#059669'} />
+              <Feather name="log-in" size={14} color={isDark ? '#34D399' : colors.textPrimary} />
             </View>
             <View style={styles.securityCopy}>
               <Text style={[styles.securityLabel, { color: colors.textSecondary }]}>Método de inicio de sesión</Text>
@@ -603,19 +603,19 @@ export default function AccountScreen() {
             style={[
               styles.subItemCard,
               {
-                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
-                borderColor: isDark ? colors.cardBorder : '#E2E8F0',
+                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#DCDCDC',
+                borderColor: colors.cardBorder,
               },
             ]}>
             <View
               style={[
                 styles.securityIconBox,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#F1F5F9',
-                  borderColor: isDark ? colors.cardBorder : '#CBD5E1',
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#CCCCCC',
+                  borderColor: colors.cardBorder,
                 },
               ]}>
-              <Feather name="mail" size={14} color={isDark ? '#FFFFFF' : '#0F172A'} />
+              <Feather name="mail" size={14} color={colors.textPrimary} />
             </View>
             <View style={styles.securityCopy}>
               <Text style={[styles.securityLabel, { color: colors.textSecondary }]}>Correo de la cuenta</Text>
@@ -637,11 +637,11 @@ export default function AccountScreen() {
               style={[
                 styles.secondaryButton,
                 {
-                  borderColor: isDark ? colors.cardBorder : '#CBD5E1',
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#FFFFFF',
+                  borderColor: colors.cardBorder,
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D2D2D2',
                 },
               ]}>
-              <Feather name="key" size={15} color={isDark ? '#34D399' : '#059669'} />
+              <Feather name="key" size={15} color={isDark ? '#34D399' : colors.textPrimary} />
               <Text style={[styles.secondaryButtonText, { color: colors.textPrimary }]}>
                 Cambiar contraseña
               </Text>
@@ -667,7 +667,7 @@ export default function AccountScreen() {
                   borderColor: colors.chipBorder,
                 },
               ]}>
-              <Feather name="info" size={17} color={isDark ? '#FFFFFF' : '#0F172A'} />
+              <Feather name="info" size={17} color={colors.textPrimary} />
             </View>
             <View style={styles.sectionHeadingCopy}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Acerca de</Text>
@@ -691,7 +691,7 @@ export default function AccountScreen() {
                   borderColor: colors.chipBorder,
                 },
               ]}>
-              <Text style={[styles.aboutTagText, { color: isDark ? '#E2E8F0' : '#334155' }]}>Versión 1.0.0</Text>
+              <Text style={[styles.aboutTagText, { color: isDark ? '#E2E8F0' : colors.textSecondary }]}>Versión 1.0.0</Text>
             </View>
             <View
               style={[
@@ -701,7 +701,7 @@ export default function AccountScreen() {
                   borderColor: colors.chipBorder,
                 },
               ]}>
-              <Text style={[styles.aboutTagText, { color: isDark ? '#E2E8F0' : '#334155' }]}>Expo SDK 57</Text>
+              <Text style={[styles.aboutTagText, { color: isDark ? '#E2E8F0' : colors.textSecondary }]}>Expo SDK 57</Text>
             </View>
             <View
               style={[
@@ -711,7 +711,7 @@ export default function AccountScreen() {
                   borderColor: colors.chipBorder,
                 },
               ]}>
-              <Text style={[styles.aboutTagText, { color: isDark ? '#E2E8F0' : '#334155' }]}>Datos: InsForge Cloud</Text>
+              <Text style={[styles.aboutTagText, { color: isDark ? '#E2E8F0' : colors.textSecondary }]}>Datos: InsForge Cloud</Text>
             </View>
           </View>
         </View>
@@ -742,7 +742,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     marginBottom: 20,
     ...Platform.select({
-      web: { boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)' } as any,
+      web: { boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' } as any,
     }),
   },
   backButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5 },
@@ -755,7 +755,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 14,
     ...Platform.select({
-      web: { boxShadow: '0 2px 8px rgba(15, 23, 42, 0.06)' } as any,
+      web: { boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' } as any,
     }),
   },
   title: { fontFamily: 'Poppins_700Bold', fontSize: 26, letterSpacing: -0.3 },
@@ -773,10 +773,10 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     ...Platform.select({
       web: {
-        boxShadow: '0 10px 25px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04)',
+        boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04)',
       } as any,
       default: {
-        shadowColor: '#0F172A',
+        shadowColor: '#000000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
@@ -845,10 +845,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     ...Platform.select({
       web: {
-        boxShadow: '0 10px 25px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04)',
+        boxShadow: '0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04)',
       } as any,
       default: {
-        shadowColor: '#0F172A',
+        shadowColor: '#000000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 10,
@@ -958,7 +958,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginTop: 20,
     ...Platform.select({
-      web: { boxShadow: '0 4px 14px rgba(15, 23, 42, 0.18)' } as any,
+      web: { boxShadow: '0 4px 14px rgba(0, 0, 0, 0.18)' } as any,
     }),
   },
   primaryButtonGradient: {
@@ -1025,7 +1025,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     marginTop: 14,
     ...Platform.select({
-      web: { boxShadow: '0 2px 8px rgba(15, 23, 42, 0.05)' } as any,
+      web: { boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)' } as any,
     }),
   },
   secondaryButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 12 },

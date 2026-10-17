@@ -30,7 +30,9 @@ function errorMessage(error: unknown): string {
 }
 
 export default function PortInventoryScreen({ devices }: { devices: Device[] }) {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
+  const usedColor = isDark ? '#FF9F0A' : '#915400';
+  const availableColor = isDark ? '#30D158' : '#176B3C';
   const { user } = useAuth();
   const canManagePorts = isAdministrator(user);
   const [portRecords, setPortRecords] = useState<SwitchPort[]>([]);
@@ -207,11 +209,11 @@ export default function PortInventoryScreen({ devices }: { devices: Device[] }) 
             </View>
             <View style={[styles.metricCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>En uso</Text>
-              <Text style={[styles.metricValue, { color: '#FF9F0A' }]}>{usedCount}</Text>
+              <Text style={[styles.metricValue, { color: usedColor }]}>{usedCount}</Text>
             </View>
             <View style={[styles.metricCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>Libres</Text>
-              <Text style={[styles.metricValue, { color: '#30D158' }]}>{availableCount}</Text>
+              <Text style={[styles.metricValue, { color: availableColor }]}>{availableCount}</Text>
             </View>
           </View>
 
@@ -249,7 +251,7 @@ export default function PortInventoryScreen({ devices }: { devices: Device[] }) 
             return (
               <View key={port.id} style={[styles.portCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                 <View style={[styles.portIcon, { backgroundColor: inUse ? 'rgba(255,159,10,0.14)' : 'rgba(48,209,88,0.14)' }]}>
-                  <Feather name="git-branch" size={18} color={inUse ? '#FF9F0A' : '#30D158'} />
+                  <Feather name="git-branch" size={18} color={inUse ? usedColor : availableColor} />
                 </View>
                 <View style={styles.portInfo}>
                   <Text style={[styles.portName, { color: colors.textPrimary }]}>{port.port_label}</Text>
@@ -263,13 +265,13 @@ export default function PortInventoryScreen({ devices }: { devices: Device[] }) 
                   onPress={() => void togglePortStatus(port)}
                   style={[styles.statusButton, { backgroundColor: inUse ? 'rgba(255,159,10,0.14)' : 'rgba(48,209,88,0.14)' }]}
                 >
-                  <Text style={{ color: inUse ? '#FF9F0A' : '#30D158', fontSize: 12, fontWeight: '700' }}>
+                  <Text style={{ color: inUse ? usedColor : availableColor, fontSize: 12, fontWeight: '700' }}>
                     {inUse ? 'En uso' : 'Libre'}
                   </Text>
-                  <Feather name="repeat" size={13} color={inUse ? '#FF9F0A' : '#30D158'} />
+                  <Feather name="repeat" size={13} color={inUse ? usedColor : availableColor} />
                 </TouchableOpacity> : (
                   <View style={[styles.statusButton, { backgroundColor: inUse ? 'rgba(255,159,10,0.14)' : 'rgba(48,209,88,0.14)' }]}>
-                    <Text style={{ color: inUse ? '#FF9F0A' : '#30D158', fontSize: 12, fontWeight: '700' }}>
+                    <Text style={{ color: inUse ? usedColor : availableColor, fontSize: 12, fontWeight: '700' }}>
                       {inUse ? 'En uso' : 'Libre'}
                     </Text>
                   </View>

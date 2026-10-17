@@ -174,18 +174,18 @@ export default function IncidentScreen() {
   });
 
   const severityConfig: Record<string, { color: string; bg: string; label: string; icon: keyof typeof Feather.glyphMap }> = {
-    critical: { color: '#FF453A', bg: 'rgba(255, 69, 58, 0.12)', label: 'CRÍTICO', icon: 'zap' },
-    high: { color: '#FF9F0A', bg: 'rgba(255, 159, 10, 0.12)', label: 'ALTO', icon: 'alert-triangle' },
-    medium: { color: '#FFD60A', bg: 'rgba(255, 214, 10, 0.12)', label: 'MEDIO', icon: 'alert-circle' },
-    low: { color: '#30D158', bg: 'rgba(48, 209, 88, 0.12)', label: 'BAJO', icon: 'info' },
+    critical: { color: isDark ? '#FF453A' : '#B42318', bg: isDark ? 'rgba(255, 69, 58, 0.12)' : '#E7D1CE', label: 'CRÍTICO', icon: 'zap' },
+    high: { color: isDark ? '#FF9F0A' : '#915400', bg: isDark ? 'rgba(255, 159, 10, 0.12)' : '#E7D8BF', label: 'ALTO', icon: 'alert-triangle' },
+    medium: { color: isDark ? '#FFD60A' : '#766000', bg: isDark ? 'rgba(255, 214, 10, 0.12)' : '#E4DCBC', label: 'MEDIO', icon: 'alert-circle' },
+    low: { color: isDark ? '#30D158' : '#176B3C', bg: isDark ? 'rgba(48, 209, 88, 0.12)' : '#CFE2D5', label: 'BAJO', icon: 'info' },
   };
   const statusConfig: Record<string, { color: string; label: string }> = {
-    open: { color: '#FF453A', label: 'Abierto' }, in_progress: { color: '#FF9F0A', label: 'En progreso' }, resolved: { color: '#30D158', label: 'Resuelto' },
+    open: { color: isDark ? '#FF453A' : '#B42318', label: 'Abierto' }, in_progress: { color: isDark ? '#FF9F0A' : '#915400', label: 'En progreso' }, resolved: { color: isDark ? '#30D158' : '#176B3C', label: 'Resuelto' },
   };
   const maintTypeConfig: Record<string, { color: string; icon: keyof typeof Feather.glyphMap; label: string }> = {
-    preventive: { color: '#0A84FF', icon: 'tool', label: 'Preventivo' }, firmware: { color: '#BF5AF2', icon: 'download-cloud', label: 'Firmware' },
-    cleaning: { color: '#64D2FF', icon: 'wind', label: 'Limpieza' }, ups_battery: { color: '#FFD60A', icon: 'battery-charging', label: 'UPS / Baterías' },
-    audit: { color: '#30D158', icon: 'clipboard', label: 'Auditoría' },
+    preventive: { color: isDark ? '#0A84FF' : '#155E9B', icon: 'tool', label: 'Preventivo' }, firmware: { color: isDark ? '#BF5AF2' : '#69409B', icon: 'download-cloud', label: 'Firmware' },
+    cleaning: { color: isDark ? '#64D2FF' : '#08677D', icon: 'wind', label: 'Limpieza' }, ups_battery: { color: isDark ? '#FFD60A' : '#766000', icon: 'battery-charging', label: 'UPS / Baterías' },
+    audit: { color: isDark ? '#30D158' : '#176B3C', icon: 'clipboard', label: 'Auditoría' },
   };
 
   const handleSaveIncident = async () => {
@@ -482,12 +482,12 @@ export default function IncidentScreen() {
                         </TouchableOpacity>}
                         {canWriteIncidents && inc.status !== 'resolved' && (
                           <TouchableOpacity 
-                            style={[styles.resolveBtn, { backgroundColor: isDark ? 'rgba(48, 209, 88, 0.12)' : 'rgba(48, 209, 88, 0.1)', borderColor: 'rgba(48, 209, 88, 0.3)' }]} 
+                            style={[styles.resolveBtn, { backgroundColor: isDark ? 'rgba(48, 209, 88, 0.12)' : '#CFE2D5', borderColor: isDark ? 'rgba(48, 209, 88, 0.3)' : '#719E83' }]}
                             activeOpacity={0.7} 
                             onPress={() => openActionModal(inc, 'resolution')}
                           >
-                            <Feather name="check-circle" size={13} color="#30D158" />
-                            <Text style={styles.resolveBtnText}>Resolver</Text>
+                            <Feather name="check-circle" size={13} color={isDark ? '#30D158' : '#176B3C'} />
+                            <Text style={[styles.resolveBtnText, !isDark && { color: '#176B3C' }]}>Resolver</Text>
                           </TouchableOpacity>
                         )}
                         {canDeleteRecords && <TouchableOpacity style={[styles.deleteBtn, { backgroundColor: colors.chipBg }]} activeOpacity={0.7} onPress={() => handleDeleteIncident(inc.id)}>

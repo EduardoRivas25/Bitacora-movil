@@ -262,7 +262,7 @@ export default function SearchScreen({ documentsOnly = false }: { documentsOnly?
   };
 
   if (!documentsOnly && loading && allDevices.length === 0) {
-    return (<LinearGradient colors={colors.gradient} style={styles.container}><View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#FF9F0A" /></View></LinearGradient>);
+    return (<LinearGradient colors={colors.gradient} style={styles.container}><View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color={isDark ? '#FF9F0A' : '#915400'} /></View></LinearGradient>);
   }
 
   return (
@@ -276,7 +276,7 @@ export default function SearchScreen({ documentsOnly = false }: { documentsOnly?
           {!documentsOnly && (
             <>
           <View style={styles.header}>
-            <Text style={styles.headerBadge}>BÚSQUEDA GLOBAL</Text>
+            <Text style={[styles.headerBadge, !isDark && { color: '#915400' }]}>BÚSQUEDA GLOBAL</Text>
             <Text style={[styles.headerTitle, { color: colors.textPrimary }, isSmallMobile && { fontSize: 22 }]}>Buscador de Red</Text>
             <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>Localiza equipos por IP, MAC, nombre o ubicación ({allDevices.length} equipos en BD)</Text>
           </View>
@@ -344,7 +344,7 @@ export default function SearchScreen({ documentsOnly = false }: { documentsOnly?
                 {documentsOnly ? 'Reportes y documentación' : 'Administración de usuarios y acceso'}
               </Text>
               {!documentsOnly && (
-                <Text style={styles.adminMeta}>{managedAccounts.length} cuentas</Text>
+                <Text style={[styles.adminMeta, !isDark && { color: '#915400' }]}>{managedAccounts.length} cuentas</Text>
               )}
             </View>
 

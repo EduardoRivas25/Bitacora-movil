@@ -1029,7 +1029,7 @@ const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create
   editingBadgeText: {
     fontFamily: 'Poppins_600SemiBold',
     fontSize: 10,
-    color: '#FF9F0A',
+    color: isDark ? '#FF9F0A' : '#915400',
   },
   badgeCount: {
     fontFamily: 'Poppins_600SemiBold',

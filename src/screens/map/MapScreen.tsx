@@ -340,7 +340,7 @@ export default function MapScreen() {
                               onPress={() => handleOpenEditBuilding(bld)}
                               activeOpacity={0.7}
                             >
-                              <Feather name="edit-2" size={13} color="#FFD60A" />
+                              <Feather name="edit-2" size={13} color={isDark ? '#FFD60A' : '#766000'} />
                             </TouchableOpacity>
                             <TouchableOpacity
                               style={styles.deleteBldBtn}

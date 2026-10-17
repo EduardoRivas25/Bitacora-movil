@@ -357,7 +357,7 @@ export default function NetworkListScreen() {
                       {canWriteNetworks && (
                         <>
                           <TouchableOpacity style={[styles.iconActionButton, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} activeOpacity={0.7} onPress={() => handleOpenAddSubnet(net.id)}><Feather name="plus-circle" size={15} color="#0A84FF" /></TouchableOpacity>
-                          <TouchableOpacity style={[styles.iconActionButton, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} activeOpacity={0.7} accessibilityLabel={`Editar ${net.name}`} onPress={() => handleOpenEditNetwork(net)}><Feather name="edit-2" size={15} color="#FFD60A" /></TouchableOpacity>
+                          <TouchableOpacity style={[styles.iconActionButton, { backgroundColor: colors.chipBg, borderColor: colors.chipBorder }]} activeOpacity={0.7} accessibilityLabel={`Editar ${net.name}`} onPress={() => handleOpenEditNetwork(net)}><Feather name="edit-2" size={15} color={isDark ? '#FFD60A' : '#766000'} /></TouchableOpacity>
                         </>
                       )}
                       {canDeleteRecords && (
@@ -390,7 +390,7 @@ export default function NetworkListScreen() {
                             <View style={styles.subnetSide}>
                               <View style={styles.deviceCountBadge}><Feather name="cpu" size={11} color="#30D158" /><Text style={styles.deviceCountText}>{(sub as any).device_count || 0}</Text></View>
                               {canWriteNetworks && (
-                                <TouchableOpacity style={styles.deleteSubnetBtn} activeOpacity={0.7} accessibilityLabel={`Editar ${sub.name}`} onPress={() => handleOpenEditSubnet(net.id, sub)}><Feather name="edit-2" size={13} color="#FFD60A" /></TouchableOpacity>
+                                <TouchableOpacity style={styles.deleteSubnetBtn} activeOpacity={0.7} accessibilityLabel={`Editar ${sub.name}`} onPress={() => handleOpenEditSubnet(net.id, sub)}><Feather name="edit-2" size={13} color={isDark ? '#FFD60A' : '#766000'} /></TouchableOpacity>
                               )}
                               {canDeleteRecords && (
                                 <TouchableOpacity style={styles.deleteSubnetBtn} activeOpacity={0.7} onPress={() => handleDeleteSubnet(net.id, sub.id)}><Feather name="trash-2" size={13} color="rgba(255, 69, 58, 0.7)" /></TouchableOpacity>

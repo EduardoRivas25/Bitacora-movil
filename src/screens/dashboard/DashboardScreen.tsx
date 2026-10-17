@@ -8,7 +8,9 @@ import {
   TouchableOpacity,
   Image,
   Platform,
-  ActivityIndicator
+  ActivityIndicator,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -45,6 +47,16 @@ function getMaintenanceTimestamp(date: string) {
   return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp;
 }
 
+function DashboardSurface({ isDark, style, children }: {
+  isDark: boolean;
+  style: StyleProp<ViewStyle>;
+  children: React.ReactNode;
+}) {
+  return isDark
+    ? <BlurView intensity={30} tint="dark" style={style}>{children}</BlurView>
+    : <View style={style}>{children}</View>;
+}
+
 export default function DashboardScreen() {
   const { width } = useWindowDimensions();
   const isMobile = width < 600;
@@ -53,7 +65,7 @@ export default function DashboardScreen() {
   const isDesktop = width >= 1024;
   const navigation = useNavigation<any>();
   const { signOut, user, authMethod, authorizationError } = useAuth();
-  const { theme } = useTheme();
+  const { theme, colors } = useTheme();
   const isDark = theme === 'dark';
   const appLogo = isDark ? LOGO_DARK : LOGO_LIGHT;
   const accountName = user?.profile?.name?.trim() || user?.email || 'Usuario';
@@ -123,7 +135,11 @@ export default function DashboardScreen() {
       detail: incident.device_name || incident.location || 'Equipo o ubicación sin especificar',
       status: incident.status === 'in_progress' ? 'En progreso' : 'Abierto',
       icon: 'alert-triangle' as const,
-      color: incident.severity === 'critical' ? '#FF453A' : incident.severity === 'high' ? '#FF9F0A' : '#FFD60A',
+      color: incident.severity === 'critical'
+        ? (isDark ? '#FF453A' : '#B42318')
+        : incident.severity === 'high'
+          ? (isDark ? '#FF9F0A' : '#915400')
+          : (isDark ? '#FFD60A' : '#766000'),
       priority: incident.severity === 'critical' ? 0 : incident.severity === 'high' ? 1 : 2,
       date: new Date(incident.event_at || incident.created_at).getTime() || 0,
     })),
@@ -136,7 +152,7 @@ export default function DashboardScreen() {
         detail: `${maintenance.device_name || 'Equipo sin especificar'} · ${maintenance.scheduled_date || 'Sin fecha'}`,
         status: isOverdue ? 'Atrasado' : maintenance.status === 'in_progress' ? 'En progreso' : 'Programado',
         icon: 'tool' as const,
-        color: isOverdue ? '#FF453A' : '#0A84FF',
+        color: isOverdue ? (isDark ? '#FF453A' : '#B42318') : isDark ? '#0A84FF' : '#555555',
         priority: isOverdue ? 0 : maintenance.status === 'in_progress' ? 1 : 3,
         date: scheduledTimestamp,
       };
@@ -149,13 +165,11 @@ export default function DashboardScreen() {
     }, [loadData])
   );
 
-  const gradientColors: [string, string] = isDark ? ['#050505', '#121212'] : ['#FFFFFF', '#FFFFFF'];
-  const textColor = isDark ? '#FFFFFF' : '#111827';
-  const subtitleColor = isDark ? 'rgba(255, 255, 255, 0.45)' : '#475569';
-  const cardBgColor = isDark ? 'rgba(0, 0, 0, 0.5)' : '#E2EAF2';
-  const cardBorderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#9AAABD';
-  const blurTint = isDark ? 'dark' : 'light';
-  const blurIntensity = isDark ? 30 : 60;
+  const gradientColors: [string, string] = colors.gradient;
+  const textColor = colors.textPrimary;
+  const subtitleColor = isDark ? 'rgba(255, 255, 255, 0.45)' : colors.textSecondary;
+  const cardBgColor = colors.cardBg;
+  const cardBorderColor = colors.cardBorder;
 
   if (!stats) {
     return (
@@ -163,12 +177,12 @@ export default function DashboardScreen() {
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           {loadError ? (
             <>
-              <Feather name="alert-circle" size={28} color="#FF9F0A" />
+              <Feather name="alert-circle" size={28} color={isDark ? '#FF9F0A' : '#915400'} />
               <Text style={{ color: textColor, fontFamily: 'Poppins_600SemiBold', marginTop: 12, textAlign: 'center' }}>
                 {loadError}
               </Text>
               <TouchableOpacity
-                style={{ marginTop: 16, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10, backgroundColor: '#0A84FF' }}
+                style={{ marginTop: 16, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 10, backgroundColor: isDark ? '#0A84FF' : '#333333' }}
                 activeOpacity={0.8}
                 onPress={() => void loadData(false)}>
                 <Text style={{ color: '#FFFFFF', fontFamily: 'Poppins_600SemiBold' }}>Reintentar</Text>
@@ -176,7 +190,7 @@ export default function DashboardScreen() {
             </>
           ) : (
             <>
-              <ActivityIndicator size="large" color="#0A84FF" />
+              <ActivityIndicator size="large" color={isDark ? '#0A84FF' : '#333333'} />
               <Text style={{ color: subtitleColor, fontFamily: 'Poppins_400Regular', marginTop: 12 }}>
                 Cargando datos...
               </Text>
@@ -211,7 +225,7 @@ export default function DashboardScreen() {
                 {loadError} Se muestran los últimos datos disponibles.
               </Text>
               <TouchableOpacity activeOpacity={0.8} onPress={() => void loadData(false)}>
-                <Text style={{ color: '#0A84FF', fontFamily: 'Poppins_600SemiBold' }}>Reintentar</Text>
+                <Text style={{ color: isDark ? '#0A84FF' : colors.textPrimary, fontFamily: 'Poppins_600SemiBold' }}>Reintentar</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -222,8 +236,8 @@ export default function DashboardScreen() {
                 styles.logoContainer, 
                 isSmallMobile && { width: 44, height: 44 },
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D7E1EB',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#9AAABD'
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#E1E1E1',
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#B0B0B0'
                 }
               ]}>
                 <Image 
@@ -254,8 +268,8 @@ export default function DashboardScreen() {
                 style={[
                   styles.searchHeaderButton,
                   {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#D7E1EB',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#9AAABD',
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#D2D2D2',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#A8A8A8',
                   }
                 ]}
                 activeOpacity={0.8}
@@ -268,8 +282,8 @@ export default function DashboardScreen() {
                 style={[
                   styles.themeHeaderButton,
                   {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#D7E1EB',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#9AAABD',
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#D2D2D2',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : '#A8A8A8',
                   }
                 ]}
                 size={17}
@@ -288,15 +302,13 @@ export default function DashboardScreen() {
 
           {/* 📊 Grid de Métricas Principales */}
           <View style={styles.metricsGrid}>
-            <BlurView 
-              intensity={blurIntensity} 
-              tint={blurTint} 
+            <DashboardSurface isDark={isDark}
               style={[styles.metricCard, { width: metricCardWidth, backgroundColor: cardBgColor, borderColor: cardBorderColor }]}
             >
               <View style={styles.metricCardHeader}>
                 <Text style={[styles.metricCardLabel, { color: subtitleColor }]}>Redes Base</Text>
-                <View style={[styles.metricIconBadge, { backgroundColor: 'rgba(10, 132, 255, 0.15)' }]}>
-                  <Feather name="wifi" size={16} color="#0A84FF" />
+                <View style={[styles.metricIconBadge, { backgroundColor: isDark ? 'rgba(10, 132, 255, 0.15)' : '#D5D5D5' }]}>
+                  <Feather name="wifi" size={16} color={isDark ? '#0A84FF' : '#333333'} />
                 </View>
               </View>
               <Text style={[styles.metricCardValue, { color: textColor }]}>{stats.totalNetworks}</Text>
@@ -304,8 +316,8 @@ export default function DashboardScreen() {
                 style={[
                   styles.metricAction,
                   {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D2DDE8',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#9AAABD',
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D0D0D0',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#A7A7A7',
                   }
                 ]}
                 activeOpacity={0.7}
@@ -314,17 +326,15 @@ export default function DashboardScreen() {
                 <Text style={[styles.metricActionText, { color: textColor }]}>Ver redes</Text>
                 <Feather name="chevron-right" size={13} color={textColor} />
               </TouchableOpacity>
-            </BlurView>
+            </DashboardSurface>
 
-            <BlurView 
-              intensity={blurIntensity} 
-              tint={blurTint} 
+            <DashboardSurface isDark={isDark}
               style={[styles.metricCard, { width: metricCardWidth, backgroundColor: cardBgColor, borderColor: cardBorderColor }]}
             >
               <View style={styles.metricCardHeader}>
                 <Text style={[styles.metricCardLabel, { color: subtitleColor }]}>Subredes VLAN</Text>
-                <View style={[styles.metricIconBadge, { backgroundColor: 'rgba(191, 90, 242, 0.15)' }]}>
-                  <Feather name="layers" size={16} color="#BF5AF2" />
+                <View style={[styles.metricIconBadge, { backgroundColor: isDark ? 'rgba(191, 90, 242, 0.15)' : '#D5D5D5' }]}>
+                  <Feather name="layers" size={16} color={isDark ? '#BF5AF2' : '#333333'} />
                 </View>
               </View>
               <Text style={[styles.metricCardValue, { color: textColor }]}>{stats.totalSubnets}</Text>
@@ -332,8 +342,8 @@ export default function DashboardScreen() {
                 style={[
                   styles.metricAction,
                   {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D2DDE8',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#9AAABD',
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D0D0D0',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#A7A7A7',
                   }
                 ]}
                 activeOpacity={0.7}
@@ -342,17 +352,15 @@ export default function DashboardScreen() {
                 <Text style={[styles.metricActionText, { color: textColor }]}>Ver VLANs</Text>
                 <Feather name="chevron-right" size={13} color={textColor} />
               </TouchableOpacity>
-            </BlurView>
+            </DashboardSurface>
 
-            <BlurView 
-              intensity={blurIntensity} 
-              tint={blurTint} 
+            <DashboardSurface isDark={isDark}
               style={[styles.metricCard, { width: metricCardWidth, backgroundColor: cardBgColor, borderColor: cardBorderColor }]}
             >
               <View style={styles.metricCardHeader}>
                 <Text style={[styles.metricCardLabel, { color: subtitleColor }]}>Equipos</Text>
-                <View style={[styles.metricIconBadge, { backgroundColor: 'rgba(48, 209, 88, 0.15)' }]}>
-                  <Feather name="cpu" size={16} color="#30D158" />
+                <View style={[styles.metricIconBadge, { backgroundColor: isDark ? 'rgba(48, 209, 88, 0.15)' : '#D5D5D5' }]}>
+                  <Feather name="cpu" size={16} color={isDark ? '#30D158' : '#333333'} />
                 </View>
               </View>
               <Text style={[styles.metricCardValue, { color: textColor }]}>{stats.totalDevices}</Text>
@@ -360,8 +368,8 @@ export default function DashboardScreen() {
                 style={[
                   styles.metricAction,
                   {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D2DDE8',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#9AAABD',
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D0D0D0',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#A7A7A7',
                   }
                 ]}
                 activeOpacity={0.7}
@@ -370,11 +378,9 @@ export default function DashboardScreen() {
                 <Text style={[styles.metricActionText, { color: textColor }]}>Inventario</Text>
                 <Feather name="chevron-right" size={13} color={textColor} />
               </TouchableOpacity>
-            </BlurView>
+            </DashboardSurface>
 
-            <BlurView 
-              intensity={blurIntensity} 
-              tint={blurTint} 
+            <DashboardSurface isDark={isDark}
               style={[styles.metricCard, { width: metricCardWidth, backgroundColor: cardBgColor, borderColor: cardBorderColor }]}
             >
               <View style={styles.metricCardHeader}>
@@ -390,8 +396,8 @@ export default function DashboardScreen() {
                 style={[
                   styles.metricAction,
                   {
-                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D2DDE8',
-                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#9AAABD',
+                    backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : '#D0D0D0',
+                    borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#A7A7A7',
                   }
                 ]}
                 activeOpacity={0.7}
@@ -400,7 +406,7 @@ export default function DashboardScreen() {
                 <Text style={[styles.metricActionText, { color: textColor }]}>Atender</Text>
                 <Feather name="chevron-right" size={13} color={textColor} />
               </TouchableOpacity>
-            </BlurView>
+            </DashboardSurface>
           </View>
 
           <View style={styles.pendingSection}>
@@ -412,13 +418,16 @@ export default function DashboardScreen() {
                 </Text>
               </View>
               <TouchableOpacity
-                style={[styles.pendingOpenAll, { backgroundColor: isDark ? 'rgba(10, 132, 255, 0.12)' : 'rgba(10, 132, 255, 0.08)' }]}
+                style={[styles.pendingOpenAll, {
+                  backgroundColor: isDark ? 'rgba(10, 132, 255, 0.12)' : '#D2D2D2',
+                  borderColor: isDark ? 'rgba(10, 132, 255, 0.25)' : '#A7A7A7',
+                }]}
                 activeOpacity={0.75}
                 accessibilityRole="button"
                 accessibilityLabel="Abrir incidentes y mantenimientos"
                 onPress={() => navigation.navigate('CentroControl', { screen: 'SeguimientoIncidentes' })}>
-                <Text style={styles.pendingOpenAllText}>Ver bitácora</Text>
-                <Feather name="arrow-up-right" size={13} color="#0A84FF" />
+                <Text style={[styles.pendingOpenAllText, !isDark && { color: '#242424' }]}>Ver bitácora</Text>
+                <Feather name="arrow-up-right" size={13} color={isDark ? '#0A84FF' : '#242424'} />
               </TouchableOpacity>
             </View>
 
@@ -431,11 +440,9 @@ export default function DashboardScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={`${item.title}. ${item.status}. Abrir bitácora`}
                     onPress={() => navigation.navigate('CentroControl', { screen: 'SeguimientoIncidentes' })}>
-                    <BlurView
-                      intensity={blurIntensity}
-                      tint={blurTint}
+            <DashboardSurface isDark={isDark}
                       style={[styles.pendingCard, { backgroundColor: cardBgColor, borderColor: cardBorderColor }]}>
-                      <View style={[styles.pendingIcon, { backgroundColor: `${item.color}18` }]}>
+                      <View style={[styles.pendingIcon, { backgroundColor: isDark ? `${item.color}18` : `${item.color}20` }]}>
                         <Feather name={item.icon} size={15} color={item.color} />
                       </View>
                       <View style={styles.pendingCopy}>
@@ -443,10 +450,10 @@ export default function DashboardScreen() {
                         <Text style={[styles.pendingDetail, { color: subtitleColor }]} numberOfLines={1}>{item.detail}</Text>
                       </View>
                       <View style={styles.pendingAction}>
-                        <Text style={[styles.pendingStatus, { color: item.color }]} numberOfLines={1}>{item.status}</Text>
+                        <Text style={[styles.pendingStatus, { color: item.color }, !isDark && { backgroundColor: `${item.color}18` }]} numberOfLines={1}>{item.status}</Text>
                         <Feather name="chevron-right" size={14} color={subtitleColor} />
                       </View>
-                    </BlurView>
+                    </DashboardSurface>
                   </TouchableOpacity>
                 ))}
                 {actionableItems.length > 5 && (
@@ -454,7 +461,7 @@ export default function DashboardScreen() {
                     style={styles.pendingMoreButton}
                     activeOpacity={0.75}
                     onPress={() => navigation.navigate('CentroControl', { screen: 'SeguimientoIncidentes' })}>
-                    <Text style={styles.pendingMoreText}>Ver los {actionableItems.length - 5} pendientes restantes</Text>
+                    <Text style={[styles.pendingMoreText, !isDark && { color: textColor }]}>Ver los {actionableItems.length - 5} pendientes restantes</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -478,15 +485,15 @@ export default function DashboardScreen() {
               style={[
                 styles.quickActionCard,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#D7E1EB',
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#E9E9E9',
                   borderColor: cardBorderColor,
                 }
               ]}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('Infraestructura', { screen: 'RedesInternas' })}
             >
-              <View style={[styles.quickActionIconBg, { backgroundColor: 'rgba(10, 132, 255, 0.15)' }]}>
-                <Feather name="plus" size={19} color="#0A84FF" />
+              <View style={[styles.quickActionIconBg, { backgroundColor: isDark ? 'rgba(10, 132, 255, 0.15)' : '#D5D5D5' }]}>
+                <Feather name="plus" size={19} color={isDark ? '#0A84FF' : '#333333'} />
               </View>
               <View style={styles.quickActionTextGroup}>
                 <Text style={[styles.quickActionTitle, { color: textColor }]}>Nueva Red</Text>
@@ -499,15 +506,15 @@ export default function DashboardScreen() {
               style={[
                 styles.quickActionCard,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#D7E1EB',
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#E9E9E9',
                   borderColor: cardBorderColor,
                 }
               ]}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('Infraestructura', { screen: 'InventarioDispositivos' })}
             >
-              <View style={[styles.quickActionIconBg, { backgroundColor: 'rgba(48, 209, 88, 0.15)' }]}>
-                <Feather name="hard-drive" size={19} color="#30D158" />
+              <View style={[styles.quickActionIconBg, { backgroundColor: isDark ? 'rgba(48, 209, 88, 0.15)' : '#D5D5D5' }]}>
+                <Feather name="hard-drive" size={19} color={isDark ? '#30D158' : '#333333'} />
               </View>
               <View style={styles.quickActionTextGroup}>
                 <Text style={[styles.quickActionTitle, { color: textColor }]}>Registrar Equipo</Text>
@@ -520,15 +527,15 @@ export default function DashboardScreen() {
               style={[
                 styles.quickActionCard,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#D7E1EB',
+                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#E9E9E9',
                   borderColor: cardBorderColor,
                 }
               ]}
               activeOpacity={0.8}
               onPress={() => navigation.navigate('Buscar')}
             >
-              <View style={[styles.quickActionIconBg, { backgroundColor: 'rgba(255, 159, 10, 0.15)' }]}>
-                <Feather name="search" size={19} color="#FF9F0A" />
+              <View style={[styles.quickActionIconBg, { backgroundColor: isDark ? 'rgba(255, 159, 10, 0.15)' : '#D5D5D5' }]}>
+                <Feather name="search" size={19} color={isDark ? '#FF9F0A' : '#333333'} />
               </View>
               <View style={styles.quickActionTextGroup}>
                 <Text style={[styles.quickActionTitle, { color: textColor }]}>Escanear / Buscar</Text>
@@ -546,9 +553,7 @@ export default function DashboardScreen() {
                 <Text style={[styles.sectionTitle, { color: textColor }]}>Capacidad de Direccionamiento IP</Text>
               </View>
 
-              <BlurView 
-                intensity={blurIntensity} 
-                tint={blurTint} 
+              <DashboardSurface isDark={isDark}
                 style={[styles.capacityCard, { backgroundColor: cardBgColor, borderColor: cardBorderColor }]}
               >
                 <View style={[styles.capacityHeader, { borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)' }]}>
@@ -556,8 +561,8 @@ export default function DashboardScreen() {
                     <Text style={[styles.capacityMainTitle, { color: textColor }]}>Uso General de Subredes</Text>
                     <Text style={[styles.capacityMainSub, { color: subtitleColor }]}>Distribución de hosts asignados vs. disponibles</Text>
                   </View>
-                  <View style={styles.capacityBadge}>
-                    <Text style={styles.capacityBadgeText}>{stats.subnetsWithUsage.length} VLANs</Text>
+                  <View style={[styles.capacityBadge, !isDark && { backgroundColor: '#D2D2D2' }]}>
+                    <Text style={[styles.capacityBadgeText, !isDark && { color: textColor }]}>{stats.subnetsWithUsage.length} VLANs</Text>
                   </View>
                 </View>
 
@@ -579,7 +584,7 @@ export default function DashboardScreen() {
                 {stats.subnetsWithUsage.length === 0 && (
                   <Text style={{ color: subtitleColor, fontFamily: 'Poppins_400Regular', fontSize: 13 }}>No hay subredes con dispositivos asignados.</Text>
                 )}
-              </BlurView>
+              </DashboardSurface>
             </View>
 
             <View style={[styles.splitCol, { flex: isDesktop ? 1 : undefined }]}>
@@ -594,9 +599,7 @@ export default function DashboardScreen() {
                     activeOpacity={0.7} 
                     onPress={() => handleActivityPress(act.id)}
                   >
-                    <BlurView 
-                      intensity={blurIntensity} 
-                      tint={blurTint} 
+                    <DashboardSurface isDark={isDark}
                       style={[styles.activityCard, { backgroundColor: cardBgColor, borderColor: cardBorderColor }]}
                     >
                       <View style={[styles.activityStatusIndicator, { backgroundColor: act.color }]} />
@@ -608,7 +611,7 @@ export default function DashboardScreen() {
                         <Text style={[styles.activityDetailText, { color: isDark ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)' }]} numberOfLines={2}>{act.statusText}</Text>
                       </View>
                       <Feather name="chevron-right" size={13} color={isDark ? 'rgba(255, 255, 255, 0.3)' : 'rgba(0,0,0,0.25)'} style={{ marginLeft: 6 }} />
-                    </BlurView>
+                    </DashboardSurface>
                   </TouchableOpacity>
                 ))}
 
@@ -657,7 +660,7 @@ const styles = StyleSheet.create({
   pendingHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 10 },
   pendingHeadingGroup: { flex: 1 },
   pendingSummary: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, marginTop: 2 },
-  pendingOpenAll: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10 },
+  pendingOpenAll: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 10, borderWidth: 1 },
   pendingOpenAllText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#0A84FF' },
   pendingList: { gap: 8 },
   pendingCard: { flexDirection: 'row', alignItems: 'center', padding: 11, borderRadius: 14, overflow: 'hidden', borderWidth: 1, gap: 10 },
@@ -667,7 +670,7 @@ const styles = StyleSheet.create({
   pendingTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 12 },
   pendingDetail: { fontFamily: 'Poppins_400Regular', fontSize: 10, marginTop: 2 },
   pendingAction: { flexDirection: 'row', alignItems: 'center', gap: 3, maxWidth: '34%' },
-  pendingStatus: { fontFamily: 'Poppins_600SemiBold', fontSize: 9.5 },
+  pendingStatus: { fontFamily: 'Poppins_600SemiBold', fontSize: 10, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 3 },
   pendingMoreButton: { alignSelf: 'flex-start', paddingVertical: 5, paddingHorizontal: 3 },
   pendingMoreText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#0A84FF' },
   sectionHeader: { marginBottom: 10 },
