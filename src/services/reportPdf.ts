@@ -50,7 +50,7 @@ export async function generateAndShareReport(input: {
 
   const dataset = await fetchReportDataset();
   const html = createReportHtml(dataset, input.area, input.from, input.to, input.createdBy);
-  const file = await Print.printToFileAsync({ html });
+  const file = await Print.printToFileAsync({ html, width: 842, height: 595 });
   if (!(await Sharing.isAvailableAsync())) {
     throw new Error('Compartir archivos no está disponible en este dispositivo.');
   }

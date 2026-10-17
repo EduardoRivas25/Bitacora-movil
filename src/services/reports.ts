@@ -1,6 +1,7 @@
 import * as api from './api';
 import * as portsApi from './ports';
 import { Building, Device, DeviceConfig, Incident, Maintenance, SwitchPort } from '../types';
+import { REPORT_LOGO_DATA_URI } from './reportLogoData';
 
 export type ReportArea = 'networks' | 'devices' | 'buildings' | 'incidents' | 'maintenance' | 'activity' | 'complete';
 
@@ -402,9 +403,9 @@ export function createReportHtml(
   const emptySections = sections.filter(section => section.rows.length === 0);
   const detailCount = detailSections.reduce((total, section) => total + section.rows.length, 0);
   const activityCount = activitySection?.rows.length || 0;
-  const content = populatedSections.map(section => `
+  const content = populatedSections.map((section, index) => `
     <section class="${section === activitySection && detailCount > 0 ? 'break-before' : ''}">
-      <h2>${escapeHtml(section.title)} <span>${section.rows.length} registro(s)</span></h2>
+      <div class="section-heading"><span class="section-number">${String(index + 1).padStart(2, '0')}</span><h2>${escapeHtml(section.title)}</h2><span class="section-count">${section.rows.length} registro(s)</span></div>
       ${createTable(section)}
     </section>`).join('');
   const emptyReport = populatedSections.length
@@ -415,65 +416,78 @@ export function createReportHtml(
     : '';
   const periodNarrative = `El periodo contiene ${detailCount} registro(s) de detalle y ${activityCount} movimiento(s) relacionado(s). La actividad disponible se deriva de las fechas y acciones registradas; no representa una auditoría completa de cada edición.`;
   const warning = dataset.portsError
-    ? `<p class="warning"><strong>Inventario de puertos no disponible.</strong> No se pudo consultar InsForge (${escapeHtml(dataset.portsError)}). Verifica que la migración <code>20261010_create_switch_ports.sql</code> esté aplicada. Las demás secciones sí se generaron.</p>`
+    ? '<p class="warning"><strong>Inventario de puertos no disponible.</strong> No fue posible consultar esta información al generar el documento. Las demás secciones conservan los registros disponibles.</p>'
     : '';
+  const generatedAt = new Date().toLocaleString('es-MX');
   return `<!doctype html><html lang="es"><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${escapeHtml(areaTitle)} - Bitácora Digital</title>
     <style>
-      @page { size: A4 landscape; margin: 12mm; }
+      @page { size: A4 landscape; margin: 13mm 14mm 15mm; }
       * { box-sizing: border-box; }
-      body { color: #243447; font: 10px Arial, Helvetica, sans-serif; margin: 0; }
-      header { align-items: center; border-bottom: 2px solid #1682c4; display: flex; justify-content: space-between; margin-bottom: 12px; padding: 0 0 9px; }
-      .brand { align-items: center; display: flex; gap: 10px; }
-      .brand-mark { align-items: center; background: #146caf; border-radius: 6px; color: white; display: flex; font-size: 12px; font-weight: bold; height: 34px; justify-content: center; width: 38px; }
-      h1 { color: #135f91; font-size: 18px; margin: 0 0 3px; }
-      .subtitle, .meta { color: #526579; font-size: 9px; margin: 0; }
-      .meta { line-height: 1.7; text-align: right; }
-      h2 { background: #eef5fb; border-left: 3px solid #1778b5; color: #145d91; font-size: 11px; margin: 13px 0 6px; padding: 6px 8px; break-after: avoid; page-break-after: avoid; }
-      h2 span { color: #506579; float: right; font-size: 9px; font-weight: normal; }
+      body { background: #fff; color: #262626; font: 10px Arial, Helvetica, sans-serif; margin: 0; }
+      header { align-items: center; border-bottom: 1px solid #bcbcbc; display: flex; justify-content: space-between; margin-bottom: 16px; padding-bottom: 10px; }
+      .brand { align-items: center; display: flex; gap: 11px; }
+      .brand-logo { display: block; height: 42px; object-fit: contain; width: 42px; }
+      .brand-name { color: #171717; font-size: 15px; font-weight: 700; letter-spacing: -.2px; margin: 0 0 3px; }
+      .brand-caption { color: #666; font-size: 8px; letter-spacing: 1.3px; margin: 0; text-transform: uppercase; }
+      .header-label { border: 1px solid #b8b8b8; border-radius: 4px; color: #333; font-size: 8px; font-weight: 700; letter-spacing: 1px; padding: 6px 9px; text-transform: uppercase; }
+      .overview { align-items: flex-end; display: flex; justify-content: space-between; gap: 24px; margin-bottom: 15px; }
+      .overview-copy { flex: 1; }
+      .eyebrow { color: #666; font-size: 8px; font-weight: 700; letter-spacing: 1.4px; margin: 0 0 5px; text-transform: uppercase; }
+      h1 { color: #171717; font-size: 22px; letter-spacing: -.5px; line-height: 1.15; margin: 0 0 5px; }
+      .overview-subtitle { color: #595959; font-size: 9px; line-height: 1.5; margin: 0; }
+      .meta { border-left: 2px solid #333; min-width: 245px; padding-left: 11px; }
+      .meta-row { display: flex; justify-content: space-between; gap: 14px; line-height: 1.65; }
+      .meta-label { color: #686868; font-size: 8px; }
+      .meta-value { color: #252525; font-size: 8px; font-weight: 700; text-align: right; }
+      .section-heading { align-items: center; background: #ededed; border: 1px solid #d2d2d2; display: flex; gap: 8px; margin: 15px 0 7px; padding: 7px 9px; break-after: avoid; page-break-after: avoid; }
+      .section-number { background: #2b2b2b; border-radius: 3px; color: #fff; font-size: 8px; font-weight: 700; min-width: 21px; padding: 4px; text-align: center; }
+      h2 { color: #222; flex: 1; font-size: 11px; margin: 0; }
+      .section-count { color: #5c5c5c; font-size: 8px; white-space: nowrap; }
       table { border-collapse: collapse; table-layout: auto; width: 100%; }
       thead { display: table-header-group; }
-      th { background: #176ca8; color: #fff; font-size: 8px; font-weight: 700; text-align: left; }
-      th, td { border: 1px solid #d3dce5; overflow-wrap: anywhere; padding: 5px 6px; vertical-align: top; }
-      td { font-size: 8px; line-height: 1.35; }
-      tbody tr:nth-child(even) { background: #f1f5f8; }
+      th { background: #383838; color: #fff; font-size: 8px; font-weight: 700; text-align: left; }
+      th, td { border: 1px solid #d5d5d5; overflow-wrap: anywhere; padding: 6px 7px; vertical-align: top; }
+      td { font-size: 8px; line-height: 1.4; }
+      tbody tr:nth-child(even) { background: #f4f4f4; }
       tr { break-inside: avoid; page-break-inside: avoid; }
-      .summary-title { color: #145d91; font-size: 11px; margin: 11px 0 6px; }
-      .summary { display: grid; gap: 6px; grid-template-columns: repeat(4, 1fr); }
-      .metric { background: #f0f5fa; border: 1px solid #d5e0ea; border-radius: 4px; min-height: 42px; padding: 6px 8px; }
-      .metric strong { color: #1d3143; display: block; font-size: 13px; margin-bottom: 2px; }
-      .metric span { color: #53677b; font-size: 8px; }
-      .metric.blue { border-left: 3px solid #1682c4; }
-      .metric.green { border-left: 3px solid #35a66c; }
-      .metric.orange { border-left: 3px solid #e3a529; }
-      .metric.red { border-left: 3px solid #d9574f; }
-      .metric.muted { border-left: 3px solid #8291a0; }
-      .statusline { background: #f3f8fc; border: 1px solid #dce7ef; color: #42596d; font-size: 8px; line-height: 1.5; margin-top: 8px; padding: 7px 9px; }
-      .warning { background: #fff3e8; border-left: 3px solid #e3a529; color: #734519; font-size: 8px; line-height: 1.5; margin: 8px 0; padding: 7px; }
-      .empty { background: #f1f5f8; color: #526579; padding: 8px; }
-      .coverage { color: #647789; font-size: 8px; line-height: 1.5; margin: 9px 0; }
-      .empty-report { background: #f7f9fb; border: 1px solid #dce5ed; border-radius: 4px; margin-top: 16px; padding: 8px 12px; }
+      .summary { display: grid; gap: 7px; grid-template-columns: repeat(4, 1fr); }
+      .metric { background: #f3f3f3; border: 1px solid #d3d3d3; border-radius: 4px; min-height: 44px; padding: 7px 9px; }
+      .metric strong { color: #202020; display: block; font-size: 13px; margin-bottom: 3px; }
+      .metric span { color: #545454; font-size: 8px; }
+      .metric.blue { border-top: 2px solid #555; }
+      .metric.green { border-top: 2px solid #397451; }
+      .metric.orange { border-top: 2px solid #9a6a23; }
+      .metric.red { border-top: 2px solid #a7433e; }
+      .metric.muted { border-top: 2px solid #888; }
+      .statusline { background: #f3f3f3; border-left: 2px solid #555; color: #4b4b4b; font-size: 8px; line-height: 1.5; margin: 10px 0 0; padding: 8px 10px; }
+      .warning { background: #f8f1e7; border-left: 3px solid #a77125; color: #6c4617; font-size: 8px; line-height: 1.5; margin: 9px 0; padding: 8px 10px; }
+      .empty { background: #f3f3f3; color: #555; padding: 9px; }
+      .coverage { color: #636363; font-size: 8px; line-height: 1.5; margin: 10px 0; }
+      .empty-report { background: #f6f6f6; border: 1px solid #d5d5d5; border-radius: 4px; margin-top: 16px; padding: 8px 12px; }
       .empty-report h2 { margin-top: 0; }
-      .empty-report p { color: #526579; font-size: 9px; }
-      footer { border-top: 1px solid #d3dce5; color: #617487; font-size: 8px; margin-top: 12px; padding-top: 6px; }
+      .empty-report p { color: #555; font-size: 9px; }
+      footer { border-top: 1px solid #c9c9c9; color: #626262; display: flex; font-size: 8px; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 8px; }
       .break-before { break-before: page; page-break-before: always; }
       @media screen { body { background: #fff; margin: 18px auto; max-width: 1200px; padding: 22px; } }
       @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
     </style></head><body>
     <header>
-      <div class="brand"><div class="brand-mark">BD</div><div><h1>Bitácora Digital de Redes</h1><p class="subtitle">Reporte técnico · ${escapeHtml(areaTitle)}</p></div></div>
-      <div class="meta"><strong>Periodo:</strong> ${escapeHtml(from)} al ${escapeHtml(to)}<br>
-        <strong>Generado:</strong> ${escapeHtml(new Date().toLocaleString('es-MX'))}<br>
-        <strong>Responsable:</strong> ${escapeHtml(createdBy)}</div>
+      <div class="brand"><img class="brand-logo" src="${REPORT_LOGO_DATA_URI}" alt="Logo de Bitácora Digital"><div><p class="brand-name">Bitácora Digital</p><p class="brand-caption">Gestión de infraestructura de red</p></div></div>
+      <div class="header-label">Reporte técnico</div>
     </header>
-    <h2 class="summary-title">Resumen ejecutivo <span>Panorama de todas las áreas en el periodo</span></h2>
+    <div class="overview">
+      <div class="overview-copy"><p class="eyebrow">Informe de infraestructura</p><h1>${escapeHtml(areaTitle)}</h1><p class="overview-subtitle">Información registrada en Bitácora Digital para el periodo seleccionado.</p></div>
+      <div class="meta"><div class="meta-row"><span class="meta-label">Periodo</span><span class="meta-value">${escapeHtml(from)} a ${escapeHtml(to)}</span></div><div class="meta-row"><span class="meta-label">Fecha de emisión</span><span class="meta-value">${escapeHtml(generatedAt)}</span></div><div class="meta-row"><span class="meta-label">Generado por</span><span class="meta-value">${escapeHtml(createdBy)}</span></div></div>
+    </div>
+    <div class="section-heading"><span class="section-number">00</span><h2>Resumen ejecutivo</h2><span class="section-count">Panorama del periodo</span></div>
     <div class="summary">${summary.map(item => `<div class="metric ${item.tone || 'blue'}"><strong>${escapeHtml(item.value)}</strong><span>${escapeHtml(item.label)}</span></div>`).join('')}</div>
     <p class="statusline">${escapeHtml(periodNarrative)}</p>
     ${warning}
     ${emptyNote}
     ${emptyReport}
     ${content}
-    <footer>Fuente: InsForge · Filtro aplicado: ${escapeHtml(from)} a ${escapeHtml(to)} · Campos sin información: “No capturado”.</footer>
+    <footer><span>Bitácora Digital · Fuente: registros de la aplicación · Campos sin información: “No capturado”.</span><span>Periodo: ${escapeHtml(from)} a ${escapeHtml(to)}</span></footer>
     </body></html>`;
 }
