@@ -5,15 +5,16 @@
     "scheme": "bitacoraredes",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/logobitacoraredes.png",
+    "icon": "./assets/app-icon.png",
     "userInterfaceStyle": "dark",
     "ios": {
+      "icon": "./assets/app-icon.png",
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#050505",
-        "foregroundImage": "./assets/logobitacoraredes.png"
+        "foregroundImage": "./assets/android-adaptive-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.eduardo_rivass.bitacoraredes"

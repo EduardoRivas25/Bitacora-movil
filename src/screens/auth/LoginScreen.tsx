@@ -16,12 +16,14 @@ import {
 import { useTheme } from '../../contexts/ThemeContext';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
+import { SvgXml } from 'react-native-svg';
 import { useAuth } from '../../contexts/AuthContext';
 import { validateEmail, validatePassword, validateRequired } from '../../utils/validators';
 import ThemeToggle from '../../components/ThemeToggle';
 import PasswordRecoveryScreen from './PasswordRecoveryScreen';
 import ShapeGridBackground from '../../components/ShapeGridBackground';
+import { APPLE_SVG_XML, GOOGLE_SVG_XML } from '../../components/socialIconXml';
 
 const LOGO_DARK = require('../../../assets/logobitacoraredes.png');
 const LOGO_LIGHT = require('../../../assets/logobitacoraredesmodoclaro.png');
@@ -264,16 +266,24 @@ export default function LoginScreen() {
   }
   
   // Colores dinámicos calculados
-  const placeholderColor = isDark ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)";
-  const inputBgColor = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)';
-  const inputBorderColor = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+  const placeholderColor = isDark ? 'rgba(255, 255, 255, 0.58)' : '#526174';
+  const inputBgColor = isDark ? 'rgba(255, 255, 255, 0.075)' : '#F8FAFC';
+  const inputBorderColor = isDark ? 'rgba(255, 255, 255, 0.22)' : '#738196';
+  const secondaryTextColor = isDark ? 'rgba(255, 255, 255, 0.76)' : '#334155';
+  const mutedTextColor = isDark ? 'rgba(255, 255, 255, 0.58)' : '#526174';
+  const socialButtonBackground = isDark ? 'rgba(255, 255, 255, 0.11)' : 'rgba(15, 23, 42, 0.11)';
+  const socialButtonBorder = isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(15, 23, 42, 0.25)';
+  const primaryButtonBackground = isDark ? '#E5E7EB' : '#111827';
+  const primaryButtonText = isDark ? '#050505' : '#FFFFFF';
 
   return (
     <LinearGradient 
       colors={isDark ? ['#050505', '#121212'] : ['#E8ECEF', '#F8F9FA']} 
       style={styles.container}
     >
-      <ShapeGridBackground lineColor={isDark ? 'rgba(255, 255, 255, 0.075)' : 'rgba(10, 60, 110, 0.09)'} />
+      <ShapeGridBackground
+        lineColor={isDark ? 'rgba(255, 255, 255, 0.075)' : 'rgba(0, 0, 0, 0.22)'}
+      />
       <View style={styles.topBar}>
         <ThemeToggle 
           style={[
@@ -301,7 +311,7 @@ export default function LoginScreen() {
               maxWidth: 460,
               padding: isSmallMobile ? 22 : 32,
               backgroundColor: isDark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.7)',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.5)',
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.24)' : 'rgba(15, 23, 42, 0.32)',
             },
           ]}
         >
@@ -382,14 +392,14 @@ export default function LoginScreen() {
               <TouchableOpacity
                 style={[
                   styles.button, 
-                  { backgroundColor: colors.text, marginTop: 4 },
+                  { backgroundColor: primaryButtonBackground, marginTop: 4 },
                   isLoading && { opacity: 0.6 }
                 ]}
                 activeOpacity={0.8}
                 onPress={handleSubmit}
                 disabled={isLoading}
               >
-                <Text style={[styles.buttonText, { color: colors.background }]}>
+                <Text style={[styles.buttonText, { color: primaryButtonText }]}>
                   {isLoading ? 'Verificando...' : 'Verificar correo'}
                 </Text>
               </TouchableOpacity>
@@ -410,7 +420,7 @@ export default function LoginScreen() {
 
               <View style={styles.dividerContainer}>
                 <View style={[styles.dividerLine, { backgroundColor: inputBorderColor }]} />
-                <Text style={[styles.dividerText, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.5)' }]}>
+                <Text style={[styles.dividerText, { color: mutedTextColor }]}>
                   o continuar con
                 </Text>
                 <View style={[styles.dividerLine, { backgroundColor: inputBorderColor }]} />
@@ -419,25 +429,25 @@ export default function LoginScreen() {
               <View style={styles.socialContainer}>
                 <TouchableOpacity 
                   style={[styles.socialButton, { 
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                    borderColor: inputBorderColor
+                    backgroundColor: socialButtonBackground,
+                    borderColor: socialButtonBorder
                   }]} 
                   activeOpacity={0.8} 
                   onPress={() => handleSocialAuth('Google')}
                 >
-                  <Ionicons name="logo-google" size={18} color={colors.text} style={styles.socialIcon} />
+                  <View style={styles.socialIcon}><SvgXml xml={GOOGLE_SVG_XML} width={18} height={18} /></View>
                   <Text style={[styles.socialButtonText, { color: colors.text }]}>Google</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
                   style={[styles.socialButton, { 
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                    borderColor: inputBorderColor
+                    backgroundColor: socialButtonBackground,
+                    borderColor: socialButtonBorder
                   }]} 
                   activeOpacity={0.8} 
                   onPress={() => handleSocialAuth('Apple')}
                 >
-                  <Ionicons name="logo-apple" size={18} color={colors.text} style={styles.socialIcon} />
+                  <View style={styles.socialIcon}><SvgXml xml={APPLE_SVG_XML} width={17} height={20} override={{ fill: colors.text }} /></View>
                   <Text style={[styles.socialButtonText, { color: colors.text }]}>Apple</Text>
                 </TouchableOpacity>
               </View>
@@ -485,7 +495,7 @@ export default function LoginScreen() {
                   }}>
                   {termsAccepted && <Feather name="check" size={12} color={colors.background} />}
                 </TouchableOpacity>
-                <Text style={[styles.checkboxText, { color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)' }]}>
+                <Text style={[styles.checkboxText, { color: secondaryTextColor }]}>
                   Acepto los{' '}
                   <Text
                     accessibilityRole="link"
@@ -577,7 +587,7 @@ export default function LoginScreen() {
 
               {!isRegister && (
                 <TouchableOpacity style={styles.forgotPassword} onPress={() => setShowRecovery(true)}>
-                  <Text style={[styles.forgotPasswordText, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }]}>
+                <Text style={[styles.forgotPasswordText, { color: secondaryTextColor }]}>
                     ¿Olvidaste tu contraseña?
                   </Text>
                 </TouchableOpacity>
@@ -601,7 +611,7 @@ export default function LoginScreen() {
               <TouchableOpacity
                 style={[
                   styles.button,
-                  { backgroundColor: colors.text },
+                  { backgroundColor: primaryButtonBackground },
                   isRegister && { marginTop: 10 },
                   isLoading && { opacity: 0.6 }
                 ]}
@@ -609,7 +619,7 @@ export default function LoginScreen() {
                 onPress={handleSubmit}
                 disabled={isLoading}
               >
-                <Text style={[styles.buttonText, { color: colors.background }]}>
+                <Text style={[styles.buttonText, { color: primaryButtonText }]}>
                   {isLoading ? 'Validando...' : isRegister ? 'Crear cuenta' : 'Iniciar Sesión'}
                 </Text>
               </TouchableOpacity>
@@ -617,7 +627,7 @@ export default function LoginScreen() {
 
               <View style={styles.dividerContainer}>
                 <View style={[styles.dividerLine, { backgroundColor: inputBorderColor }]} />
-                <Text style={[styles.dividerText, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.5)' }]}>
+                <Text style={[styles.dividerText, { color: mutedTextColor }]}>
                   {isRegister ? 'o registrarse con' : 'o continuar con'}
                 </Text>
                 <View style={[styles.dividerLine, { backgroundColor: inputBorderColor }]} />
@@ -626,31 +636,31 @@ export default function LoginScreen() {
               <View style={styles.socialContainer}>
                 <TouchableOpacity 
                   style={[styles.socialButton, { 
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                    borderColor: inputBorderColor
+                    backgroundColor: socialButtonBackground,
+                    borderColor: socialButtonBorder
                   }]} 
                   activeOpacity={0.8} 
                   onPress={() => handleSocialAuth('Google')}
                 >
-                  <Ionicons name="logo-google" size={18} color={colors.text} style={styles.socialIcon} />
+                  <View style={styles.socialIcon}><SvgXml xml={GOOGLE_SVG_XML} width={18} height={18} /></View>
                   <Text style={[styles.socialButtonText, { color: colors.text }]}>Google</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity 
                   style={[styles.socialButton, { 
-                    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                    borderColor: inputBorderColor
+                    backgroundColor: socialButtonBackground,
+                    borderColor: socialButtonBorder
                   }]} 
                   activeOpacity={0.8} 
                   onPress={() => handleSocialAuth('Apple')}
                 >
-                  <Ionicons name="logo-apple" size={18} color={colors.text} style={styles.socialIcon} />
+                  <View style={styles.socialIcon}><SvgXml xml={APPLE_SVG_XML} width={17} height={20} override={{ fill: colors.text }} /></View>
                   <Text style={[styles.socialButtonText, { color: colors.text }]}>Apple</Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.toggleContainer}>
-                <Text style={[styles.toggleText, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)' }]}>
+                <Text style={[styles.toggleText, { color: secondaryTextColor }]}>
                   {isRegister ? '¿Ya tienes una cuenta?' : '¿No tienes una cuenta?'}
                 </Text>
                 <TouchableOpacity activeOpacity={0.7} onPress={toggleMode}>
@@ -736,7 +746,7 @@ const styles = StyleSheet.create({
   glassCard: {
     borderRadius: 30,
     overflow: 'hidden',
-    borderWidth: 1,
+    borderWidth: 1.5,
   },
   title: {
     fontFamily: 'Poppins_700Bold',
@@ -835,7 +845,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingVertical: 14,
   },
-  socialIcon: { marginRight: 8 },
+  socialIcon: { width: 18, height: 20, flexShrink: 0, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
   socialButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 14 },
   toggleContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 5 },
   toggleText: { fontFamily: 'Poppins_400Regular', fontSize: 13 },

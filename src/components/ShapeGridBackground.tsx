@@ -8,7 +8,7 @@ type ShapeGridBackgroundProps = {
 
 /** Animated square grid rendered with native Views, so it works without extra packages. */
 export default function ShapeGridBackground({
-  lineColor = 'rgba(10, 132, 255, 0.22)',
+  lineColor = 'rgba(255, 255, 255, 0.075)',
   cellSize = 42,
 }: ShapeGridBackgroundProps) {
   const { width, height } = useWindowDimensions();
