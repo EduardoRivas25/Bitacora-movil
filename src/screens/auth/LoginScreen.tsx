@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Text,
   TextInput,
@@ -10,6 +10,8 @@ import {
   ScrollView,
   Image,
   Modal,
+  Animated,
+  Easing,
 } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { BlurView } from 'expo-blur';
@@ -19,9 +21,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { validateEmail, validatePassword, validateRequired } from '../../utils/validators';
 import ThemeToggle from '../../components/ThemeToggle';
 import PasswordRecoveryScreen from './PasswordRecoveryScreen';
+import ShapeGridBackground from '../../components/ShapeGridBackground';
 
 const LOGO_DARK = require('../../../assets/logobitacoraredes.png');
 const LOGO_LIGHT = require('../../../assets/logobitacoraredesmodoclaro.png');
+const WALK_SPRITE = require('../../../assets/pasos.png');
 const TERMS_SECTIONS = [
   {
     title: 'Uso autorizado',
@@ -73,6 +77,49 @@ export default function LoginScreen() {
   const [pendingVerificationEmail, setPendingVerificationEmail] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ [key: string]: string }>({});
+  const walkProgress = useRef(new Animated.Value(0)).current;
+  const [walkFrame, setWalkFrame] = useState(1);
+  const [walkFacing, setWalkFacing] = useState(1);
+  const [isWalking, setIsWalking] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    let pauseTimer: ReturnType<typeof setTimeout>;
+    const walkBack = () => {
+      if (!active) return;
+      setWalkFacing(-1);
+      setIsWalking(true);
+      Animated.timing(walkProgress, { toValue: 0, duration: 3000, easing: Easing.linear, useNativeDriver: true }).start(({ finished }) => {
+        if (!active || !finished) return;
+        setWalkFrame(0);
+        setIsWalking(false);
+        pauseTimer = setTimeout(walkForward, 2500);
+      });
+    };
+    const walkForward = () => {
+      if (!active) return;
+      setWalkFacing(1);
+      setIsWalking(true);
+      Animated.timing(walkProgress, { toValue: 1, duration: 3000, easing: Easing.linear, useNativeDriver: true }).start(({ finished }) => {
+        if (!active || !finished) return;
+        setWalkFrame(0);
+        setIsWalking(false);
+        pauseTimer = setTimeout(walkBack, 2500);
+      });
+    };
+    walkForward();
+    return () => {
+      active = false;
+      walkProgress.stopAnimation();
+      clearTimeout(pauseTimer);
+    };
+  }, [walkProgress]);
+
+  useEffect(() => {
+    if (!isWalking) return;
+    const frameTimer = setInterval(() => setWalkFrame(frame => (frame % 5) + 1), 150);
+    return () => clearInterval(frameTimer);
+  }, [isWalking]);
 
   const validateForm = (): boolean => {
     const errors: { [key: string]: string } = {};
@@ -226,6 +273,7 @@ export default function LoginScreen() {
       colors={isDark ? ['#050505', '#121212'] : ['#E8ECEF', '#F8F9FA']} 
       style={styles.container}
     >
+      <ShapeGridBackground lineColor={isDark ? 'rgba(255, 255, 255, 0.075)' : 'rgba(10, 60, 110, 0.09)'} />
       <View style={styles.topBar}>
         <ThemeToggle 
           style={[
@@ -535,19 +583,26 @@ export default function LoginScreen() {
                 </TouchableOpacity>
               )}
 
-              <TouchableOpacity
-                accessibilityRole="button"
-                style={styles.termsButton}
-                onPress={() => setShowTerms(true)}>
-                <Feather name="file-text" size={14} color="#0A84FF" />
-                <Text style={styles.termsButtonText}>Leer términos y condiciones</Text>
-              </TouchableOpacity>
-
+              <View style={styles.loginButtonTrack}>
+              {!isRegister && !isLoading && (
+                <Animated.View pointerEvents="none" accessible={false} style={[
+                  styles.walker,
+                  { transform: [
+                    { translateX: walkProgress.interpolate({ inputRange: [0, 1], outputRange: [18, Math.max(18, Math.min(300, width - (isSmallMobile ? 112 : 138)))] }) },
+                    { translateY: walkProgress.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0, -2, 0] }) },
+                    { scaleX: walkFacing },
+                  ] },
+                ]}>
+                  <View style={styles.walkerCrop}>
+                    <Image source={WALK_SPRITE} resizeMode="stretch" style={[styles.walkerSprite, { left: -walkFrame * 42 }]} />
+                  </View>
+                </Animated.View>
+              )}
               <TouchableOpacity
                 style={[
-                  styles.button, 
+                  styles.button,
                   { backgroundColor: colors.text },
-                  isRegister && { marginTop: 10 }, 
+                  isRegister && { marginTop: 10 },
                   isLoading && { opacity: 0.6 }
                 ]}
                 activeOpacity={0.8}
@@ -558,6 +613,7 @@ export default function LoginScreen() {
                   {isLoading ? 'Validando...' : isRegister ? 'Crear cuenta' : 'Iniciar Sesión'}
                 </Text>
               </TouchableOpacity>
+              </View>
 
               <View style={styles.dividerContainer}>
                 <View style={[styles.dividerLine, { backgroundColor: inputBorderColor }]} />
@@ -743,8 +799,10 @@ const styles = StyleSheet.create({
   forgotPasswordText: { fontFamily: 'Poppins_400Regular', fontSize: 13 },
   button: { padding: 18, borderRadius: 16, alignItems: 'center' },
   buttonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 15 },
-  termsButton: { minHeight: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginBottom: 4 },
-  termsButtonText: { color: '#0A84FF', fontFamily: 'Poppins_600SemiBold', fontSize: 12 },
+  loginButtonTrack: { position: 'relative', overflow: 'visible' },
+  walker: { position: 'absolute', zIndex: 2, top: -44, left: 0, width: 42, height: 48 },
+  walkerCrop: { width: 42, height: 48, overflow: 'hidden' },
+  walkerSprite: { position: 'absolute', top: -36, width: 252, height: 168 },
   termsLink: { fontFamily: 'Poppins_600SemiBold', textDecorationLine: 'underline' },
   termsDraftHint: { fontFamily: 'Poppins_400Regular', fontSize: 10, marginTop: -7, marginBottom: 10, marginLeft: 28 },
   termsOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 18, backgroundColor: 'rgba(0,0,0,0.72)' },

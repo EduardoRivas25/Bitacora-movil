@@ -654,17 +654,17 @@ export default function AccountScreen() {
           style={[
             styles.sectionCard,
             {
-              backgroundColor: isDark ? colors.card : '#FFFFFF',
-              borderColor: isDark ? colors.cardBorder : '#CBD5E1',
+              backgroundColor: isDark ? colors.card : colors.cardBg,
+              borderColor: colors.cardBorder,
             },
           ]}>
-          <View style={[styles.sectionHeading, { borderBottomColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0' }]}>
+          <View style={[styles.sectionHeading, { borderBottomColor: colors.divider }]}>
             <View
               style={[
                 styles.sectionIcon,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#F1F5F9',
-                  borderColor: isDark ? colors.cardBorder : '#CBD5E1',
+                  backgroundColor: colors.chipBg,
+                  borderColor: colors.chipBorder,
                 },
               ]}>
               <Feather name="info" size={17} color={isDark ? '#FFFFFF' : '#0F172A'} />
@@ -672,14 +672,14 @@ export default function AccountScreen() {
             <View style={styles.sectionHeadingCopy}>
               <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Acerca de</Text>
               <Text style={[styles.sectionDescription, { color: colors.textSecondary }]}>
-                Información de Bitácora Digital.
+                Qué puedes gestionar con Bitácora Digital.
               </Text>
             </View>
           </View>
 
           <Text style={[styles.aboutName, { color: colors.textPrimary }]}>Bitácora Digital</Text>
           <Text style={[styles.noticeText, { color: colors.textSecondary }]}>
-            Sistema para registrar cambios, incidentes, infraestructura de red, usuarios y reportes administrativos.
+            Centraliza la operación de la red: organiza dispositivos, redes y subredes; consulta equipos y edificios en el mapa; guarda configuraciones; y registra incidentes y mantenimientos. También reúne reportes para facilitar el seguimiento de la infraestructura y sus actividades.
           </Text>
 
           <View style={styles.aboutTags}>
@@ -687,31 +687,31 @@ export default function AccountScreen() {
               style={[
                 styles.aboutTag,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#F1F5F9',
-                  borderColor: isDark ? colors.cardBorder : '#CBD5E1',
+                  backgroundColor: colors.chipBg,
+                  borderColor: colors.chipBorder,
                 },
               ]}>
-              <Text style={[styles.aboutTagText, { color: isDark ? '#E2E8F0' : '#334155' }]}>v1.0.0</Text>
+              <Text style={[styles.aboutTagText, { color: isDark ? '#E2E8F0' : '#334155' }]}>Versión 1.0.0</Text>
             </View>
             <View
               style={[
                 styles.aboutTag,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#F1F5F9',
-                  borderColor: isDark ? colors.cardBorder : '#CBD5E1',
+                  backgroundColor: colors.chipBg,
+                  borderColor: colors.chipBorder,
                 },
               ]}>
-              <Text style={[styles.aboutTagText, { color: isDark ? '#E2E8F0' : '#334155' }]}>Expo v57</Text>
+              <Text style={[styles.aboutTagText, { color: isDark ? '#E2E8F0' : '#334155' }]}>Expo SDK 57</Text>
             </View>
             <View
               style={[
                 styles.aboutTag,
                 {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#F1F5F9',
-                  borderColor: isDark ? colors.cardBorder : '#CBD5E1',
+                  backgroundColor: colors.chipBg,
+                  borderColor: colors.chipBorder,
                 },
               ]}>
-              <Text style={[styles.aboutTagText, { color: isDark ? '#E2E8F0' : '#334155' }]}>InsForge Cloud</Text>
+              <Text style={[styles.aboutTagText, { color: isDark ? '#E2E8F0' : '#334155' }]}>Datos: InsForge Cloud</Text>
             </View>
           </View>
         </View>
