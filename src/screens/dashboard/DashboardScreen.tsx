@@ -21,8 +21,7 @@ import ThemeToggle from '../../components/ThemeToggle';
 import { fetchDashboardStats, fetchRecentActivities, fetchIncidents, fetchMaintenances, DashboardStats } from '../../services/api';
 import { Incident, Maintenance, RecentActivity } from '../../types';
 
-const LOGO_DARK = require('../../../assets/logobitacoraredes.png');
-const LOGO_LIGHT = require('../../../assets/logobitacoraredesmodoclaro.png');
+const DASHBOARD_LOGO = require('../../../assets/logo-ingenieria-sistemas.png');
 
 type ActionablePending = {
   id: string;
@@ -55,7 +54,6 @@ export default function DashboardScreen() {
   const { signOut, user, authMethod, authorizationError } = useAuth();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const appLogo = isDark ? LOGO_DARK : LOGO_LIGHT;
   const accountName = user?.profile?.name?.trim() || user?.email || 'Usuario';
   const accountRole = getAccountRole(user);
   const accountRoleLabel = accountRole || 'Rol no asignado';
@@ -220,14 +218,10 @@ export default function DashboardScreen() {
             <View style={styles.headerBrand}>
               <View style={[
                 styles.logoContainer, 
-                isSmallMobile && { width: 44, height: 44 },
-                {
-                  backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
-                  borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)'
-                }
+                isSmallMobile && { width: 72, height: 76 },
               ]}>
                 <Image 
-                  source={appLogo} 
+                  source={DASHBOARD_LOGO}
                   style={styles.logoImage} 
                   resizeMode="contain"
                 />
@@ -631,7 +625,7 @@ const styles = StyleSheet.create({
   innerWrapper: { maxWidth: 1200, width: '100%', alignSelf: 'center' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22, flexWrap: 'wrap', gap: 12 },
   headerBrand: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, minWidth: 240 },
-  logoContainer: { width: 48, height: 48, borderRadius: 14, overflow: 'hidden', borderWidth: 1, alignItems: 'center', justifyContent: 'center', padding: 5 },
+  logoContainer: { width: 112, height: 118, alignItems: 'center', justifyContent: 'center' },
   logoImage: { width: '100%', height: '100%' },
   headerTextContainer: { justifyContent: 'center', flex: 1 },
   statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },

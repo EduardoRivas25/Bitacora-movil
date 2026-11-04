@@ -20,8 +20,7 @@ import { validateEmail, validatePassword, validateRequired } from '../../utils/v
 import ThemeToggle from '../../components/ThemeToggle';
 import PasswordRecoveryScreen from './PasswordRecoveryScreen';
 
-const LOGO_DARK = require('../../../assets/logobitacoraredes.png');
-const LOGO_LIGHT = require('../../../assets/logobitacoraredesmodoclaro.png');
+const LOGIN_LOGO = require('../../../assets/logo-instituto-tecnologico.png');
 const TERMS_SECTIONS = [
   {
     title: 'Uso autorizado',
@@ -53,8 +52,6 @@ export default function LoginScreen() {
   // Extraemos también 'theme' para evaluar si estamos en modo oscuro
   const { colors, theme } = useTheme();
   const isDark = theme === 'dark';
-  const appLogo = isDark ? LOGO_DARK : LOGO_LIGHT;
-  
   const { width } = useWindowDimensions();
   const isTablet = width > 768;
   const { signIn, signUp, verifyEmail, signInGoogle, signInApple, isLoading, authorizationError } = useAuth();
@@ -246,11 +243,8 @@ export default function LoginScreen() {
           </Text>
 
           <View style={styles.navIconContainer}>
-            <View style={[styles.logoBadge, { 
-              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)' 
-            }]}>
-              <Image source={appLogo} style={styles.logoImage} resizeMode="contain" />
+            <View style={styles.logoBadge}>
+              <Image source={LOGIN_LOGO} style={styles.logoImage} resizeMode="contain" />
             </View>
           </View>
 
@@ -585,15 +579,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     lineHeight: 34,
   },
-  navIconContainer: { alignItems: 'center', marginBottom: 26 },
+  navIconContainer: { alignItems: 'center', marginBottom: 20 },
   logoBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    borderWidth: 1,
+    width: 220,
+    height: 214,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 8,
   },
   logoImage: { width: '100%', height: '100%' },
   errorContainer: {
