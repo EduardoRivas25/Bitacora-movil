@@ -104,11 +104,16 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     overflow: 'hidden',
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.35,
-    shadowRadius: 30,
     elevation: 20,
+    ...Platform.select({
+      web: { boxShadow: '0 16px 30px rgba(0,0,0,0.35)' },
+      default: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 16 },
+        shadowOpacity: 0.35,
+        shadowRadius: 30,
+      },
+    }),
   },
   modalContent: {
     maxHeight: '100%',

@@ -29,7 +29,7 @@ export async function generateAndShareReport(input: {
     printWindow.document.title = 'Preparando reporte PDF';
     printWindow.document.body.textContent = 'Preparando el reporte con los datos actuales...';
     try {
-      const dataset = await fetchReportDataset();
+      const dataset = await fetchReportDataset(input.area);
       const html = createReportHtml(dataset, input.area, input.from, input.to, input.createdBy);
       if (printWindow.closed) {
         throw new Error('Se cerró la ventana del reporte antes de terminar.');
@@ -48,9 +48,9 @@ export async function generateAndShareReport(input: {
     return;
   }
 
-  const dataset = await fetchReportDataset();
+  const dataset = await fetchReportDataset(input.area);
   const html = createReportHtml(dataset, input.area, input.from, input.to, input.createdBy);
-  const file = await Print.printToFileAsync({ html });
+  const file = await Print.printToFileAsync({ html, width: 842, height: 595 });
   if (!(await Sharing.isAvailableAsync())) {
     throw new Error('Compartir archivos no está disponible en este dispositivo.');
   }

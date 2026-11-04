@@ -5,7 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import GlassModal from '../../components/ui/GlassModal';
-import { useTheme } from '../../contexts/ThemeContext';
+import { useTheme, type ThemeColors } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import * as api from '../../services/api';
 import { Incident, Maintenance, Device, Building } from '../../types';
@@ -40,6 +40,7 @@ function formatEventDateTime(value: string) {
 
 export default function IncidentScreen() {
   const { colors, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(colors, isDark), [colors, isDark]);
   const { user } = useAuth();
   const canWriteIncidents = canManageIncidents(user);
   const canDeleteRecords = isAdministrator(user);
@@ -173,18 +174,18 @@ export default function IncidentScreen() {
   });
 
   const severityConfig: Record<string, { color: string; bg: string; label: string; icon: keyof typeof Feather.glyphMap }> = {
-    critical: { color: '#FF453A', bg: 'rgba(255, 69, 58, 0.12)', label: 'CRÍTICO', icon: 'zap' },
-    high: { color: '#FF9F0A', bg: 'rgba(255, 159, 10, 0.12)', label: 'ALTO', icon: 'alert-triangle' },
-    medium: { color: '#FFD60A', bg: 'rgba(255, 214, 10, 0.12)', label: 'MEDIO', icon: 'alert-circle' },
-    low: { color: '#30D158', bg: 'rgba(48, 209, 88, 0.12)', label: 'BAJO', icon: 'info' },
+    critical: { color: isDark ? '#FF453A' : '#B42318', bg: isDark ? 'rgba(255, 69, 58, 0.12)' : '#E7D1CE', label: 'CRÍTICO', icon: 'zap' },
+    high: { color: isDark ? '#FF9F0A' : '#915400', bg: isDark ? 'rgba(255, 159, 10, 0.12)' : '#E7D8BF', label: 'ALTO', icon: 'alert-triangle' },
+    medium: { color: isDark ? '#FFD60A' : '#766000', bg: isDark ? 'rgba(255, 214, 10, 0.12)' : '#E4DCBC', label: 'MEDIO', icon: 'alert-circle' },
+    low: { color: isDark ? '#30D158' : '#176B3C', bg: isDark ? 'rgba(48, 209, 88, 0.12)' : '#CFE2D5', label: 'BAJO', icon: 'info' },
   };
   const statusConfig: Record<string, { color: string; label: string }> = {
-    open: { color: '#FF453A', label: 'Abierto' }, in_progress: { color: '#FF9F0A', label: 'En progreso' }, resolved: { color: '#30D158', label: 'Resuelto' },
+    open: { color: isDark ? '#FF453A' : '#B42318', label: 'Abierto' }, in_progress: { color: isDark ? '#FF9F0A' : '#915400', label: 'En progreso' }, resolved: { color: isDark ? '#30D158' : '#176B3C', label: 'Resuelto' },
   };
   const maintTypeConfig: Record<string, { color: string; icon: keyof typeof Feather.glyphMap; label: string }> = {
-    preventive: { color: '#0A84FF', icon: 'tool', label: 'Preventivo' }, firmware: { color: '#BF5AF2', icon: 'download-cloud', label: 'Firmware' },
-    cleaning: { color: '#64D2FF', icon: 'wind', label: 'Limpieza' }, ups_battery: { color: '#FFD60A', icon: 'battery-charging', label: 'UPS / Baterías' },
-    audit: { color: '#30D158', icon: 'clipboard', label: 'Auditoría' },
+    preventive: { color: isDark ? '#0A84FF' : '#155E9B', icon: 'tool', label: 'Preventivo' }, firmware: { color: isDark ? '#BF5AF2' : '#69409B', icon: 'download-cloud', label: 'Firmware' },
+    cleaning: { color: isDark ? '#64D2FF' : '#08677D', icon: 'wind', label: 'Limpieza' }, ups_battery: { color: isDark ? '#FFD60A' : '#766000', icon: 'battery-charging', label: 'UPS / Baterías' },
+    audit: { color: isDark ? '#30D158' : '#176B3C', icon: 'clipboard', label: 'Auditoría' },
   };
 
   const handleSaveIncident = async () => {
@@ -481,12 +482,12 @@ export default function IncidentScreen() {
                         </TouchableOpacity>}
                         {canWriteIncidents && inc.status !== 'resolved' && (
                           <TouchableOpacity 
-                            style={[styles.resolveBtn, { backgroundColor: isDark ? 'rgba(48, 209, 88, 0.12)' : 'rgba(48, 209, 88, 0.1)', borderColor: 'rgba(48, 209, 88, 0.3)' }]} 
+                            style={[styles.resolveBtn, { backgroundColor: isDark ? 'rgba(48, 209, 88, 0.12)' : '#CFE2D5', borderColor: isDark ? 'rgba(48, 209, 88, 0.3)' : '#719E83' }]}
                             activeOpacity={0.7} 
                             onPress={() => openActionModal(inc, 'resolution')}
                           >
-                            <Feather name="check-circle" size={13} color="#30D158" />
-                            <Text style={styles.resolveBtnText}>Resolver</Text>
+                            <Feather name="check-circle" size={13} color={isDark ? '#30D158' : '#176B3C'} />
+                            <Text style={[styles.resolveBtnText, !isDark && { color: '#176B3C' }]}>Resolver</Text>
                           </TouchableOpacity>
                         )}
                         {canDeleteRecords && <TouchableOpacity style={[styles.deleteBtn, { backgroundColor: colors.chipBg }]} activeOpacity={0.7} onPress={() => handleDeleteIncident(inc.id)}>
@@ -848,60 +849,60 @@ export default function IncidentScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ThemeColors, isDark: boolean) => StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingTop: 24, paddingBottom: 110 },
   innerWrapper: { maxWidth: 1200, width: '100%', alignSelf: 'center' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18, flexWrap: 'wrap', gap: 10 },
   headerBadge: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#FF453A', letterSpacing: 1.5, marginBottom: 2 },
-  headerTitle: { fontFamily: 'Poppins_700Bold', fontSize: 24, color: '#FFFFFF', letterSpacing: 0.3 },
-  headerSubtitle: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: 'rgba(255, 255, 255, 0.45)', marginTop: 2 },
+  headerTitle: { fontFamily: 'Poppins_700Bold', fontSize: 24, color: colors.textPrimary, letterSpacing: 0.3 },
+  headerSubtitle: { fontFamily: 'Poppins_400Regular', fontSize: 12, color: colors.textTertiary, marginTop: 2 },
   headerButtons: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   reportButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 11, backgroundColor: 'rgba(255, 69, 58, 0.12)', borderWidth: 1, borderColor: 'rgba(255, 69, 58, 0.3)' },
   reportButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: '#FF453A' },
   scheduleButton: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 11, backgroundColor: 'rgba(10, 132, 255, 0.12)', borderWidth: 1, borderColor: 'rgba(10, 132, 255, 0.3)' },
   scheduleButtonText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: '#0A84FF' },
   filtersRow: { gap: 8, marginBottom: 18 },
-  filterChip: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 15, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)' },
-  filterChipActive: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
-  filterChipText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.6)' },
-  filterChipTextActive: { color: '#000000' },
+  filterChip: { paddingHorizontal: 13, paddingVertical: 6, borderRadius: 15, backgroundColor: colors.chipBg, borderWidth: 1, borderColor: colors.cardBorder },
+  filterChipActive: { backgroundColor: colors.buttonBg, borderColor: colors.buttonBg },
+  filterChipText: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: colors.textSecondary },
+  filterChipTextActive: { color: colors.buttonText },
   desktopSplit: { flexDirection: 'column' },
   desktopSplitActive: { flexDirection: 'row', gap: 20 },
   columnWrapper: { width: '100%' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  sectionTitle: { fontFamily: 'Poppins_700Bold', fontSize: 15, color: '#FFFFFF' },
-  sectionCount: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: 'rgba(255, 255, 255, 0.4)' },
+  sectionTitle: { fontFamily: 'Poppins_700Bold', fontSize: 15, color: colors.textPrimary },
+  sectionCount: { fontFamily: 'Poppins_600SemiBold', fontSize: 12, color: colors.textSecondary },
   cardList: { gap: 12 },
-  emptyText: { fontFamily: 'Poppins_400Regular', fontSize: 12.5, color: 'rgba(255, 255, 255, 0.4)', fontStyle: 'italic', paddingVertical: 10 },
-  incidentCard: { padding: 16, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
+  emptyText: { fontFamily: 'Poppins_400Regular', fontSize: 12.5, color: colors.textSecondary, fontStyle: 'italic', paddingVertical: 10 },
+  incidentCard: { padding: 16, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: colors.cardBorder, backgroundColor: colors.cardBg },
   incTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   sevBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7 },
   sevText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, letterSpacing: 0.5 },
   statBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 2.5, borderRadius: 6, borderWidth: 1 },
   statDot: { width: 5, height: 5, borderRadius: 2.5 },
   statText: { fontFamily: 'Poppins_600SemiBold', fontSize: 9.5 },
-  incTitle: { fontFamily: 'Poppins_700Bold', fontSize: 14.5, color: '#FFFFFF', marginBottom: 3 },
-  incDesc: { fontFamily: 'Poppins_400Regular', fontSize: 12.5, color: 'rgba(255, 255, 255, 0.6)', lineHeight: 17, marginBottom: 8 },
-  incMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 10, paddingTop: 8, borderTopWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' },
+  incTitle: { fontFamily: 'Poppins_700Bold', fontSize: 14.5, color: colors.textPrimary, marginBottom: 3 },
+  incDesc: { fontFamily: 'Poppins_400Regular', fontSize: 12.5, color: colors.textSecondary, lineHeight: 17, marginBottom: 8 },
+  incMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 10, paddingTop: 8, borderTopWidth: 1, borderColor: colors.cardBorder },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, color: 'rgba(255, 255, 255, 0.5)' },
+  metaText: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, color: colors.textSecondary },
   actionHistory: { gap: 8, borderTopWidth: 1, paddingTop: 10, marginBottom: 10 },
   actionHistoryTitle: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, marginBottom: 2 },
   incActions: { flexDirection: 'row', gap: 6, alignItems: 'center' },
   resolveBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 7, backgroundColor: 'rgba(48, 209, 88, 0.12)', borderWidth: 1, borderColor: 'rgba(48, 209, 88, 0.3)' },
   resolveBtnText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: '#30D158' },
   deleteBtn: { padding: 5 },
-  maintCard: { padding: 16, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', backgroundColor: 'rgba(0, 0, 0, 0.5)' },
+  maintCard: { padding: 16, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: colors.cardBorder, backgroundColor: colors.cardBg },
   maintTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   maintTypeBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7, borderWidth: 1 },
   maintTypeText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5 },
-  maintDate: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.5)' },
-  maintTitle: { fontFamily: 'Poppins_700Bold', fontSize: 14.5, color: '#FFFFFF', marginBottom: 6 },
-  maintMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingTop: 8, borderTopWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' },
-  maintNotes: { fontFamily: 'Poppins_400Regular', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.5)', fontStyle: 'italic', marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderColor: 'rgba(255, 255, 255, 0.06)' },
-  inputLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: 'rgba(255, 255, 255, 0.7)', marginBottom: 5 },
-  input: { fontFamily: 'Poppins_400Regular', backgroundColor: 'rgba(255, 255, 255, 0.04)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', borderRadius: 13, padding: 12, color: '#FFFFFF', fontSize: 13.5, marginBottom: 12, ...Platform.select({ web: { outlineStyle: 'none' } }) as any },
+  maintDate: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: colors.textSecondary },
+  maintTitle: { fontFamily: 'Poppins_700Bold', fontSize: 14.5, color: colors.textPrimary, marginBottom: 6 },
+  maintMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingTop: 8, borderTopWidth: 1, borderColor: colors.cardBorder },
+  maintNotes: { fontFamily: 'Poppins_400Regular', fontSize: 11.5, color: colors.textSecondary, fontStyle: 'italic', marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderColor: colors.cardBorder },
+  inputLabel: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: colors.textSecondary, marginBottom: 5 },
+  input: { fontFamily: 'Poppins_400Regular', backgroundColor: colors.chipBg, borderWidth: 1, borderColor: colors.cardBorder, borderRadius: 13, padding: 12, color: colors.textPrimary, fontSize: 13.5, marginBottom: 12, ...Platform.select({ web: { outlineStyle: 'none' } }) as any },
   inputError: { borderColor: '#FF453A', backgroundColor: 'rgba(255, 69, 58, 0.06)' },
   fieldErrorText: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, color: '#FF453A', marginTop: -8, marginBottom: 10, marginLeft: 4 },
   modalErrorContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 69, 58, 0.12)', borderWidth: 1, borderColor: 'rgba(255, 69, 58, 0.3)', borderRadius: 11, padding: 10, marginBottom: 14, gap: 8 },
@@ -909,23 +910,23 @@ const styles = StyleSheet.create({
   formRow: { flexDirection: 'row', gap: 10 },
   textArea: { height: 55, textAlignVertical: 'top' },
   severityRow: { flexDirection: 'row', gap: 6, marginBottom: 12, flexWrap: 'wrap' },
-  severityOption: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)' },
-  severityOptionText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: 'rgba(255, 255, 255, 0.5)' },
-  typeOption: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: 'rgba(255, 255, 255, 0.05)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', marginRight: 6 },
-  typeOptionText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: 'rgba(255, 255, 255, 0.5)' },
-  buildingHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, borderRadius: 9, backgroundColor: 'rgba(255, 255, 255, 0.04)', marginBottom: 3 },
-  buildingName: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: '#FFFFFF', flex: 1 },
-  buildingCount: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, color: 'rgba(255, 255, 255, 0.4)' },
+  severityOption: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: colors.chipBg, borderWidth: 1, borderColor: colors.cardBorder },
+  severityOptionText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: colors.textSecondary },
+  typeOption: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: colors.chipBg, borderWidth: 1, borderColor: colors.cardBorder, marginRight: 6 },
+  typeOptionText: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: colors.textSecondary },
+  buildingHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 8, borderRadius: 9, backgroundColor: colors.chipBg, marginBottom: 3 },
+  buildingName: { fontFamily: 'Poppins_600SemiBold', fontSize: 11.5, color: colors.textPrimary, flex: 1 },
+  buildingCount: { fontFamily: 'Poppins_400Regular', fontSize: 10.5, color: colors.textSecondary },
   categoryGroup: { marginLeft: 14, marginBottom: 4 },
   categoryHeader: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 3 },
-  categoryName: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: 'rgba(255, 255, 255, 0.5)' },
+  categoryName: { fontFamily: 'Poppins_600SemiBold', fontSize: 10.5, color: colors.textSecondary },
   deviceOption: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 5, paddingHorizontal: 7, borderRadius: 7, marginBottom: 2 },
   deviceOptionActive: { backgroundColor: 'rgba(10, 132, 255, 0.08)' },
   deviceOptionText: { flex: 1 },
-  deviceOptionName: { fontFamily: 'Poppins_400Regular', fontSize: 11.5, color: '#FFFFFF' },
-  deviceOptionIp: { fontFamily: 'Poppins_400Regular', fontSize: 9.5, color: 'rgba(255, 255, 255, 0.4)' },
+  deviceOptionName: { fontFamily: 'Poppins_400Regular', fontSize: 11.5, color: colors.textPrimary },
+  deviceOptionIp: { fontFamily: 'Poppins_400Regular', fontSize: 9.5, color: colors.textSecondary },
   submitIncident: { backgroundColor: '#FF453A', paddingVertical: 14, borderRadius: 13, alignItems: 'center', marginTop: 6 },
-  submitIncidentText: { fontFamily: 'Poppins_600SemiBold', fontSize: 13.5, color: '#FFFFFF' },
+  submitIncidentText: { fontFamily: 'Poppins_600SemiBold', fontSize: 13.5, color: colors.textPrimary },
   submitMaint: { backgroundColor: '#0A84FF', paddingVertical: 14, borderRadius: 13, alignItems: 'center', marginTop: 6 },
-  submitMaintText: { fontFamily: 'Poppins_600SemiBold', fontSize: 13.5, color: '#FFFFFF' },
+  submitMaintText: { fontFamily: 'Poppins_600SemiBold', fontSize: 13.5, color: colors.textPrimary },
 });

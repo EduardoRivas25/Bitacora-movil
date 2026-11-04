@@ -1,6 +1,7 @@
 import * as api from './api';
 import * as portsApi from './ports';
 import { Building, Device, DeviceConfig, Incident, Maintenance, SwitchPort } from '../types';
+import { REPORT_LOGO_DATA_URI } from './reportLogoData';
 
 export type ReportArea = 'networks' | 'devices' | 'buildings' | 'incidents' | 'maintenance' | 'activity' | 'complete';
 
@@ -42,23 +43,26 @@ export interface ReportSection {
   rows: ReportRow[];
 }
 
-export async function fetchReportDataset(): Promise<ReportDataset> {
+export async function fetchReportDataset(area: ReportArea): Promise<ReportDataset> {
+  const all = area === 'complete' || area === 'activity';
   const [networks, devices, buildings, incidents, maintenances, configs] = await Promise.all([
-    api.fetchNetworks(true),
-    api.fetchDevices(true),
-    api.fetchBuildings(true),
-    api.fetchIncidents(true),
-    api.fetchMaintenances(true),
-    api.fetchConfigs(true),
+    all || area === 'networks' ? api.fetchNetworks(true) : Promise.resolve([] as ReportDataset['networks']),
+    all || area === 'networks' || area === 'devices' || area === 'buildings' ? api.fetchDevices(true) : Promise.resolve([] as Device[]),
+    all || area === 'buildings' ? api.fetchBuildings(true) : Promise.resolve([] as Building[]),
+    all || area === 'incidents' ? api.fetchIncidents(true) : Promise.resolve([] as Incident[]),
+    all || area === 'maintenance' ? api.fetchMaintenances(true) : Promise.resolve([] as Maintenance[]),
+    all ? api.fetchConfigs(true) : Promise.resolve([] as DeviceConfig[]),
   ]);
 
   let ports: SwitchPort[] = [];
   let portsError: string | undefined;
-  try {
-    ports = await portsApi.fetchSwitchPorts();
-  } catch (error) {
-    console.warn('No se pudieron incluir los puertos en el reporte:', error);
-    portsError = error instanceof Error ? error.message : 'No se pudo consultar el inventario de puertos.';
+  if (all || area === 'devices') {
+    try {
+      ports = await portsApi.fetchSwitchPorts();
+    } catch (error) {
+      console.warn('No se pudieron incluir los puertos en el reporte:', error);
+      portsError = error instanceof Error ? error.message : 'No se pudo consultar el inventario de puertos.';
+    }
   }
 
   return { networks, devices, buildings, incidents, maintenances, configs, ports, portsError };
@@ -93,44 +97,71 @@ function makeRow(date: string, ...cells: string[]): ReportRow {
   return { date: formatDate(date), cells };
 }
 
-export function getReportSummary(dataset: ReportDataset): ReportSummaryItem[] {
-  const subnets = dataset.networks.reduce((total, network) => total + network.subnets.length, 0);
-  return [
-    { label: 'Redes base', value: String(dataset.networks.length), tone: 'blue' },
-    { label: 'Subredes / VLAN', value: String(subnets), tone: 'blue' },
-    { label: 'Dispositivos', value: String(dataset.devices.length), tone: 'green' },
-    { label: 'Incidentes abiertos', value: String(dataset.incidents.filter(item => item.status !== 'resolved').length), tone: 'orange' },
-    { label: 'Mantenimientos', value: String(dataset.maintenances.length), tone: 'blue' },
-    { label: 'Puertos registrados', value: dataset.portsError ? 'No disponibles' : String(dataset.ports.length), tone: dataset.portsError ? 'muted' : 'green' },
-  ];
-}
+export function getReportSummary(dataset: ReportDataset, area: ReportArea, from: string, to: string): ReportSummaryItem[] {
+  const subnets = dataset.networks.flatMap(network => network.subnets);
+  const incidents = dataset.incidents.filter(item => inDateRange(item.event_at || item.created_at, from, to));
+  const maintenances = dataset.maintenances.filter(item => inDateRange(item.scheduled_date, from, to));
+  const departmentCount = dataset.buildings.reduce((total, building) => total + building.departments.length, 0);
+  const portCount = dataset.portsError ? 'No disponible' : String(dataset.ports.length);
+  const activityRows = () => getReportSections(dataset, 'activity', from, to)[0].rows;
 
-function getPeriodSummary(dataset: ReportDataset, from: string, to: string): ReportSummaryItem[] {
-  const incidents = dataset.incidents.filter(incident => inDateRange(incident.event_at || incident.created_at, from, to));
-  const openIncidents = incidents.filter(incident => incident.status !== 'resolved').length;
-  const maintenance = dataset.maintenances.filter(item => inDateRange(item.scheduled_date, from, to));
-  const pendingMaintenance = maintenance.filter(item => item.status === 'scheduled').length;
-  const ports = dataset.ports.filter(port => inDateRange(port.created_at, from, to));
-  const activity = getReportSections(dataset, 'activity', from, to)[0].rows.length;
-
-  return [
-    { label: 'Redes principales', value: String(dataset.networks.filter(item => inDateRange(item.created_at, from, to)).length), tone: 'blue' },
-    {
-      label: 'Subredes / VLAN',
-      value: String(dataset.networks.reduce((count, network) => count + network.subnets.filter(item => inDateRange(item.created_at, from, to)).length, 0)),
-      tone: 'blue',
-    },
-    { label: 'Dispositivos', value: String(dataset.devices.filter(item => inDateRange(item.created_at, from, to)).length), tone: 'green' },
-    { label: 'Edificios', value: String(dataset.buildings.filter(item => inDateRange(readTimestamp(item, 'created_at'), from, to)).length), tone: 'blue' },
-    { label: 'Incidentes', value: `${incidents.length} · ${openIncidents} activos`, tone: openIncidents ? 'orange' : 'green' },
-    { label: 'Mantenimientos', value: `${maintenance.length} · ${pendingMaintenance} programados`, tone: pendingMaintenance ? 'orange' : 'green' },
-    {
-      label: 'Puertos registrados',
-      value: dataset.portsError ? 'No disponibles' : `${ports.length} · ${ports.filter(port => port.status === 'available').length} libres`,
-      tone: dataset.portsError ? 'muted' : 'green',
-    },
-    { label: 'Movimientos registrados', value: String(activity), tone: 'blue' },
-  ];
+  switch (area) {
+    case 'networks':
+      return [
+        { label: 'Redes principales', value: String(dataset.networks.length), tone: 'blue' },
+        { label: 'Subredes / VLAN', value: String(subnets.length), tone: 'blue' },
+        { label: 'Dispositivos asociados', value: String(dataset.devices.filter(device => subnets.some(subnet => subnet.id === device.subnet_id)).length), tone: 'green' },
+        { label: 'Redes sin subredes', value: String(dataset.networks.filter(network => network.subnets.length === 0).length), tone: 'muted' },
+      ];
+    case 'devices':
+      return [
+        { label: 'Dispositivos registrados', value: String(dataset.devices.length), tone: 'blue' },
+        { label: 'Equipos con puertos', value: dataset.portsError ? 'No disponible' : String(new Set(dataset.ports.map(port => port.switch_device_id)).size), tone: dataset.portsError ? 'muted' : 'blue' },
+        { label: 'Puertos registrados', value: portCount, tone: dataset.portsError ? 'muted' : 'green' },
+        { label: 'Puertos en uso', value: dataset.portsError ? 'No disponible' : String(dataset.ports.filter(port => port.status === 'in_use').length), tone: dataset.portsError ? 'muted' : 'orange' },
+      ];
+    case 'buildings':
+      return [
+        { label: 'Edificios registrados', value: String(dataset.buildings.length), tone: 'blue' },
+        { label: 'Departamentos', value: String(departmentCount), tone: 'blue' },
+        { label: 'Equipos ubicados', value: String(dataset.devices.filter(device => dataset.buildings.some(building => building.id === device.building_id)).length), tone: 'green' },
+        { label: 'Edificios sin departamentos', value: String(dataset.buildings.filter(building => building.departments.length === 0).length), tone: 'muted' },
+      ];
+    case 'incidents':
+      return [
+        { label: 'Incidentes del periodo', value: String(incidents.length), tone: 'blue' },
+        { label: 'Abiertos', value: String(incidents.filter(item => item.status === 'open').length), tone: 'red' },
+        { label: 'En progreso', value: String(incidents.filter(item => item.status === 'in_progress').length), tone: 'orange' },
+        { label: 'Resueltos', value: String(incidents.filter(item => item.status === 'resolved').length), tone: 'green' },
+      ];
+    case 'maintenance':
+      return [
+        { label: 'Mantenimientos del periodo', value: String(maintenances.length), tone: 'blue' },
+        { label: 'Programados', value: String(maintenances.filter(item => item.status === 'scheduled').length), tone: 'orange' },
+        { label: 'En progreso', value: String(maintenances.filter(item => item.status === 'in_progress').length), tone: 'blue' },
+        { label: 'Completados', value: String(maintenances.filter(item => item.status === 'completed').length), tone: 'green' },
+      ];
+    case 'activity': {
+      const rows = activityRows();
+      return [
+        { label: 'Movimientos del periodo', value: String(rows.length), tone: 'blue' },
+        { label: 'Áreas con actividad', value: String(new Set(rows.map(row => row.cells[1])).size), tone: 'blue' },
+        { label: 'Incidentes y seguimientos', value: String(rows.filter(row => row.cells[1] === 'Incidentes').length), tone: 'orange' },
+        { label: 'Mantenimientos', value: String(rows.filter(row => row.cells[1] === 'Mantenimientos').length), tone: 'green' },
+      ];
+    }
+    case 'complete':
+      return [
+        { label: 'Redes principales', value: String(dataset.networks.length), tone: 'blue' },
+        { label: 'Subredes / VLAN', value: String(subnets.length), tone: 'blue' },
+        { label: 'Dispositivos', value: String(dataset.devices.length), tone: 'green' },
+        { label: 'Edificios', value: String(dataset.buildings.length), tone: 'blue' },
+        { label: 'Incidentes del periodo', value: String(incidents.length), tone: 'orange' },
+        { label: 'Mantenimientos del periodo', value: String(maintenances.length), tone: 'blue' },
+        { label: 'Puertos registrados', value: portCount, tone: dataset.portsError ? 'muted' : 'green' },
+        { label: 'Movimientos del periodo', value: String(activityRows().length), tone: 'muted' },
+      ];
+  }
 }
 
 function getReportSections(dataset: ReportDataset, area: ReportArea, from: string, to: string): ReportSection[] {
@@ -138,31 +169,26 @@ function getReportSections(dataset: ReportDataset, area: ReportArea, from: strin
   const segmentationRows: ReportRow[] = [];
 
   dataset.networks.forEach(network => {
-    if (inDateRange(network.created_at, from, to)) {
-      networkRows.push(makeRow(
-        network.created_at,
-        network.name,
-        `${network.address}/${network.cidr}`,
-        String(network.subnets.length),
-        network.description || 'Sin descripción',
-      ));
-    }
+    networkRows.push(makeRow(
+      network.created_at,
+      network.name,
+      `${network.address}/${network.cidr}`,
+      String(network.subnets.length),
+      network.description || 'Sin descripción',
+    ));
     network.subnets.forEach(subnet => {
-      if (inDateRange(subnet.created_at, from, to)) {
-        segmentationRows.push(makeRow(
-          subnet.created_at,
-          subnet.name,
-          `${subnet.address}/${subnet.cidr}`,
-          network.name,
-          String(subnet.device_count ?? 0),
-          subnet.description || 'Sin descripción',
-        ));
-      }
+      segmentationRows.push(makeRow(
+        subnet.created_at,
+        subnet.name,
+        `${subnet.address}/${subnet.cidr}`,
+        network.name,
+        String(subnet.device_count ?? 0),
+        subnet.description || 'Sin descripción',
+      ));
     });
   });
 
   const deviceRows = dataset.devices
-    .filter(device => inDateRange(device.created_at, from, to))
     .map(device => makeRow(
       device.created_at,
       device.name,
@@ -173,24 +199,31 @@ function getReportSections(dataset: ReportDataset, area: ReportArea, from: strin
       [device.network_name, device.subnet_name].filter(Boolean).join(' / ') || 'No asignada',
     ));
 
-  const buildingRows = dataset.buildings
-    .filter(building => inDateRange(readTimestamp(building, 'created_at'), from, to))
-    .map(building => makeRow(
-      readTimestamp(building, 'created_at'),
-      building.name,
+  const buildingRows: ReportRow[] = dataset.buildings.map(building => ({
+    date: building.name,
+    cells: [
       building.code,
       building.description || 'No capturada',
       building.departments.map(department => `${department.name} (${department.floor})`).join(', ') || 'No capturados',
-      `${building.latitude}, ${building.longitude}`,
-    ));
+      String(dataset.devices.filter(device => device.building_id === building.id).length),
+      typeof building.latitude === 'number' && typeof building.longitude === 'number'
+        ? `${building.latitude}, ${building.longitude}` : 'No capturadas',
+    ],
+  }));
+  const departmentRows: ReportRow[] = dataset.buildings.flatMap(building =>
+    building.departments.map(department => ({
+      date: building.name,
+      cells: [department.name, department.floor || 'No capturado'],
+    })),
+  );
 
   const incidentRows = dataset.incidents
     .filter(incident => inDateRange(incident.event_at || incident.created_at, from, to))
     .map(incident => makeRow(
       incident.event_at || incident.created_at,
       incident.title,
-      incident.severity,
-      incident.status,
+      { critical: 'Crítica', high: 'Alta', medium: 'Media', low: 'Baja' }[incident.severity],
+      { open: 'Abierto', in_progress: 'En progreso', resolved: 'Resuelto' }[incident.status],
       incident.description,
       incident.location || 'No capturada',
       incident.reported_by || 'No capturado',
@@ -203,15 +236,16 @@ function getReportSections(dataset: ReportDataset, area: ReportArea, from: strin
       maintenance.scheduled_date,
       maintenance.title,
       maintenance.type_label,
-      maintenance.status,
-      maintenance.device_name,
-      maintenance.technician,
+      { scheduled: 'Programado', in_progress: 'En progreso', completed: 'Completado' }[maintenance.status],
+      maintenance.device_name || 'No capturado',
+      maintenance.location || 'No capturada',
+      maintenance.technician || 'No capturado',
       `${maintenance.scheduled_date} · ${maintenance.time_window}`,
+      { none: 'Sin impacto', partial: 'Parcial', full: 'Total' }[maintenance.impact],
       maintenance.notes || 'Sin notas',
     ));
 
   const configRows = dataset.configs
-    .filter(config => inDateRange(config.created_at, from, to))
     .map(config => makeRow(
       config.created_at,
       config.name,
@@ -223,9 +257,8 @@ function getReportSections(dataset: ReportDataset, area: ReportArea, from: strin
       config.description || 'Sin descripción',
     ));
 
-  const switchDevices = dataset.devices.filter(device => /switch|conmutador/i.test(device.name));
+  const switchDevices = dataset.devices;
   const portRows = dataset.ports
-    .filter(port => inDateRange(port.created_at, from, to))
     .map(port => {
       const switchDevice = switchDevices.find(device => device.id === port.switch_device_id);
       return makeRow(
@@ -312,53 +345,44 @@ function getReportSections(dataset: ReportDataset, area: ReportArea, from: strin
       {
         title: 'Puertos por switch',
         columns: ['Fecha', 'Switch', 'Puerto', 'Estado', 'Equipo conectado', 'Notas'],
-        rows: dataset.portsError && !portRows.length ? [makeRow('', 'No capturado')] : portRows,
+        rows: portRows,
       },
     ],
     buildings: [
-      { title: 'Edificios y departamentos', columns: ['Fecha', 'Edificio', 'Código', 'Descripción', 'Departamentos', 'Coordenadas'], rows: buildingRows },
+      { title: 'Edificios y departamentos', columns: ['Edificio', 'Código', 'Descripción', 'Departamentos', 'Equipos ubicados', 'Coordenadas'], rows: buildingRows },
+      { title: 'Detalle de departamentos', columns: ['Edificio', 'Departamento', 'Piso'], rows: departmentRows },
     ],
     incidents: [
       { title: 'Incidentes', columns: ['Fecha', 'Incidente', 'Severidad', 'Estado', 'Descripción', 'Ubicación', 'Reportado por', 'Equipos afectados'], rows: incidentRows },
     ],
     maintenance: [
-      { title: 'Mantenimientos', columns: ['Fecha programada', 'Actividad', 'Tipo', 'Estado', 'Equipo', 'Técnico', 'Horario', 'Notas'], rows: maintenanceRows },
+      { title: 'Mantenimientos', columns: ['Fecha programada', 'Actividad', 'Tipo', 'Estado', 'Equipo', 'Ubicación', 'Técnico', 'Horario', 'Impacto', 'Notas'], rows: maintenanceRows },
     ],
     activity: [activitySection],
     complete: [
-      { title: 'Edificios', columns: ['Fecha', 'Edificio', 'Código', 'Descripción', 'Departamentos', 'Coordenadas'], rows: buildingRows },
+      { title: 'Edificios', columns: ['Edificio', 'Código', 'Descripción', 'Departamentos', 'Equipos ubicados', 'Coordenadas'], rows: buildingRows },
+      { title: 'Departamentos', columns: ['Edificio', 'Departamento', 'Piso'], rows: departmentRows },
       { title: 'Switches y dispositivos', columns: ['Fecha', 'Dispositivo', 'Fabricante', 'IPv4', 'MAC', 'Ubicación', 'Red / subred'], rows: deviceRows },
       {
         title: 'Puertos por switch',
         columns: ['Fecha', 'Switch', 'Puerto', 'Estado', 'Equipo conectado', 'Notas'],
-        rows: dataset.portsError && !portRows.length ? [makeRow('', 'No capturado')] : portRows,
+        rows: portRows,
       },
       { title: 'Redes principales', columns: ['Fecha', 'Red', 'Dirección / CIDR', 'Subredes', 'Descripción'], rows: networkRows },
       { title: 'Segmentaciones y VLAN', columns: ['Fecha', 'Subred / VLAN', 'Dirección / CIDR', 'Red principal', 'Dispositivos', 'Descripción'], rows: segmentationRows },
       { title: 'Incidentes', columns: ['Fecha', 'Incidente', 'Severidad', 'Estado', 'Descripción', 'Ubicación', 'Reportado por', 'Equipos afectados'], rows: incidentRows },
-      { title: 'Mantenimientos', columns: ['Fecha programada', 'Actividad', 'Tipo', 'Estado', 'Equipo', 'Técnico', 'Horario', 'Notas'], rows: maintenanceRows },
+      { title: 'Mantenimientos', columns: ['Fecha programada', 'Actividad', 'Tipo', 'Estado', 'Equipo', 'Ubicación', 'Técnico', 'Horario', 'Impacto', 'Notas'], rows: maintenanceRows },
       { title: 'Configuraciones y documentos', columns: ['Fecha', 'Documento', 'Equipo', 'Tipo', 'Archivo', 'Tamaño', 'Autor', 'Descripción'], rows: configRows },
       activitySection,
     ],
   };
 
-  if (area !== 'complete' && area !== 'activity') {
-    const activityAreas: Record<Exclude<ReportArea, 'activity' | 'complete'>, string[]> = {
-      networks: ['Redes', 'Segmentación'],
-      devices: ['Dispositivos', 'Puertos'],
-      buildings: ['Edificios'],
-      incidents: ['Incidentes'],
-      maintenance: ['Mantenimientos'],
-    };
-    const relevantActivity = activitySection.rows.filter(row => activityAreas[area].includes(row.cells[2]));
-    return [...sections[area], { ...activitySection, rows: relevantActivity }];
-  }
   return sections[area];
 }
 
 export function countReportRows(dataset: ReportDataset, area: ReportArea, from: string, to: string): number {
   return getReportSections(dataset, area, from, to)
-    .reduce((total, section) => total + section.rows.filter(row => row.cells[0] !== 'No capturado').length, 0);
+    .reduce((total, section) => total + section.rows.length, 0);
 }
 
 function escapeHtml(value: string): string {
@@ -372,16 +396,9 @@ function escapeHtml(value: string): string {
 }
 
 function createTable(section: ReportSection): string {
-  if (!section.rows.length) {
-    return '<p class="empty">No hay registros en el periodo seleccionado.</p>';
-  }
-
   return `<table><thead><tr>${section.columns.map(column => `<th>${escapeHtml(column)}</th>`).join('')}</tr></thead>
     <tbody>${section.rows.map(row => {
       const cells = [row.date, ...row.cells];
-      if (cells.length === 2 && cells[1] === 'No capturado') {
-        return `<tr><td>${escapeHtml(cells[0])}</td><td colspan="${section.columns.length - 1}">${escapeHtml(cells[1])}</td></tr>`;
-      }
       return `<tr>${cells.map(cell => `<td>${escapeHtml(cell || 'No capturado')}</td>`).join('')}</tr>`;
     }).join('')}</tbody></table>`;
 }
@@ -394,7 +411,8 @@ export function createReportHtml(
   createdBy: string,
 ): string {
   const areaTitle = REPORT_AREAS.find(item => item.id === area)?.title || 'Bitácora';
-  const summary = getPeriodSummary(dataset, from, to);
+  const isInventoryReport = area === 'networks' || area === 'devices' || area === 'buildings';
+  const summary = getReportSummary(dataset, area, from, to);
   const sections = getReportSections(dataset, area, from, to);
   const activitySection = sections.find(section => section.title === 'Actividad registrada en el periodo');
   const detailSections = sections.filter(section => section !== activitySection);
@@ -402,78 +420,97 @@ export function createReportHtml(
   const emptySections = sections.filter(section => section.rows.length === 0);
   const detailCount = detailSections.reduce((total, section) => total + section.rows.length, 0);
   const activityCount = activitySection?.rows.length || 0;
-  const content = populatedSections.map(section => `
+  const content = populatedSections.map((section, index) => `
     <section class="${section === activitySection && detailCount > 0 ? 'break-before' : ''}">
-      <h2>${escapeHtml(section.title)} <span>${section.rows.length} registro(s)</span></h2>
+      <div class="section-heading"><span class="section-number">${String(index + 1).padStart(2, '0')}</span><h2>${escapeHtml(section.title)}</h2><span class="section-count">${section.rows.length} registro(s)</span></div>
       ${createTable(section)}
     </section>`).join('');
   const emptyReport = populatedSections.length
     ? ''
-    : '<section class="empty-report"><h2>Sin registros en el periodo</h2><p>No se encontraron datos para el área y las fechas seleccionadas. Prueba con un periodo más amplio.</p></section>';
+    : `<section class="empty-report"><h2>Sin registros ${isInventoryReport ? 'en el inventario' : 'en el periodo'}</h2><p>${isInventoryReport ? 'No hay registros guardados para esta área.' : 'No se encontraron datos para el área y las fechas seleccionadas. Prueba con un periodo más amplio.'}</p></section>`;
   const emptyNote = emptySections.length
-    ? `<p class="coverage">Sin registros en el periodo: ${emptySections.map(section => escapeHtml(section.title)).join(' · ')}.</p>`
+    ? `<p class="coverage">Secciones sin registros: ${emptySections.map(section => escapeHtml(section.title)).join(' · ')}.</p>`
     : '';
-  const periodNarrative = `El periodo contiene ${detailCount} registro(s) de detalle y ${activityCount} movimiento(s) relacionado(s). La actividad disponible se deriva de las fechas y acciones registradas; no representa una auditoría completa de cada edición.`;
-  const warning = dataset.portsError
-    ? `<p class="warning"><strong>Inventario de puertos no disponible.</strong> No se pudo consultar InsForge (${escapeHtml(dataset.portsError)}). Verifica que la migración <code>20261010_create_switch_ports.sql</code> esté aplicada. Las demás secciones sí se generaron.</p>`
+  const reportNarrative = isInventoryReport
+    ? `Inventario actual con ${detailCount} registro(s) de detalle. Incluye los datos existentes al momento de generar el documento, sin filtrar por fecha de creación.`
+    : area === 'activity'
+      ? `Se registraron ${activityCount} movimiento(s) en el periodo. Esta actividad se deriva de fechas y acciones guardadas; no representa una auditoría completa de cada edición.`
+      : area === 'complete'
+        ? `El inventario refleja los registros actuales; incidentes, mantenimientos y ${activityCount} movimiento(s) se muestran según el periodo seleccionado.`
+        : `Se encontraron ${detailCount} registro(s) para esta área en el periodo seleccionado.`;
+  const warning = dataset.portsError && (area === 'devices' || area === 'complete')
+    ? '<p class="warning"><strong>Inventario de puertos no disponible.</strong> No fue posible consultar esta información al generar el documento. Las demás secciones conservan los registros disponibles.</p>'
     : '';
+  const generatedAt = new Date().toLocaleString('es-MX');
   return `<!doctype html><html lang="es"><head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${escapeHtml(areaTitle)} - Bitácora Digital</title>
     <style>
-      @page { size: A4 landscape; margin: 12mm; }
+      @page { size: A4 landscape; margin: 13mm 14mm 15mm; }
       * { box-sizing: border-box; }
-      body { color: #243447; font: 10px Arial, Helvetica, sans-serif; margin: 0; }
-      header { align-items: center; border-bottom: 2px solid #1682c4; display: flex; justify-content: space-between; margin-bottom: 12px; padding: 0 0 9px; }
-      .brand { align-items: center; display: flex; gap: 10px; }
-      .brand-mark { align-items: center; background: #146caf; border-radius: 6px; color: white; display: flex; font-size: 12px; font-weight: bold; height: 34px; justify-content: center; width: 38px; }
-      h1 { color: #135f91; font-size: 18px; margin: 0 0 3px; }
-      .subtitle, .meta { color: #526579; font-size: 9px; margin: 0; }
-      .meta { line-height: 1.7; text-align: right; }
-      h2 { background: #eef5fb; border-left: 3px solid #1778b5; color: #145d91; font-size: 11px; margin: 13px 0 6px; padding: 6px 8px; break-after: avoid; page-break-after: avoid; }
-      h2 span { color: #506579; float: right; font-size: 9px; font-weight: normal; }
+      body { background: #fff; color: #262626; font: 10px Arial, Helvetica, sans-serif; margin: 0; }
+      header { align-items: center; border-bottom: 1px solid #bcbcbc; display: flex; justify-content: space-between; margin-bottom: 16px; padding-bottom: 10px; }
+      .brand { align-items: center; display: flex; gap: 11px; }
+      .brand-logo { display: block; height: 42px; object-fit: contain; width: 42px; }
+      .brand-name { color: #171717; font-size: 15px; font-weight: 700; letter-spacing: -.2px; margin: 0 0 3px; }
+      .brand-caption { color: #666; font-size: 8px; letter-spacing: 1.3px; margin: 0; text-transform: uppercase; }
+      .header-label { border: 1px solid #b8b8b8; border-radius: 4px; color: #333; font-size: 8px; font-weight: 700; letter-spacing: 1px; padding: 6px 9px; text-transform: uppercase; }
+      .overview { align-items: flex-end; display: flex; justify-content: space-between; gap: 24px; margin-bottom: 15px; }
+      .overview-copy { flex: 1; }
+      .eyebrow { color: #666; font-size: 8px; font-weight: 700; letter-spacing: 1.4px; margin: 0 0 5px; text-transform: uppercase; }
+      h1 { color: #171717; font-size: 22px; letter-spacing: -.5px; line-height: 1.15; margin: 0 0 5px; }
+      .overview-subtitle { color: #595959; font-size: 9px; line-height: 1.5; margin: 0; }
+      .meta { border-left: 2px solid #333; min-width: 245px; padding-left: 11px; }
+      .meta-row { display: flex; justify-content: space-between; gap: 14px; line-height: 1.65; }
+      .meta-label { color: #686868; font-size: 8px; }
+      .meta-value { color: #252525; font-size: 8px; font-weight: 700; text-align: right; }
+      .section-heading { align-items: center; background: #ededed; border: 1px solid #d2d2d2; display: flex; gap: 8px; margin: 15px 0 7px; padding: 7px 9px; break-after: avoid; page-break-after: avoid; }
+      .section-number { background: #2b2b2b; border-radius: 3px; color: #fff; font-size: 8px; font-weight: 700; min-width: 21px; padding: 4px; text-align: center; }
+      h2 { color: #222; flex: 1; font-size: 11px; margin: 0; }
+      .section-count { color: #5c5c5c; font-size: 8px; white-space: nowrap; }
       table { border-collapse: collapse; table-layout: auto; width: 100%; }
       thead { display: table-header-group; }
-      th { background: #176ca8; color: #fff; font-size: 8px; font-weight: 700; text-align: left; }
-      th, td { border: 1px solid #d3dce5; overflow-wrap: anywhere; padding: 5px 6px; vertical-align: top; }
-      td { font-size: 8px; line-height: 1.35; }
-      tbody tr:nth-child(even) { background: #f1f5f8; }
+      th { background: #383838; color: #fff; font-size: 8px; font-weight: 700; text-align: left; }
+      th, td { border: 1px solid #d5d5d5; overflow-wrap: anywhere; padding: 6px 7px; vertical-align: top; }
+      td { font-size: 8px; line-height: 1.4; }
+      tbody tr:nth-child(even) { background: #f4f4f4; }
       tr { break-inside: avoid; page-break-inside: avoid; }
-      .summary-title { color: #145d91; font-size: 11px; margin: 11px 0 6px; }
-      .summary { display: grid; gap: 6px; grid-template-columns: repeat(4, 1fr); }
-      .metric { background: #f0f5fa; border: 1px solid #d5e0ea; border-radius: 4px; min-height: 42px; padding: 6px 8px; }
-      .metric strong { color: #1d3143; display: block; font-size: 13px; margin-bottom: 2px; }
-      .metric span { color: #53677b; font-size: 8px; }
-      .metric.blue { border-left: 3px solid #1682c4; }
-      .metric.green { border-left: 3px solid #35a66c; }
-      .metric.orange { border-left: 3px solid #e3a529; }
-      .metric.red { border-left: 3px solid #d9574f; }
-      .metric.muted { border-left: 3px solid #8291a0; }
-      .statusline { background: #f3f8fc; border: 1px solid #dce7ef; color: #42596d; font-size: 8px; line-height: 1.5; margin-top: 8px; padding: 7px 9px; }
-      .warning { background: #fff3e8; border-left: 3px solid #e3a529; color: #734519; font-size: 8px; line-height: 1.5; margin: 8px 0; padding: 7px; }
-      .empty { background: #f1f5f8; color: #526579; padding: 8px; }
-      .coverage { color: #647789; font-size: 8px; line-height: 1.5; margin: 9px 0; }
-      .empty-report { background: #f7f9fb; border: 1px solid #dce5ed; border-radius: 4px; margin-top: 16px; padding: 8px 12px; }
+      .summary { display: grid; gap: 7px; grid-template-columns: repeat(4, 1fr); }
+      .metric { background: #f3f3f3; border: 1px solid #d3d3d3; border-radius: 4px; min-height: 44px; padding: 7px 9px; }
+      .metric strong { color: #202020; display: block; font-size: 13px; margin-bottom: 3px; }
+      .metric span { color: #545454; font-size: 8px; }
+      .metric.blue { border-top: 2px solid #555; }
+      .metric.green { border-top: 2px solid #397451; }
+      .metric.orange { border-top: 2px solid #9a6a23; }
+      .metric.red { border-top: 2px solid #a7433e; }
+      .metric.muted { border-top: 2px solid #888; }
+      .statusline { background: #f3f3f3; border-left: 2px solid #555; color: #4b4b4b; font-size: 8px; line-height: 1.5; margin: 10px 0 0; padding: 8px 10px; }
+      .warning { background: #f8f1e7; border-left: 3px solid #a77125; color: #6c4617; font-size: 8px; line-height: 1.5; margin: 9px 0; padding: 8px 10px; }
+      .empty { background: #f3f3f3; color: #555; padding: 9px; }
+      .coverage { color: #636363; font-size: 8px; line-height: 1.5; margin: 10px 0; }
+      .empty-report { background: #f6f6f6; border: 1px solid #d5d5d5; border-radius: 4px; margin-top: 16px; padding: 8px 12px; }
       .empty-report h2 { margin-top: 0; }
-      .empty-report p { color: #526579; font-size: 9px; }
-      footer { border-top: 1px solid #d3dce5; color: #617487; font-size: 8px; margin-top: 12px; padding-top: 6px; }
+      .empty-report p { color: #555; font-size: 9px; }
+      footer { border-top: 1px solid #c9c9c9; color: #626262; display: flex; font-size: 8px; justify-content: space-between; gap: 12px; margin-top: 16px; padding-top: 8px; }
       .break-before { break-before: page; page-break-before: always; }
       @media screen { body { background: #fff; margin: 18px auto; max-width: 1200px; padding: 22px; } }
       @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
     </style></head><body>
     <header>
-      <div class="brand"><div class="brand-mark">BD</div><div><h1>Bitácora Digital de Redes</h1><p class="subtitle">Reporte técnico · ${escapeHtml(areaTitle)}</p></div></div>
-      <div class="meta"><strong>Periodo:</strong> ${escapeHtml(from)} al ${escapeHtml(to)}<br>
-        <strong>Generado:</strong> ${escapeHtml(new Date().toLocaleString('es-MX'))}<br>
-        <strong>Responsable:</strong> ${escapeHtml(createdBy)}</div>
+      <div class="brand"><img class="brand-logo" src="${REPORT_LOGO_DATA_URI}" alt="Logo de Bitácora Digital"><div><p class="brand-name">Bitácora Digital</p><p class="brand-caption">Gestión de infraestructura de red</p></div></div>
+      <div class="header-label">Reporte técnico</div>
     </header>
-    <h2 class="summary-title">Resumen ejecutivo <span>Panorama de todas las áreas en el periodo</span></h2>
+    <div class="overview">
+      <div class="overview-copy"><p class="eyebrow">Informe de infraestructura</p><h1>${escapeHtml(areaTitle)}</h1><p class="overview-subtitle">${isInventoryReport ? 'Inventario vigente registrado en Bitácora Digital.' : 'Información registrada en Bitácora Digital para el periodo seleccionado.'}</p></div>
+      <div class="meta">${isInventoryReport ? '' : `<div class="meta-row"><span class="meta-label">Periodo</span><span class="meta-value">${escapeHtml(from)} a ${escapeHtml(to)}</span></div>`}<div class="meta-row"><span class="meta-label">Fecha de emisión</span><span class="meta-value">${escapeHtml(generatedAt)}</span></div><div class="meta-row"><span class="meta-label">Generado por</span><span class="meta-value">${escapeHtml(createdBy)}</span></div></div>
+    </div>
+    <div class="section-heading"><span class="section-number">00</span><h2>Resumen ejecutivo</h2><span class="section-count">${isInventoryReport ? 'Inventario actual' : 'Panorama del periodo'}</span></div>
     <div class="summary">${summary.map(item => `<div class="metric ${item.tone || 'blue'}"><strong>${escapeHtml(item.value)}</strong><span>${escapeHtml(item.label)}</span></div>`).join('')}</div>
-    <p class="statusline">${escapeHtml(periodNarrative)}</p>
+    <p class="statusline">${escapeHtml(reportNarrative)}</p>
     ${warning}
     ${emptyNote}
     ${emptyReport}
     ${content}
-    <footer>Fuente: InsForge · Filtro aplicado: ${escapeHtml(from)} a ${escapeHtml(to)} · Campos sin información: “No capturado”.</footer>
+    <footer><span>Bitácora Digital · Fuente: registros de la aplicación · Campos sin información: “No capturado”.</span><span>${isInventoryReport ? `Corte: ${escapeHtml(generatedAt)}` : `Periodo: ${escapeHtml(from)} a ${escapeHtml(to)}`}</span></footer>
     </body></html>`;
 }

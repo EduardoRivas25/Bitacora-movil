@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -34,11 +34,16 @@ const TONE_COLORS: Record<NonNullable<ReturnType<typeof getReportSummary>[number
   red: '#FF453A',
   muted: '#8E8E93',
 };
+const LIGHT_TONE_COLORS: typeof TONE_COLORS = {
+  blue: '#155E9B',
+  green: '#176B3C',
+  orange: '#915400',
+  red: '#B42318',
+  muted: '#555555',
+};
 
-function todayISO(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-}
+function defaultPeriodStart(): string { return `${new Date().getFullYear()}-01-01`; }
+function defaultPeriodEnd(): string { return `${new Date().getFullYear() + 1}-12-31`; }
 
 function validISODate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -48,43 +53,48 @@ function validISODate(value: string): boolean {
 }
 
 export default function ReportsScreen() {
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
   const { width } = useWindowDimensions();
   const { user } = useAuth();
   const [area, setArea] = useState<ReportArea>('networks');
-  const [from, setFrom] = useState(todayISO);
-  const [to, setTo] = useState(todayISO);
+  const [from, setFrom] = useState(defaultPeriodStart);
+  const [to, setTo] = useState(defaultPeriodEnd);
   const [dataset, setDataset] = useState<ReportDataset | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const requestId = useRef(0);
   const columns = width >= 900 ? 3 : width >= 540 ? 2 : 1;
 
   const loadData = useCallback(async () => {
+    const currentRequest = ++requestId.current;
     setLoading(true);
+    setDataset(null);
     setError('');
     try {
-      setDataset(await fetchReportDataset());
+      const result = await fetchReportDataset(area);
+      if (currentRequest === requestId.current) setDataset(result);
     } catch (cause) {
       console.error('Error cargando datos de reportes:', cause);
-      setError(cause instanceof Error ? cause.message : 'No se pudieron cargar los datos del reporte.');
+      if (currentRequest === requestId.current) setError(cause instanceof Error ? cause.message : 'No se pudieron cargar los datos del reporte.');
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
-  }, []);
+  }, [area]);
 
   useFocusEffect(useCallback(() => {
     void loadData();
   }, [loadData]));
 
-  const rangeIsValid = validISODate(from) && validISODate(to) && from <= to;
+  const usesPeriod = area === 'incidents' || area === 'maintenance' || area === 'activity' || area === 'complete';
+  const rangeIsValid = !usesPeriod || (validISODate(from) && validISODate(to) && from <= to);
   const selectedArea = REPORT_AREAS.find(item => item.id === area)!;
   const recordCount = useMemo(
     () => dataset && rangeIsValid ? countReportRows(dataset, area, from, to) : 0,
     [area, dataset, from, rangeIsValid, to],
   );
-  const summary = useMemo(() => dataset ? getReportSummary(dataset) : [], [dataset]);
+  const summary = useMemo(() => dataset ? getReportSummary(dataset, area, from, to) : [], [area, dataset, from, to]);
 
   const generatePdf = async () => {
     setError('');
@@ -135,20 +145,20 @@ export default function ReportsScreen() {
         ) : null}
         {message ? (
           <View style={styles.successBanner}>
-            <Feather name="check-circle" size={17} color="#30D158" />
-            <Text style={styles.successText}>{message}</Text>
+            <Feather name="check-circle" size={17} color={isDark ? '#30D158' : '#176B3C'} />
+            <Text style={[styles.successText, !isDark && { color: '#176B3C' }]}>{message}</Text>
           </View>
         ) : null}
 
         {dataset ? (
           <View style={[styles.summaryCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <View style={styles.summaryHeading}>
-              <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>Resumen ejecutivo</Text>
-              <Text style={[styles.summaryCaption, { color: colors.textSecondary }]}>Inventario actual</Text>
+              <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>Resumen de {selectedArea.title.toLowerCase()}</Text>
+              <Text style={[styles.summaryCaption, { color: colors.textSecondary }]}>{usesPeriod ? 'Periodo seleccionado' : 'Inventario actual'}</Text>
             </View>
             <View style={styles.summaryGrid}>
               {summary.map(item => (
-                <View key={item.label} style={[styles.summaryItem, { borderLeftColor: TONE_COLORS[item.tone || 'blue'] }]}>
+                <View key={item.label} style={[styles.summaryItem, { borderLeftColor: (isDark ? TONE_COLORS : LIGHT_TONE_COLORS)[item.tone || 'blue'] }]}>
                   <Text style={[styles.summaryValue, { color: colors.textPrimary }]}>{item.value}</Text>
                   <Text style={[styles.summaryLabel, { color: colors.textSecondary }]}>{item.label}</Text>
                 </View>
@@ -166,7 +176,7 @@ export default function ReportsScreen() {
                 key={item.id}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
-                onPress={() => { setArea(item.id); setMessage(''); }}
+                onPress={() => { requestId.current += 1; setArea(item.id); setDataset(null); setMessage(''); }}
                 style={[
                   styles.areaCard,
                   {
@@ -185,35 +195,35 @@ export default function ReportsScreen() {
           })}
         </View>
 
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginTop: 24 }]}>
-          Periodo del reporte
-        </Text>
-        <View style={styles.dateRow}>
-          <TextInput
-            accessibilityLabel="Fecha inicial"
-            value={from}
-            onChangeText={value => { setFrom(value); setMessage(''); }}
-            placeholder="AAAA-MM-DD"
-            placeholderTextColor={colors.placeholder}
-            style={[styles.dateInput, { color: colors.textPrimary, backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-          />
-          <TextInput
-            accessibilityLabel="Fecha final"
-            value={to}
-            onChangeText={value => { setTo(value); setMessage(''); }}
-            placeholder="AAAA-MM-DD"
-            placeholderTextColor={colors.placeholder}
-            style={[styles.dateInput, { color: colors.textPrimary, backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-          />
-          <TouchableOpacity
-            accessibilityRole="button"
-            accessibilityLabel="Actualizar vista previa"
-            onPress={() => void loadData()}
-            style={[styles.refreshButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-          >
-            <Feather name="search" size={18} color={colors.textPrimary} />
-          </TouchableOpacity>
-        </View>
+        {usesPeriod && <>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginTop: 24 }]}>Periodo del reporte</Text>
+          <View style={styles.dateRow}>
+            <TextInput
+              accessibilityLabel="Fecha inicial"
+              value={from}
+              onChangeText={value => { setFrom(value); setMessage(''); }}
+              placeholder="AAAA-MM-DD"
+              placeholderTextColor={colors.placeholder}
+              style={[styles.dateInput, { color: colors.textPrimary, backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+            />
+            <TextInput
+              accessibilityLabel="Fecha final"
+              value={to}
+              onChangeText={value => { setTo(value); setMessage(''); }}
+              placeholder="AAAA-MM-DD"
+              placeholderTextColor={colors.placeholder}
+              style={[styles.dateInput, { color: colors.textPrimary, backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+            />
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Actualizar vista previa"
+              onPress={() => void loadData()}
+              style={[styles.refreshButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+            >
+              <Feather name="search" size={18} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </View>
+        </>}
 
         <View style={[styles.previewCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.previewIcon}>
@@ -222,10 +232,14 @@ export default function ReportsScreen() {
           <View style={styles.previewCopy}>
             <Text style={[styles.previewTitle, { color: colors.textPrimary }]}>{selectedArea.title}</Text>
             <Text style={[styles.previewMeta, { color: colors.textSecondary }]}>
-              {loading ? 'Actualizando registros...' : `${recordCount} registro(s) incluido(s)`}
+              {loading ? 'Actualizando registros...' : `${recordCount} fila(s) de detalle`}
             </Text>
             <Text style={[styles.previewMeta, { color: colors.textTertiary }]}>
-              El PDF incluirá los datos del periodo seleccionado.
+              {usesPeriod
+                ? area === 'complete'
+                  ? 'Incluye el inventario actual y los eventos del periodo indicado.'
+                  : 'Incluye los registros del periodo indicado.'
+                : 'Incluye todos los registros actuales de esta área.'}
             </Text>
           </View>
           <TouchableOpacity
@@ -255,7 +269,11 @@ export default function ReportsScreen() {
             : 'Se abrirán las opciones para guardar o compartir el documento PDF.'}
         </Text>
         <Text style={[styles.helpText, { color: colors.textTertiary }]}>
-          El resumen refleja el inventario actual. Las tablas incluyen registros fechados dentro del periodo; el sistema no conserva el historial de cada edición.
+          {usesPeriod
+            ? area === 'complete'
+              ? 'El inventario muestra el estado actual. Incidentes, mantenimientos y actividad se filtran por el periodo.'
+              : 'Los registros se filtran por el periodo indicado. El sistema no conserva el historial de cada edición.'
+            : 'Este informe muestra el inventario actual, sin filtrar por fecha de creación. Los datos se consultan de nuevo al generar el PDF.'}
         </Text>
       </ScrollView>
     </View>
