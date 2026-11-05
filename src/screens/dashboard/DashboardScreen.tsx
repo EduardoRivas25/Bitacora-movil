@@ -23,7 +23,7 @@ import ThemeToggle from '../../components/ThemeToggle';
 import { fetchDashboardStats, fetchRecentActivities, fetchIncidents, fetchMaintenances, DashboardStats } from '../../services/api';
 import { Incident, Maintenance, RecentActivity } from '../../types';
 
-const DASHBOARD_LOGO = require('../../../assets/logo-ingenieria-sistemas.png');
+const DASHBOARD_LOGO = require('../../../assets/logo-instituto-tecnologico.png');
 
 type ActionablePending = {
   id: string;

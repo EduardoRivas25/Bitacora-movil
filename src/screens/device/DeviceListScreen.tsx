@@ -740,20 +740,21 @@ export default function DeviceListScreen() {
               <View style={styles.detailSection}>
                 <Text style={[styles.detailSectionTitle, { color: colors.textPrimary }]}>Identificación y red</Text>
                 <View style={styles.detailGrid}>
-                  <DetailValue label="Dirección IPv4" value={detailDevice.ipv4_address} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
-                  <DetailValue label="Dirección MAC" value={detailDevice.mac_address} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
-                  <DetailValue label="Red" value={detailDevice.network_name || 'Sin red asignada'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
-                  <DetailValue label="Subred" value={detailDevice.subnet_name || 'Sin subred asignada'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue styles={styles} label="Dirección IPv4" value={detailDevice.ipv4_address} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue styles={styles} label="Dirección MAC" value={detailDevice.mac_address} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue styles={styles} label="Red" value={detailDevice.network_name || 'Sin red asignada'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue styles={styles} label="Subred" value={detailDevice.subnet_name || 'Sin subred asignada'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
                 </View>
               </View>
 
               <View style={styles.detailSection}>
                 <Text style={[styles.detailSectionTitle, { color: colors.textPrimary }]}>Ubicación</Text>
                 <View style={styles.detailGrid}>
-                  <DetailValue label="Edificio" value={detailDevice.building_name || 'No asignado'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
-                  <DetailValue label="Área o departamento" value={detailDevice.department_name || 'No asignado'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
-                  <DetailValue label="Ubicación física" value={detailDevice.location || 'No especificada'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue styles={styles} label="Edificio" value={detailDevice.building_name || 'No asignado'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue styles={styles} label="Área o departamento" value={detailDevice.department_name || 'No asignado'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue styles={styles} label="Ubicación física" value={detailDevice.location || 'No especificada'} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
                   <DetailValue
+                    styles={styles}
                     label="Coordenadas GPS"
                     value={detailDevice.latitude != null && detailDevice.longitude != null
                       ? `${detailDevice.latitude}, ${detailDevice.longitude}`
@@ -761,8 +762,8 @@ export default function DeviceListScreen() {
                     color={colors.textPrimary}
                     secondaryColor={colors.textSecondary}
                   />
-                  <DetailValue label="Registrado" value={formatDeviceDate(detailDevice.created_at)} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
-                  <DetailValue label="Última actualización" value={formatDeviceDate(detailDevice.updated_at)} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue styles={styles} label="Registrado" value={formatDeviceDate(detailDevice.created_at)} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
+                  <DetailValue styles={styles} label="Última actualización" value={formatDeviceDate(detailDevice.updated_at)} color={colors.textPrimary} secondaryColor={colors.textSecondary} />
                 </View>
               </View>
 
@@ -879,11 +880,13 @@ export default function DeviceListScreen() {
 }
 
 function DetailValue({
+  styles,
   label,
   value,
   color,
   secondaryColor,
 }: {
+  styles: ReturnType<typeof createStyles>;
   label: string;
   value: string;
   color: string;
