@@ -25,8 +25,7 @@ import { ControlCenterNavigator, InfrastructureNavigator } from './GroupedTabNav
 import { useAuth } from '../contexts/AuthContext';
 
 const Tab = createBottomTabNavigator();
-const LOGO_DARK = require('../../assets/logobitacoraredes.png');
-const LOGO_LIGHT = require('../../assets/logobitacoraredesmodoclaro.png');
+const TEC_LOGO = require('../../assets/logo-instituto-tecnologico.png');
 
 const visibleItems = [
   { route: 'Inicio', label: 'Inicio', icon: 'home' },
@@ -46,7 +45,7 @@ function AccountIdentityHeader({ navigation }: BottomTabHeaderProps) {
     <View style={[styles.identityHeader, { backgroundColor: colors.background, borderBottomColor: colors.cardBorder }]}>
       <View style={styles.identityContent}>
         <View style={styles.brandIdentity}>
-          <Image source={isDark ? LOGO_DARK : LOGO_LIGHT} style={styles.brandLogo} resizeMode="contain" />
+          <Image source={TEC_LOGO} style={styles.brandLogo} resizeMode="contain" />
           <Text style={[styles.brandName, { color: colors.textPrimary }]}>Bitácora Digital</Text>
         </View>
         <TouchableOpacity
@@ -214,7 +213,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   brandIdentity: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  brandLogo: { width: 32, height: 32 },
+  brandLogo: { width: 42, height: 42 },
   brandName: {
     fontFamily: 'Poppins_700Bold',
     fontSize: 14,
